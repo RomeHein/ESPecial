@@ -4,7 +4,15 @@ This project aim to provide a server that can expose digital pins easily.
 Features:
 - Exposes digital pins to a REST API
 - Provide web interface full vanilla js. No internet connexion required.
+<div>
+    <img src="images/controls.jpg" width="150">
+    <img src="images/controls-edit.jpg" width="150">
+    <img src="images/settings.jpg" width="150">
+</div>
 - Telegram bot: Access and control your esp32 from outside your home. No domotic server required!
+<div>
+    <img src="images/telegram.jpg" width="150">
+</div>
 - Wifi manager: gives a way to easily set your esp32 to your network
 - Update: web server OTA.
 - Provides info on the TTGO LCD screen
@@ -12,6 +20,7 @@ Features:
 
 ## Work in progress:
 - MQTT
+- Documentation
 
 ## Wish list
 - Makefile: It would be great to have all dependencies easily compiled to the project.
