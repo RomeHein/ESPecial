@@ -4,24 +4,14 @@
 #define ServerHandler_h
 #include <Arduino.h>
 #include <WebServer.h>
-#include <ArduinoJson.h>
+#include "PreferenceHandler.h"
 
-typedef struct
-{
-     int8_t pin;
-     char label[50];
-     int8_t mode;
-     int8_t state;
- }  GpioFlash;
- 
 class ServerHandler
 {
 private:
-    int firstEmptyGpioSlot();
-    void initGpios();
+    PreferenceHandler &preference;
+    void getSettings();
     void getGpios();
-    void saveGpios();
-    void setGpioState(int pin, int value);
     void handleAvailableGpios();
     void handleSetGpioState();
     void handleGetGpioState();
@@ -31,12 +21,14 @@ private:
     void handleGpioNew();
     void handleUpload();
     void handleUpdate();
+    void handleMqttEdit();
+    void handleTelegramEdit();
     void install();
     void handleNotFound();
     void handleClearSettings();
 public:
+    ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     WebServer server = {80};
-    GpioFlash gpios[GPIO_PIN_COUNT]; 
     void begin();
 };
 #endif

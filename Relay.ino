@@ -5,6 +5,8 @@
 #include <TFT_eSPI.h>
 #include <Button2.h>
 #include "ServerHandler.h"
+#include "PreferenceHandler.h"
+#include "TelegramHandler.h"
 
 #ifndef TFT_DISPOFF
 #define TFT_DISPOFF 0x28
@@ -27,16 +29,17 @@
 #define BUTTON_2 0
 #define LED 2
 
-TFT_eSPI tft = TFT_eSPI(135, 240);
+TFT_eSPI tft(135, 240);
 Button2 btn1(BUTTON_1);
 Button2 btn2(BUTTON_2);
+ServerHandler *serverhandler;
+PreferenceHandler *preferencehandler;
+TelegramHandler *telegramhandler;
 
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
 int buttonCursor = 0;
-
-ServerHandler serverhandler;
 
 void button_init()
 {
@@ -56,7 +59,7 @@ void button_init()
     switchAllGpioState(true);
   });
   btn1.setPressedHandler([](Button2 &b) {
-    if (buttonCursor < sizeof(serverhandler.gpios)/sizeof(*serverhandler.gpios) - 1)
+    if (buttonCursor < sizeof(preferencehandler->gpios)/sizeof(*preferencehandler->gpios) - 1)
     {
       buttonCursor++;
     }
@@ -64,12 +67,12 @@ void button_init()
     {
       buttonCursor = 0;
     }
-    displayGpioState(serverhandler.gpios[buttonCursor]);
+    displayGpioState(preferencehandler->gpios[buttonCursor]);
   });
 
   btn2.setPressedHandler([](Button2 &b) {
     switchSelectedGpioState();
-    displayGpioState(serverhandler.gpios[buttonCursor]);
+    displayGpioState(preferencehandler->gpios[buttonCursor]);
   });
 }
 
@@ -104,7 +107,7 @@ void turnOffScreen()
   tft.writecommand(TFT_DISPOFF);
   tft.writecommand(TFT_SLPIN);
 }
-void displayGpioState(GpioFlash gpio)
+void displayGpioState(GpioFlash& gpio)
 {
   tft.fillScreen(TFT_BLACK);
   tft.setCursor(1, 0);
@@ -115,8 +118,8 @@ void displayGpioState(GpioFlash gpio)
   tft.print(digitalRead(gpio.pin));
 }
 
-void server_init () {
-  
+void server_init () 
+{
   tft.setCursor(2, 0);
   tft.fillScreen(TFT_BLACK);
   tft.println("HTTP server started on:");
@@ -125,19 +128,19 @@ void server_init () {
 
 void switchSelectedGpioState()
 {
-  int currentstate = digitalRead(serverhandler.gpios[buttonCursor].pin);
-  digitalWrite(serverhandler.gpios[buttonCursor].pin, currentstate == 0 ? 1 : 0);
+  int currentstate = digitalRead(preferencehandler->gpios[buttonCursor].pin);
+  digitalWrite(preferencehandler->gpios[buttonCursor].pin, currentstate == 0 ? 1 : 0);
 }
 
 void switchAllGpioState(bool on)
 {
-  for (GpioFlash& gpio : serverhandler.gpios) {
+  for (GpioFlash& gpio : preferencehandler->gpios) {
     digitalWrite(gpio.pin, on);
   }
 }
 
 void readInputPins() {
-    for (GpioFlash& gpio : serverhandler.gpios) {
+    for (GpioFlash& gpio : preferencehandler->gpios) {
         if (gpio.pin && gpio.mode != OUTPUT) {
             gpio.state = digitalRead(gpio.pin);
         }
@@ -161,7 +164,11 @@ void setup(void)
         Serial.println("Failed to connect");
         // ESP.restart();
   } else {
-    serverhandler.begin();
+    preferencehandler = new PreferenceHandler();
+    preferencehandler->begin();
+    serverhandler = new ServerHandler(*preferencehandler);
+    serverhandler->begin();
+    telegramhandler = new TelegramHandler(*preferencehandler);
     button_init();
     server_init();
   }
@@ -172,8 +179,9 @@ void loop(void)
   if ( WiFi.status() ==  WL_CONNECTED ) 
   {
     button_loop();
-    serverhandler.server.handleClient();
+    serverhandler->server.handleClient();
     readInputPins();
+    telegramhandler->handle();
   } else
   {
     // wifi down, reconnect here

@@ -1,85 +1,75 @@
 #include "ServerHandler.h"
-#include <ESPmDNS.h>
+#include "PreferenceHandler.h"
 #include <Update.h>
-#include <Preferences.h>
+#include <ArduinoJson.h>
 #include "index.h"
-#include "update.h"
-
-#define PREFERENCES_NAME "esp32-api"
-#define PREFERENCES_GPIOS "esp32-api"
-Preferences preferences;
 
 void ServerHandler::begin()
 {
-    preferences.begin(PREFERENCES_NAME, false);
-
-    if (preferences.getBool("gpios_are_init")) {
-        size_t schLen = preferences.getBytes(PREFERENCES_GPIOS, NULL, NULL);
-        char buffer[schLen]; // prepare a buffer for the data
-        preferences.getBytes(PREFERENCES_GPIOS, buffer, schLen);
-        memcpy(gpios, buffer, schLen);
-    } else {
-        Serial.println("gpios are not init");
-        GpioFlash tmpGpios[]  = {
-            {13, "Pin 13", OUTPUT, 0},
-            {17, "Pin 17", OUTPUT, 0},
-            {21, "Pin 21", OUTPUT, 0},
-            {22, "Pin 22", OUTPUT, 0},
-            {25, "Pin 25", OUTPUT, 0},
-            {26, "Pin 26", OUTPUT, 0},
-            {27, "Pin 27", OUTPUT, 0},
-            {32, "Pin 32", OUTPUT, 0},
-            {33, "Pin 33", OUTPUT, 0}
-        };
-        for (int i = 0; i < 9; i++) {
-            gpios[i] = tmpGpios[i];
-        }
-        preferences.putBytes(PREFERENCES_GPIOS, &gpios, sizeof(gpios));
-        preferences.putBool("gpios_are_init", true);  
-    }
-    preferences.end();
-
     server.on("/", [this]() { handleRoot(); });
     server.on("/clear/settings", [this]() { handleClearSettings(); });
     server.on("/gpios", [this]() { getGpios(); });
+    server.on("/settings", [this]() { getSettings(); });
     server.on("/gpios/available", [this]() { handleAvailableGpios(); });
     server.on("/digital/{}/{}", [this]() { handleSetGpioState(); });
     server.on("/digital/{}", [this]() { handleGetGpioState(); });
-    server.on("/update", [this]() { handleUpdate(); });
     server.on("/gpio/{}/delete", [this]() { handleGpioRemove(); });
     server.on("/gpio", HTTP_POST, [this]() { handleGpioEdit(); });
     server.on("/gpio/new", HTTP_POST, [this]() { handleGpioNew(); });
     server.on("/install", HTTP_POST, [this]() { handleUpload(); }, [this]() { install(); });
+    server.on("/mqtt", HTTP_POST, [this]() { handleMqttEdit(); });
+    server.on("/telegram", HTTP_POST, [this]() { handleTelegramEdit(); });
     server.onNotFound([this]() {handleNotFound(); });
 
     server.begin();
-
-    // init all gpios
-    initGpios();
 }
 
-void  ServerHandler::initGpios() 
+// Main
+
+void ServerHandler::handleNotFound()
 {
-    for (GpioFlash& gpio : gpios) {
-        pinMode(gpio.pin, gpio.mode);
-        digitalWrite(gpio.pin, gpio.state);
-    }
+    server.send(404, "text/plain", "Not found");
 }
 
-int ServerHandler::firstEmptyGpioSlot() {
-    const int count = sizeof(gpios)/sizeof(*gpios);
-    for (int i=1;i<count;i++) {
-        if (!gpios[i].pin) {
-            return i;
-        }
-    }
-    return count;
+void ServerHandler::handleClearSettings()
+{
+    preference.clear();
+    server.send(200, "text/plain", "Settings clear");
 }
+
+void ServerHandler::handleRoot()
+{
+    server.sendHeader("Connection", "close");
+    String s = MAIN_page;
+    server.send(200, "text/html", s);
+}
+
+// Settings
+
+void ServerHandler::getSettings() {
+    const size_t capacity = JSON_OBJECT_SIZE(7) + 300;
+    StaticJsonDocument<(capacity)> doc;
+    JsonObject telegram = doc.createNestedObject("telegram");
+    telegram["active"] = preference.telegram.active;
+    telegram["token"] = preference.telegram.token;
+    JsonObject mqtt = doc.createNestedObject("mqtt");
+    mqtt["host"] = preference.mqtt.host;
+    mqtt["port"] = preference.mqtt.port;
+    mqtt["user"] = preference.mqtt.user;
+    mqtt["password"] = preference.mqtt.password;
+    mqtt["topic"] = preference.mqtt.topic;
+    String output;
+    serializeJson(doc, output);
+    server.send(200, "text/json", output);
+    return;
+}
+
+// Gpio hanlding
 
 void ServerHandler::getGpios() 
 {
-    StaticJsonDocument<(2*sizeof(gpios))> doc;
-    for (GpioFlash& gpio : gpios) {
+    StaticJsonDocument<(2*sizeof(preference.gpios))> doc;
+    for (GpioFlash& gpio : preference.gpios) {
         if (gpio.pin) {
             JsonObject object = doc.createNestedObject();
             object["pin"] = gpio.pin;
@@ -91,27 +81,9 @@ void ServerHandler::getGpios()
     String output;
     serializeJson(doc, output);
     server.send(200, "text/json", output);
+    Serial.println("Preference reference:");
+    Serial.printf("%p", &preference);
     return;
-}
-
-void ServerHandler::handleNotFound()
-{
-    server.send(404, "text/plain", "Not found");
-}
-
-void ServerHandler::handleClearSettings()
-{
-    preferences.begin(PREFERENCES_NAME, false);
-    preferences.clear();
-    preferences.end();
-    server.send(200, "text/plain", "Settings clear");
-}
-
-void ServerHandler::handleRoot()
-{
-    server.sendHeader("Connection", "close");
-    String s = MAIN_page;
-    server.send(200, "text/html", s);
 }
 
 void ServerHandler::handleGpioEdit()
@@ -127,42 +99,26 @@ void ServerHandler::handleGpioEdit()
         return;
     }
 
-    for (GpioFlash& gpio : gpios)
+    for (GpioFlash& gpio : preference.gpios)
     {
         if (gpio.pin == doc["pin"].as<int>())
         {
-            bool hasChanged = false;
-            const int newPin = doc["settings"]["pin"].as<int>();
-            if (newPin && gpio.pin != newPin) {
-                gpio.pin = newPin;
-                hasChanged = true;
+            bool saved = preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>());
+            if (saved) {
+                const size_t capacity = JSON_OBJECT_SIZE(1) + 100;
+                StaticJsonDocument<capacity> doc;
+                JsonObject object = doc.createNestedObject();
+                object["pin"] = gpio.pin;
+                object["label"] = gpio.label;
+                object["mode"] = gpio.mode;
+                object["state"] = gpio.state;
+                String output;
+                serializeJson(doc[0], output);
+                server.send(200, "text/json", output);
+                return;
+            } else {
+                server.send(404, "text/plain", "Could not save");
             }
-            const char* newLabel = doc["settings"]["label"].as<char*>();
-            if (newLabel && strcmp(gpio.label, newLabel) != 0) {
-                strcpy(gpio.label, newLabel);
-                hasChanged = true;
-            }
-            const int newMode = doc["settings"]["mode"].as<int>();
-            if (newMode && gpio.mode != newMode) {
-                gpio.mode = newMode;
-                hasChanged = true;
-            }
-            if (hasChanged) {
-                pinMode(gpio.pin, gpio.mode);
-                gpio.state = digitalRead(gpio.pin);
-                saveGpios();
-            }
-            const size_t capacity = JSON_OBJECT_SIZE(1) + 100;
-            StaticJsonDocument<capacity> doc;
-            JsonObject object = doc.createNestedObject();
-            object["pin"] = gpio.pin;
-            object["label"] = gpio.label;
-            object["mode"] = gpio.mode;
-            object["state"] = gpio.state;
-            String output;
-            serializeJson(doc[0], output);
-            server.send(200, "text/json", output);
-            return;
         }
     }
     server.send(404, "text/plain", "Not found");
@@ -171,7 +127,7 @@ void ServerHandler::handleGpioEdit()
 void ServerHandler::handleGpioNew()
 {
     server.sendHeader("Connection", "close");
-    const size_t capacity = JSON_OBJECT_SIZE(1) + 100;
+    const size_t capacity = JSON_OBJECT_SIZE(4) + 90;
     DynamicJsonDocument doc(capacity);
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
@@ -184,14 +140,7 @@ void ServerHandler::handleGpioNew()
     const char* label = doc["settings"]["label"].as<char*>();
     const int mode = doc["settings"]["mode"].as<int>();
     if (pin && label && mode) {
-        GpioFlash newGpio = {};
-        newGpio.pin = pin;
-        strcpy(newGpio.label, label);
-        newGpio.mode = mode;
-        gpios[firstEmptyGpioSlot()] = newGpio;
-        pinMode(pin, mode);
-        newGpio.state = digitalRead(pin);
-        saveGpios();
+        preference.addGpio(pin, label, mode);
         server.send(200, "text/json", server.arg(0));
         return;
     }
@@ -200,14 +149,9 @@ void ServerHandler::handleGpioNew()
 
 void ServerHandler::handleGpioRemove() 
 {
-    const int pin = atoi(server.pathArg(0).c_str());
-    const int count = sizeof(gpios)/sizeof(*gpios);
-    for (int i=0;i<count;i++) {
-        if (gpios[i].pin == pin) {
-            gpios[i] = {};
-            server.send(200, "text/plain", "done");
-            return;
-        }
+    bool removed = preference.removeGpio(atoi(server.pathArg(0).c_str()));
+    if (removed){
+        server.send(404, "text/plain", "Done");
     }
     server.send(404, "text/plain", "Not found");
 }
@@ -225,12 +169,27 @@ void ServerHandler::handleAvailableGpios() {
     server.send(200, "text/json", output);
 }
 
-void ServerHandler::handleUpdate()
+void ServerHandler::handleGetGpioState()
 {
-    server.sendHeader("Connection", "close");
-    String s = UPDATE_page;
-    server.send(200, "text/html", s);
+    const int pin = atoi(server.pathArg(0).c_str());
+    const int state = digitalRead(pin);
+    char json[50];
+    snprintf(json, sizeof(json), "{\"pin\":%i,\"state\":%i}", pin, state);
+    server.send(200, "text/json", json);
 }
+
+void ServerHandler::handleSetGpioState()
+{
+    const int pin = atoi(server.pathArg(0).c_str());
+    if (server.pathArg(1) && server.pathArg(1) != "")
+    {
+        const int newState = atoi(server.pathArg(1).c_str());
+        preference.setGpioState(pin, newState);
+    }
+    handleGetGpioState();
+}
+
+// Settings API
 
 void ServerHandler::handleUpload()
 {
@@ -261,43 +220,47 @@ void ServerHandler::install()
     } 
 }
 
-void ServerHandler::handleGetGpioState()
-{
-    const int pin = atoi(server.pathArg(0).c_str());
-    const int state = digitalRead(pin);
-    char json[50];
-    snprintf(json, sizeof(json), "{\"pin\":%i,\"state\":%i}", pin, state);
-    server.send(200, "text/json", json);
-}
+void ServerHandler::handleMqttEdit () {
+    server.sendHeader("Connection", "close");
+    const size_t capacity = JSON_OBJECT_SIZE(4) + 90;
+    DynamicJsonDocument doc(capacity);
 
-void ServerHandler::handleSetGpioState()
-{
-    const int pin = atoi(server.pathArg(0).c_str());
-    const int currentState = digitalRead(pin);
-    if (server.pathArg(1) && server.pathArg(1) != "")
-    {
-        const int newState = atoi(server.pathArg(1).c_str());
-        if (newState != currentState) {
-            setGpioState(pin, newState);
-        }
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.c_str());
+        return;
     }
-    handleGetGpioState();
-}
-
-void ServerHandler::setGpioState(int pin, int value) {
-    for (GpioFlash& gpio : gpios)
-    {
-        if (gpio.pin == pin && value != gpio.state)
-        {
-            gpio.state = value;
-            digitalWrite(pin, value);
-            saveGpios();
-        }
+    const char* host = doc["host"].as<char*>();
+    const int port = doc["port"].as<int>();
+    const char* user = doc["user"].as<char*>();
+    const char* password = doc["password"].as<char*>();
+    const char* topic = doc["topic"].as<char*>();
+    if (host && port && user && password && topic) {
+        preference.editMqtt(host,port,user,password,topic);
+        server.send(200, "text/json", server.arg(0));
+        return;
     }
+    server.send(404, "text/plain", "Missing parameters");
 }
 
-void ServerHandler::saveGpios() {
-    preferences.begin(PREFERENCES_NAME, false);
-    preferences.putBytes(PREFERENCES_GPIOS, &gpios, sizeof(gpios));
-    preferences.end();
+void ServerHandler::handleTelegramEdit () {
+    server.sendHeader("Connection", "close");
+    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
+    DynamicJsonDocument doc(capacity);
+
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.c_str());
+        return;
+    }
+    const char* token = doc["token"].as<char*>();
+    const int active = doc["active"].as<int>();
+    if (token) {
+        preference.editTelegram(token, active);
+        server.send(200, "text/json", server.arg(0));
+        return;
+    }
+    server.send(404, "text/plain", "Missing parameters");
 }
