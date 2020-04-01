@@ -5,13 +5,13 @@ Features:
 - Exposes digital pins to a REST API
 - Provide web interface full vanilla js. No internet connexion required.
 <div>
-    <img src="images/controls.jpg" width="150">
-    <img src="images/controls-edit.jpg" width="150">
-    <img src="images/settings.jpg" width="150">
+    <img src="images/controls.png" width="150">
+    <img src="images/controls-edit.png" width="150">
+    <img src="images/settings.png" width="150">
 </div>
 - Telegram bot: Access and control your esp32 from outside your home. No domotic server required!
 <div>
-    <img src="images/telegram.jpg" width="150">
+    <img src="images/telegram.png" width="150">
 </div>
 - Wifi manager: gives a way to easily set your esp32 to your network
 - Update: web server OTA.
