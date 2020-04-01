@@ -5,17 +5,19 @@ Features:
 - Exposes digital pins to a REST API
 - Provide web interface full vanilla js. No internet connexion required.
 <div>
-    <img src="images/controls.png" width="150">
-    <img src="images/controls-edit.png" width="150">
-    <img src="images/settings.png" width="150">
+    <img src="images/controls.png" width="200">
+    <img src="images/controls-edit.png" width="200">
+    <img src="images/settings.png" width="200">
 </div>
+
 - Telegram bot: Access and control your esp32 from outside your home. No domotic server required!
 <div>
-    <img src="images/telegram.png" width="150">
+    <img src="images/telegram.png" width="200">
 </div>
-- Wifi manager: gives a way to easily set your esp32 to your network
+
+- Wifi manager: gives a way to easily set your esp32 to your network.
 - Update: web server OTA.
-- Provides info on the TTGO LCD screen
+- Provides info on the TTGO LCD screen.
 - Provides manual control over the pins thanks to the two buttons provided by the TTGO chip
 
 ## Work in progress:
