@@ -1,4 +1,4 @@
-# TTGO ESP32 pin control server
+# ESP32 pin control server
 
 This project aim to provide a server that can expose digital pins easily.
 Features:
@@ -10,29 +10,27 @@ Features:
     <img src="images/settings.png" width="200">
 </div>
 
-- Telegram bot: Access and control your esp32 from outside your home. No domotic server required!
+- Telegram bot: Access and control your esp32 from outside your home. No domotic server required! No port exposed to the outside world (way more secure than exposing your router ports)
 <div>
     <img src="images/telegram.png" width="200">
 </div>
 
 - Wifi manager: gives a way to easily set your esp32 to your network.
-- Update: web server OTA.
-- Provides info on the TTGO LCD screen.
-- Provides manual control over the pins thanks to the two buttons provided by the TTGO chip
+- Update: web server OTA. Directly in the web interface.
+- Provides info on the tft LCD screen.
+- Provides manual control over the pins thanks to the two buttons provided by the TTGO chip.
 
 ## Work in progress:
 - MQTT
 - Documentation
 
 ## Wish list
-- Makefile: It would be great to have all dependencies easily compiled to the project.
+- Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
 
 ## Getting Started
 
-This code works well with this type of chip from TTGO: 
-https://www.aliexpress.com/item/33048962331.html?spm=a2g0o.productlist.0.0.71ee316cmQo1JA&algo_pvid=6aadca0f-7463-41bf-8277-010dbd421b34&algo_expid=6aadca0f-7463-41bf-8277-010dbd421b34-6&btsid=0b0a0ae215834054133566008e89a2&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_
-but can easily be adapted to any other esp32 chip, especially if you remove the dependencies to the `TFT_eSPI` and `Button2` libraries.
+This code works well with [this](https://www.aliexpress.com/item/33048962331.html?spm=a2g0o.productlist.0.0.71ee316cmQo1JA&algo_pvid=6aadca0f-7463-41bf-8277-010dbd421b34&algo_expid=6aadca0f-7463-41bf-8277-010dbd421b34-6&btsid=0b0a0ae215834054133566008e89a2&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_) type of chip from TTGO, but can easily be adapted to any other esp32 chip, especially if you remove the dependencies to the `TFT_eSPI` and `Button2` libraries.
 
 ### Prerequisites
 
