@@ -26,7 +26,7 @@ Features:
 
 ## Wish list
 - Makefile: It would be great to have all dependencies easily compiled to the project.
-- Auto update: from remote server (why not puting a .ini build on github?)
+- Auto update: from remote server (why not a .ini build on this repo?)
 
 ## Getting Started
 
@@ -54,7 +54,7 @@ an helper to use your onbard push buttons
 
 ## Contributing
 
-All kind of contribution are welcome. I'm very new to arduino world, so don't hesitate to give any advices
+All kind of contributions are welcome. I'm very new to arduino world, so don't hesitate to give any advices
 
 ## Authors
 
@@ -63,9 +63,3 @@ All kind of contribution are welcome. I'm very new to arduino world, so don't he
 ## License
 
 This project is licensed under the GNU GPLv3 License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
