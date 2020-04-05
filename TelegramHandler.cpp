@@ -1,32 +1,39 @@
 #include "TelegramHandler.h"
 #include "PreferenceHandler.h"
 #include <ArduinoJson.h>
-#include <WiFiClientSecure.h>
-
-WiFiClientSecure client;
 
 int Bot_mtbs = 1000; //mean time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
 
+void TelegramHandler::begin() {
+    if (!bot && preference.telegram.token) {
+      #ifdef _debug  
+        Serial.println("Telegram: init");
+      #endif
+      bot = new UniversalTelegramBot(preference.telegram.token, client);
+    }
+}
 void TelegramHandler::handle()
 {
-    if (!bot && preference.telegram.token) {
-        Serial.println("init telegram");
-        bot = new UniversalTelegramBot(preference.telegram.token, client);
-    }
-    if (preference.telegram.token && preference.telegram.active && millis() > Bot_lasttime + Bot_mtbs)  {
+    begin();
+    if (bot && preference.telegram.token && preference.telegram.active && millis() > Bot_lasttime + Bot_mtbs)  {
+      preference.health.telegram = 1;
         int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
         while(numNewMessages) {
-          Serial.println("got response");
+          #ifdef _debug  
+            Serial.printf("Telegram: got %i new messages\n", numNewMessages);
+          #endif
           handleNewMessages(numNewMessages);
           numNewMessages = bot->getUpdates(bot->last_message_received + 1);
         }
         Bot_lasttime = millis();
+    } else {
+      preference.health.telegram = 0;
     }
 }
 
 String TelegramHandler::generateInlineKeyboards() {
-  const size_t capacity = JSON_ARRAY_SIZE(1+(GPIO_PIN_COUNT/2)) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(2)+50);
+  const size_t capacity = JSON_ARRAY_SIZE(1+(GPIO_PIN_COUNT/2)) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(2)+100);
   StaticJsonDocument<capacity> doc;
   for (int i = 0; i<GPIO_PIN_COUNT; i++) {
     JsonArray subArray = doc.createNestedArray();

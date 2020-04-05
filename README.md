@@ -39,7 +39,7 @@ https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_m
 
 ### Installing
 
-This code also has 5 dependencies which need to be added to your libraries:
+This code also has 6 dependencies which need to be added to your libraries:
 - WifiManager: https://github.com/tzapu/WiFiManager/tree/development
 This library will allow you to easily set your board to your wifi.
 - TFT_eSPI: https://github.com/Bodmer/TFT_eSPI
@@ -48,6 +48,7 @@ control your tft screen easily.
 an helper to use your onbard push buttons
 - ArduinoJSON v6
 - UniversalTelegramBot editMessage branch on this repo: https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/editMessage
+- PubSubClient: MQTT handling. It's a very robust pubsub client, perfect for iot projects.
 
 
 ## Contributing

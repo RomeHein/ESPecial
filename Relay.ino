@@ -1,12 +1,13 @@
 #include <WiFiManager.h>
 #include <WiFi.h>
-#include <WiFiClient.h>
-
+#include <WiFiClientSecure.h>
 #include <TFT_eSPI.h>
 #include <Button2.h>
+
 #include "ServerHandler.h"
 #include "PreferenceHandler.h"
 #include "TelegramHandler.h"
+#include "MqttHandler.h"
 
 #ifndef TFT_DISPOFF
 #define TFT_DISPOFF 0x28
@@ -35,7 +36,8 @@ Button2 btn2(BUTTON_2);
 ServerHandler *serverhandler;
 PreferenceHandler *preferencehandler;
 TelegramHandler *telegramhandler;
-
+MqttHandler *mqtthandler;
+WiFiClientSecure client;
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
@@ -168,7 +170,8 @@ void setup(void)
     preferencehandler->begin();
     serverhandler = new ServerHandler(*preferencehandler);
     serverhandler->begin();
-    telegramhandler = new TelegramHandler(*preferencehandler);
+    telegramhandler = new TelegramHandler(*preferencehandler, client);
+    mqtthandler = new MqttHandler(*preferencehandler, client);
     button_init();
     server_init();
   }
@@ -182,6 +185,7 @@ void loop(void)
     serverhandler->server.handleClient();
     readInputPins();
     telegramhandler->handle();
+    mqtthandler->handle();
   } else
   {
     // wifi down, reconnect here

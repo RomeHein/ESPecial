@@ -6,8 +6,12 @@
 
 void ServerHandler::begin()
 {
+    #ifdef _debug  
+        Serial.println("Server: init");
+    #endif
     server.on("/", [this]() { handleRoot(); });
     server.on("/clear/settings", [this]() { handleClearSettings(); });
+    server.on("/health", [this]() { handleSystemHealth(); });
     server.on("/gpios", [this]() { getGpios(); });
     server.on("/settings", [this]() { getSettings(); });
     server.on("/gpios/available", [this]() { handleAvailableGpios(); });
@@ -18,6 +22,7 @@ void ServerHandler::begin()
     server.on("/gpio/new", HTTP_POST, [this]() { handleGpioNew(); });
     server.on("/install", HTTP_POST, [this]() { handleUpload(); }, [this]() { install(); });
     server.on("/mqtt", HTTP_POST, [this]() { handleMqttEdit(); });
+    server.on("/mqtt/retry", [this]() { handleMqttRetry(); });
     server.on("/telegram", HTTP_POST, [this]() { handleTelegramEdit(); });
     server.onNotFound([this]() {handleNotFound(); });
 
@@ -28,6 +33,9 @@ void ServerHandler::begin()
 
 void ServerHandler::handleNotFound()
 {
+    #ifdef _debug  
+        Serial.println("Server: page not found");
+    #endif
     server.send(404, "text/plain", "Not found");
 }
 
@@ -35,6 +43,19 @@ void ServerHandler::handleClearSettings()
 {
     preference.clear();
     server.send(200, "text/plain", "Settings clear");
+}
+
+void ServerHandler::handleSystemHealth()
+{
+    const size_t capacity = JSON_OBJECT_SIZE(3) + 10;
+    StaticJsonDocument<(capacity)> doc;
+    doc["api"] = preference.health.api;
+    doc["telegram"] = preference.health.telegram;
+    doc["mqtt"] = preference.health.mqtt;
+    String output;
+    serializeJson(doc, output);
+    server.send(200, "text/json", output);
+    return;
 }
 
 void ServerHandler::handleRoot()
@@ -53,6 +74,8 @@ void ServerHandler::getSettings() {
     telegram["active"] = preference.telegram.active;
     telegram["token"] = preference.telegram.token;
     JsonObject mqtt = doc.createNestedObject("mqtt");
+    mqtt["active"] = preference.mqtt.active;
+    mqtt["fn"] = preference.mqtt.fn;
     mqtt["host"] = preference.mqtt.host;
     mqtt["port"] = preference.mqtt.port;
     mqtt["user"] = preference.mqtt.user;
@@ -68,21 +91,7 @@ void ServerHandler::getSettings() {
 
 void ServerHandler::getGpios() 
 {
-    StaticJsonDocument<(2*sizeof(preference.gpios))> doc;
-    for (GpioFlash& gpio : preference.gpios) {
-        if (gpio.pin) {
-            JsonObject object = doc.createNestedObject();
-            object["pin"] = gpio.pin;
-            object["label"] = gpio.label;
-            object["mode"] = gpio.mode;
-            object["state"] = gpio.state;
-        }
-    }
-    String output;
-    serializeJson(doc, output);
-    server.send(200, "text/json", output);
-    Serial.println("Preference reference:");
-    Serial.printf("%p", &preference);
+    server.send(200, "text/json", preference.getGpiosJson());
     return;
 }
 
@@ -94,8 +103,10 @@ void ServerHandler::handleGpioEdit()
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+        #ifdef _debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
         return;
     }
 
@@ -132,8 +143,10 @@ void ServerHandler::handleGpioNew()
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+        #ifdef _debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
         return;
     }
     const int pin = doc["settings"]["pin"].as<int>();
@@ -222,7 +235,7 @@ void ServerHandler::install()
 
 void ServerHandler::handleMqttEdit () {
     server.sendHeader("Connection", "close");
-    const size_t capacity = JSON_OBJECT_SIZE(4) + 90;
+    const size_t capacity = JSON_OBJECT_SIZE(6) + 300;
     DynamicJsonDocument doc(capacity);
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
@@ -231,17 +244,24 @@ void ServerHandler::handleMqttEdit () {
         Serial.println(error.c_str());
         return;
     }
+    const int active = doc["active"].as<int>();
+    const char* fn = doc["fn"].as<char*>();
     const char* host = doc["host"].as<char*>();
     const int port = doc["port"].as<int>();
     const char* user = doc["user"].as<char*>();
     const char* password = doc["password"].as<char*>();
     const char* topic = doc["topic"].as<char*>();
-    if (host && port && user && password && topic) {
-        preference.editMqtt(host,port,user,password,topic);
+    if (fn && host && port && user && password && topic) {
+        preference.editMqtt(active,fn,host,port,user,password,topic);
         server.send(200, "text/json", server.arg(0));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");
+}
+
+void ServerHandler::handleMqttRetry() {
+    preference.health.mqtt = 0;
+    server.send(200, "text/plain", "Retrying");
 }
 
 void ServerHandler::handleTelegramEdit () {

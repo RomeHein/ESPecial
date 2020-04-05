@@ -1,5 +1,6 @@
 #include "PreferenceHandler.h"
 #include <Preferences.h>
+#include <ArduinoJson.h>
 
 #define PREFERENCES_NAME "esp32-api"
 #define PREFERENCES_GPIOS "gpios"
@@ -11,13 +12,18 @@ void PreferenceHandler::begin()
 {
     preferences.begin(PREFERENCES_NAME, false);
 
+    #ifdef _debug
+        Serial.println("Preferences: init");
+    #endif
     if (preferences.getBool("gpios_are_init")) {
         size_t schLen = preferences.getBytes(PREFERENCES_GPIOS, NULL, NULL);
         char buffer[schLen];
         preferences.getBytes(PREFERENCES_GPIOS, buffer, schLen);
         memcpy(gpios, buffer, schLen);
     } else {
-        Serial.println("gpios are not init");
+        #ifdef _debug
+            Serial.println("Preferences: gpios not init, filling with default");
+        #endif
         GpioFlash tmpGpios[]  = {
             {13, "Exemple pin 13", OUTPUT, 0},
             {17, "Exemple pin 17", INPUT, 0}
@@ -50,6 +56,9 @@ void PreferenceHandler::begin()
 }
 
 void PreferenceHandler::clear() {
+    #ifdef _debug  
+        Serial.println("Preferences: clear all");
+    #endif
     preferences.begin(PREFERENCES_NAME, false);
     preferences.clear();
     preferences.end();
@@ -57,6 +66,9 @@ void PreferenceHandler::clear() {
 
 void PreferenceHandler::save(char* preference) {
     preferences.begin(PREFERENCES_NAME, false);
+    #ifdef _debug  
+        Serial.printf("Preferences: saving in %s \n", preference);
+    #endif
     if (strcmp(preference, PREFERENCES_GPIOS) == 0) {
         preferences.putBytes(PREFERENCES_GPIOS, &gpios, sizeof(gpios));
     }else if (strcmp(preference, PREFERENCES_MQTT) == 0) {
@@ -144,14 +156,35 @@ void PreferenceHandler::setGpioState(int pin, int value) {
             }
             digitalWrite(pin, value);
             save(PREFERENCES_GPIOS);
+            return;
         }
     }
 }
 
+String PreferenceHandler::getGpiosJson() {
+    StaticJsonDocument<(2*sizeof(gpios))> doc;
+    for (GpioFlash& gpio : gpios) {
+        if (gpio.pin) {
+            JsonObject object = doc.createNestedObject();
+            object["pin"] = gpio.pin;
+            object["label"] = gpio.label;
+            object["mode"] = gpio.mode;
+            object["state"] = gpio.state;
+        }
+    }
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
 // mqtt
 
-bool PreferenceHandler::editMqtt(const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic) {
+bool PreferenceHandler::editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic) {
     bool hasChanged = false;
+    if (newFn && strcmp(mqtt.fn, newFn) != 0) {
+        strcpy(mqtt.fn, newFn);
+        hasChanged = true;
+    }
     if (newHost && strcmp(mqtt.host, newHost) != 0) {
         strcpy(mqtt.host, newHost);
         hasChanged = true;
@@ -172,8 +205,11 @@ bool PreferenceHandler::editMqtt(const char* newHost,int newPort, const char* ne
         strcpy(mqtt.topic, newTopic);
         hasChanged = true;
     }
+    if (mqtt.active != newActive) {
+        mqtt.active = newActive;
+        hasChanged = true;
+    }
     if (hasChanged) {
-
         save(PREFERENCES_MQTT);
         return true;
     }

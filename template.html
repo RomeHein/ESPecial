@@ -46,6 +46,7 @@
         justify-content: flex-start;
         width: 19%;
         margin: 5px 0 5px;
+        text-align: left;
     }
     .setting-container input[type='text'], input[type='checkbox'] {
         width: 79%;
@@ -53,6 +54,7 @@
         height: 30px;
         border: none;
         border-radius: 5px;
+        padding-left: 10px;
     }
     #file-update-label {
         background-color: white;
@@ -211,24 +213,30 @@
         opacity: 0.95;
         color: white;
     }
+    #mqtt-retry-loader {
+        height: 100%;
+        width: 100%;
+    }
+    #mqtt-retry-loader div {
+        border-width: 2px;
+    }
     .spinner {
         height: 30px;
         border-radius: 5px;
         background-color: lightgray;
     }
     .lds-ring {
+        width: 50px;
+        height: 50px;
         display: inline-block;
         position: relative;
-        width: 80px;
-        height: 80px;
     }
     .lds-ring div {
         box-sizing: border-box;
         display: block;
         position: absolute;
-        width: 64px;
-        height: 64px;
-        margin: 8px;
+        width: 100%;
+        height: 100%;
         border: 8px solid #fff;
         border-radius: 50%;
         animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
@@ -296,25 +304,33 @@
             <div id='mqtt' class='setting-container'>
                 <p>MQTT</p>
                 <form onsubmit='submitMqtt(event)' id='mqtt-form'>
-                    <label for='pin'>Host:</label>
+                    <label for='mqtt-active'>Active:</label>
+                    <input type='checkbox' name='active' id='mqtt-active'>
+                    <label for='mqtt-fn'>Friendly name:</label>
+                    <input type='text' name='fn' id='mqtt-fn'>
+                    <label for='mqtt-host'>Host:</label>
                     <input type='text' name='host' id='mqtt-host'>
-                    <label for='pin'>Port:</label>
+                    <label for='mqtt-port'>Port:</label>
                     <input type='text' name='port' id='mqtt-port'>
-                    <label for='pin'>User:</label>
+                    <label for='mqtt-user'>User:</label>
                     <input type='text' name='user' id='mqtt-user'>
-                    <label for='pin'>Password:</label>
+                    <label for='mqtt-password'>Password:</label>
                     <input type='text' name='password' id='mqtt-password'>
-                    <label for='pin'>Topic:</label>
+                    <label for='mqtt-topic'>Topic:</label>
                     <input type='text' name='topic' id='mqtt-topic'>
+                    <a class='btn edit hidden' id='mqtt-retry' onclick='mqttConnect()'>
+                        <span>Retry</span>
+                        <div class="lds-ring hidden" id='mqtt-retry-loader'><div></div><div></div><div></div><div></div></div>
+                    </a>
                     <input id='submit-mqtt-pref' type='submit'class='btn save' value='Save'>
                 </form>
             </div>
             <div id='telegram' class='setting-container'>
                 <p>Telegram</p>
                 <form onsubmit='submitTelegram(event)' id='telegram-form'>
-                    <label for='name'>Active:</label>
+                    <label for='telegram-active'>Active:</label>
                     <input type='checkbox' name='active' id='telegram-active'>
-                    <label for='token'>Token:</label>
+                    <label for='telegram-token'>Token:</label>
                     <input type='text' name='token' id='telegram-token'>
                     <input id='submit-telegram-pref' type='submit'class='btn save' value='Save'>
                 </form>
@@ -336,6 +352,10 @@
     var isSettingsMenuActivated = false
     const topBar = document.getElementById('top-bar')
     const stickHightTrigger = topBar.offsetTop
+
+    const delay = (ms) => {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
     const switchPage = () => {
         isSettingsMenuActivated = !isSettingsMenuActivated
@@ -401,20 +421,49 @@
 
     const submitMqtt = async (e) => {
         e.preventDefault()
+        const active = document.getElementById(`mqtt-active`).checked
+        const fn = document.getElementById(`mqtt-fn`).value
         const host = document.getElementById(`mqtt-host`).value
         const port = document.getElementById(`mqtt-port`).value
         const user = document.getElementById(`mqtt-user`).value
         const password = document.getElementById(`mqtt-password`).value
         const topic = document.getElementById(`mqtt-topic`).value
         try {
-            const res = await fetch(window.location.href + 'mqtt', {
+            await fetch(window.location.href + 'mqtt', {
                 method: 'POST',
                 headers: { contentType: false, processData:false },
-                body: {host, port, user, password, topic}
+                body: JSON.stringify({active, fn, host, port, user, password, topic})
             })
+            await mqttConnect()
         } catch (err) {
             console.error(`Error: ${err}`)
         }
+    }
+
+    const mqttConnect = async () => {
+        const loader = document.getElementById(`mqtt-retry-loader`)
+        const retryButton = document.getElementById(`mqtt-retry`)
+        const retryText = retryButton.firstElementChild
+        try {
+            retryText.classList.add('hidden')
+            loader.classList.remove('hidden')
+            await fetch(window.location.href + 'mqtt/retry')
+            let mqttState = 0
+            while (mqttState === 0) {
+                const res = await fetch(window.location.href + 'health')
+                mqttState = (await res.json()).mqtt
+                await delay(1000) //avoid spaming esp32
+            }
+            if (mqttState == 1) {
+                retryButton.classList.add('hidden')
+            } else {
+                retryButton.classList.remove('hidden')
+            }
+        } catch(err) {
+            console.error(`Error: ${err}`)
+        }
+        loader.classList.add('hidden')
+        retryText.classList.remove('hidden')
     }
 
     const fetchGpios = async () => {
@@ -437,6 +486,8 @@
                 settings = s
                 document.getElementById(`telegram-active`).checked = settings.telegram.active
                 document.getElementById(`telegram-token`).value = settings.telegram.token
+                document.getElementById(`mqtt-active`).checked = settings.mqtt.active
+                document.getElementById(`mqtt-fn`).value = settings.mqtt.fn
                 document.getElementById(`mqtt-host`).value = settings.mqtt.host
                 document.getElementById(`mqtt-port`).value = settings.mqtt.port
                 document.getElementById(`mqtt-user`).value = settings.mqtt.user

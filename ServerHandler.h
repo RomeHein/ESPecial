@@ -22,10 +22,12 @@ private:
     void handleUpload();
     void handleUpdate();
     void handleMqttEdit();
+    void handleMqttRetry();
     void handleTelegramEdit();
     void install();
     void handleNotFound();
     void handleClearSettings();
+    void handleSystemHealth();
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     WebServer server = {80};
