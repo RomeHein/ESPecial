@@ -4,7 +4,7 @@
 #define MqttHandler_h
 #include <Arduino.h>
 #include "PreferenceHandler.h"
-#include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <PubSubClient.h>  
 
 //unmark following line to enable debug mode
@@ -24,7 +24,7 @@ private:
     unsigned long lastSend = 0;
     MqttTopic topic;
     PreferenceHandler &preference;
-    WiFiClientSecure &client;
+    WiFiClient &client;
     PubSubClient* mqtt_client;
     bool isInit = false;
     void handleNewMessages(int numNewMessages);
@@ -33,7 +33,7 @@ private:
     void config();
 public:
     ~MqttHandler() { delete mqtt_client; };
-    MqttHandler(PreferenceHandler& preference, WiFiClientSecure &client) : preference(preference), client(client) {};
+    MqttHandler(PreferenceHandler& preference, WiFiClient &client) : preference(preference), client(client) {};
     void begin();
     void handle();
     void disconnect();

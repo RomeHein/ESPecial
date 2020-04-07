@@ -1,5 +1,6 @@
 #include <WiFiManager.h>
 #include <WiFi.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <TFT_eSPI.h>
 #include <Button2.h>
@@ -38,6 +39,7 @@ PreferenceHandler *preferencehandler;
 TelegramHandler *telegramhandler;
 MqttHandler *mqtthandler;
 WiFiClientSecure client;
+WiFiClient clientNotSecure;
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
@@ -171,7 +173,7 @@ void setup(void)
     serverhandler = new ServerHandler(*preferencehandler);
     serverhandler->begin();
     telegramhandler = new TelegramHandler(*preferencehandler, client);
-    mqtthandler = new MqttHandler(*preferencehandler, client);
+    mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
     button_init();
     server_init();
   }

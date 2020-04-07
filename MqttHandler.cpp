@@ -55,6 +55,8 @@ void MqttHandler::connect() {
             Serial.printf("MQTT: Connecxion attempt(%i)\n", attempts);
         #endif
         // Attempt to connect
+        Serial.println("password");
+        Serial.println(preference.mqtt.password);
         mqtt_client->connect(getId().c_str(), preference.mqtt.user, preference.mqtt.password);
         // If state < 0 (MQTT_CONNECTED) => network problem we retry RETRY_ATTEMPT times and then waiting for MQTT_RETRY_INTERVAL_MS and retry reapeatly
         if (mqtt_client->state() < MQTT_CONNECTED) {

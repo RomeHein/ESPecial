@@ -28,7 +28,7 @@ typedef struct
     int8_t active;
     char fn[100];
     char host[200];
-    int8_t port;
+    int16_t port;
     char user[100];
     char password[100];
     char topic[100];
