@@ -4,9 +4,12 @@
 #include <ArduinoJson.h>
 #include "index.h"
 
+//unmark following line to enable debug mode
+#define __debug
+
 void ServerHandler::begin()
 {
-    #ifdef _debug  
+    #ifdef __debug  
         Serial.println("Server: init");
     #endif
     server.on("/", [this]() { handleRoot(); });
@@ -33,7 +36,7 @@ void ServerHandler::begin()
 
 void ServerHandler::handleNotFound()
 {
-    #ifdef _debug  
+    #ifdef __debug  
         Serial.println("Server: page not found");
     #endif
     server.send(404, "text/plain", "Not found");
@@ -103,7 +106,7 @@ void ServerHandler::handleGpioEdit()
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
-        #ifdef _debug
+        #ifdef __debug
             Serial.print(F("Server: deserializeJson() failed: "));
             Serial.println(error.c_str());
         #endif
@@ -143,7 +146,7 @@ void ServerHandler::handleGpioNew()
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
-        #ifdef _debug
+        #ifdef __debug
             Serial.print(F("Server: deserializeJson() failed: "));
             Serial.println(error.c_str());
         #endif

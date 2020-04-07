@@ -7,9 +7,6 @@
 #include "PreferenceHandler.h"
 #include <WiFiClientSecure.h>
 
-//unmark following line to enable debug mode
-#define _debug
-
 class TelegramHandler
 {
 private:

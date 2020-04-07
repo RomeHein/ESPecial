@@ -10,6 +10,9 @@
 #include "TelegramHandler.h"
 #include "MqttHandler.h"
 
+//unmark following line to enable debug mode
+#define __debug
+
 #ifndef TFT_DISPOFF
 #define TFT_DISPOFF 0x28
 #endif
@@ -63,14 +66,15 @@ void button_init()
     switchAllGpioState(true);
   });
   btn1.setPressedHandler([](Button2 &b) {
-    if (buttonCursor < sizeof(preferencehandler->gpios)/sizeof(*preferencehandler->gpios) - 1)
-    {
+    if (buttonCursor < GPIO_PIN_COUNT - 1) {
       buttonCursor++;
     }
-    else
-    {
+    else {
       buttonCursor = 0;
     }
+    #ifdef __debug
+      Serial.printf("Cursor: %i\n",buttonCursor);
+    #endif
     displayGpioState(preferencehandler->gpios[buttonCursor]);
   });
 
@@ -115,11 +119,7 @@ void displayGpioState(GpioFlash& gpio)
 {
   tft.fillScreen(TFT_BLACK);
   tft.setCursor(1, 0);
-  tft.println(gpio.label);
-  tft.print("Pin ");
-  tft.println(gpio.pin);
-  tft.print("Actual state:");
-  tft.print(digitalRead(gpio.pin));
+  tft.printf("%s\nPin %i\nActual state: %i",gpio.label,gpio.pin,digitalRead(gpio.pin));
 }
 
 void server_init () 
@@ -144,11 +144,18 @@ void switchAllGpioState(bool on)
 }
 
 void readInputPins() {
-    for (GpioFlash& gpio : preferencehandler->gpios) {
-        if (gpio.pin && gpio.mode != OUTPUT) {
-            gpio.state = digitalRead(gpio.pin);
-        }
+  for (GpioFlash& gpio : preferencehandler->gpios) {
+    if (gpio.pin) {
+      int newState = digitalRead(gpio.pin);
+      if (gpio.state != newState) {
+        #ifdef __debug
+          Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
+	      #endif
+        gpio.state = newState;
+        mqtthandler->publish(gpio.pin);
+      }
     }
+  }
 }
 
 void setup(void)

@@ -2,6 +2,9 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 
+//unmark following line to enable debug mode
+#define __debug
+
 #define PREFERENCES_NAME "esp32-api"
 #define PREFERENCES_GPIOS "gpios"
 #define PREFERENCES_MQTT "mqtt"
@@ -12,7 +15,7 @@ void PreferenceHandler::begin()
 {
     preferences.begin(PREFERENCES_NAME, false);
 
-    #ifdef _debug
+    #ifdef __debug
         Serial.println("Preferences: init");
     #endif
     if (preferences.getBool("gpios_are_init")) {
@@ -21,7 +24,7 @@ void PreferenceHandler::begin()
         preferences.getBytes(PREFERENCES_GPIOS, buffer, schLen);
         memcpy(gpios, buffer, schLen);
     } else {
-        #ifdef _debug
+        #ifdef __debug
             Serial.println("Preferences: gpios not init, filling with default");
         #endif
         GpioFlash tmpGpios[]  = {
@@ -56,7 +59,7 @@ void PreferenceHandler::begin()
 }
 
 void PreferenceHandler::clear() {
-    #ifdef _debug  
+    #ifdef __debug  
         Serial.println("Preferences: clear all");
     #endif
     preferences.begin(PREFERENCES_NAME, false);
@@ -66,7 +69,7 @@ void PreferenceHandler::clear() {
 
 void PreferenceHandler::save(char* preference) {
     preferences.begin(PREFERENCES_NAME, false);
-    #ifdef _debug  
+    #ifdef __debug  
         Serial.printf("Preferences: saving in %s \n", preference);
     #endif
     if (strcmp(preference, PREFERENCES_GPIOS) == 0) {
@@ -84,8 +87,13 @@ void PreferenceHandler::save(char* preference) {
 void  PreferenceHandler::initGpios() 
 {
     for (GpioFlash& gpio : gpios) {
-        pinMode(gpio.pin, gpio.mode);
-        digitalWrite(gpio.pin, gpio.state);
+        if (gpio.pin) {
+            #ifdef __debug  
+                Serial.printf("Preferences: init pin %i on mode %i\n", gpio.pin, gpio.mode);
+            #endif
+            pinMode(gpio.pin, gpio.mode);
+            digitalWrite(gpio.pin, gpio.state);
+        }
     }
 }
 

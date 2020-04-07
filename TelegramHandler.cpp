@@ -2,12 +2,15 @@
 #include "PreferenceHandler.h"
 #include <ArduinoJson.h>
 
+//unmark following line to enable debug mode
+#define __debug
+
 int Bot_mtbs = 1000; //mean time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
 
 void TelegramHandler::begin() {
     if (!bot && preference.telegram.token) {
-      #ifdef _debug  
+      #ifdef __debug  
         Serial.println("Telegram: init");
       #endif
       bot = new UniversalTelegramBot(preference.telegram.token, client);
@@ -20,7 +23,7 @@ void TelegramHandler::handle()
       preference.health.telegram = 1;
         int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
         while(numNewMessages) {
-          #ifdef _debug  
+          #ifdef __debug  
             Serial.printf("Telegram: got %i new messages\n", numNewMessages);
           #endif
           handleNewMessages(numNewMessages);

@@ -4,9 +4,6 @@
 #define PreferenceHandler_h
 #include <Arduino.h>
 
-//unmark following line to enable debug mode
-#define _debug
-
 // 0 for inactive, 1 for all good, -1 for error
 typedef struct
 {
