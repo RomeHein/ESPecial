@@ -192,9 +192,9 @@ void loop(void)
   {
     button_loop();
     serverhandler->server.handleClient();
-    readInputPins();
     telegramhandler->handle();
     mqtthandler->handle();
+    readInputPins();
   } else
   {
     // wifi down, reconnect here
