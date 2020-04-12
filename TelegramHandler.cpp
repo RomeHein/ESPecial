@@ -9,28 +9,29 @@ int Bot_mtbs = 1000; //mean time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
 
 void TelegramHandler::begin() {
-    if (!bot && preference.telegram.token) {
+    if (!isInit && preference.telegram.token) {
       #ifdef __debug  
         Serial.println("Telegram: init");
       #endif
       bot = new UniversalTelegramBot(preference.telegram.token, client);
+      isInit = true;
     }
 }
 void TelegramHandler::handle()
 {
     begin();
-    if (bot && preference.telegram.token && preference.telegram.active && millis() > Bot_lasttime + Bot_mtbs)  {
+    if (isInit && preference.telegram.token && preference.telegram.active && millis() > Bot_lasttime + Bot_mtbs)  {
       preference.health.telegram = 1;
-        int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
-        while(numNewMessages) {
-          #ifdef __debug  
-            Serial.printf("Telegram: got %i new messages\n", numNewMessages);
-          #endif
-          handleNewMessages(numNewMessages);
-          numNewMessages = bot->getUpdates(bot->last_message_received + 1);
-        }
-        Bot_lasttime = millis();
-    } else {
+      int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
+      while(numNewMessages) {
+        #ifdef __debug  
+          Serial.printf("Telegram: got %i new messages\n", numNewMessages);
+        #endif
+        handleNewMessages(numNewMessages);
+        numNewMessages = bot->getUpdates(bot->last_message_received + 1);
+      }
+      Bot_lasttime = millis();
+    } else if (!isInit || ! preference.telegram.token) {
       preference.health.telegram = 0;
     }
 }

@@ -46,13 +46,10 @@ WiFiClient clientNotSecure;
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
-int buttonCursor = 0;
+int buttonCursor = -1;
 
 void button_init()
 {
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_GREEN, TFT_BLACK);
-  tft.setTextDatum(MC_DATUM);
   btn1.setLongClickHandler([](Button2 &b) {
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(1, 0);
@@ -60,34 +57,40 @@ void button_init()
     switchAllGpioState(false);
   });
   btn2.setLongClickHandler([](Button2 &b) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setCursor(1, 0);
-    tft.print("Turned on all");
-    switchAllGpioState(true);
+    // Go back to info screen;
+    buttonCursor = -1;
+    displayServicesInfo();
   });
   btn1.setPressedHandler([](Button2 &b) {
     if (buttonCursor < GPIO_PIN_COUNT - 1) {
       buttonCursor++;
+      displayGpioState(preferencehandler->gpios[buttonCursor]);
     }
     else {
-      buttonCursor = 0;
+      buttonCursor = -1;
     }
     #ifdef __debug
       Serial.printf("Cursor: %i\n",buttonCursor);
     #endif
-    displayGpioState(preferencehandler->gpios[buttonCursor]);
   });
 
   btn2.setPressedHandler([](Button2 &b) {
-    switchSelectedGpioState();
-    displayGpioState(preferencehandler->gpios[buttonCursor]);
+    if (buttonCursor > -1) {
+      switchSelectedGpioState();
+      displayGpioState(preferencehandler->gpios[buttonCursor]);
+    }
   });
 }
 
-void button_loop()
+void button_loop(void *pvParameters)
 {
-  btn1.loop();
-  btn2.loop();
+  while(1) {
+    if ( WiFi.status() ==  WL_CONNECTED ) {
+      btn1.loop();
+      btn2.loop();
+    }
+    delay(50);
+  }
 }
 
 void tft_init()
@@ -118,16 +121,45 @@ void turnOffScreen()
 void displayGpioState(GpioFlash& gpio)
 {
   tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE);
   tft.setCursor(1, 0);
   tft.printf("%s\nPin %i\nActual state: %i",gpio.label,gpio.pin,digitalRead(gpio.pin));
 }
 
-void server_init () 
+void displayServicesInfo () 
 {
   tft.setCursor(2, 0);
   tft.fillScreen(TFT_BLACK);
-  tft.println("HTTP server started on:");
-  tft.println(WiFi.localIP());
+  tft.setTextColor(TFT_WHITE);
+  tft.println("HTTP server:");
+  if (preferencehandler->health.mqtt == 0) {
+    tft.setTextColor(TFT_BLUE);
+    tft.println("Waiting for MQTT\n");
+  } else {
+    tft.setTextColor(TFT_GREEN);
+    tft.println(WiFi.localIP());
+  }
+  tft.setTextColor(TFT_WHITE);
+  tft.print("MQTT: ");
+  if (preferencehandler->health.mqtt == 0) {
+    tft.setTextColor(TFT_BLUE);
+    tft.println("conecting...");
+  } else if (preferencehandler->health.mqtt == 1) {
+    tft.setTextColor(TFT_GREEN);
+    tft.println("connected");
+  } else {
+    tft.setTextColor(TFT_RED);
+    tft.println("off");
+  }
+  tft.setTextColor(TFT_WHITE);
+  tft.print("Telegram: ");
+  if (preferencehandler->health.telegram == 1) {
+    tft.setTextColor(TFT_GREEN);
+    tft.println("online");
+  } else {
+    tft.setTextColor(TFT_RED);
+    tft.println("offline");
+  }
 }
 
 void switchSelectedGpioState()
@@ -168,7 +200,7 @@ void setup(void)
   
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
-  tft.println("Access point set. Please connect to ESP32 wifi network");
+  tft.println("Access point set.\nWifi network: ESP32");
   bool res;
   res = wm.autoConnect(APName,APPassword);
   if(!res) {
@@ -179,10 +211,12 @@ void setup(void)
     preferencehandler->begin();
     serverhandler = new ServerHandler(*preferencehandler);
     serverhandler->begin();
+    displayServicesInfo();
     telegramhandler = new TelegramHandler(*preferencehandler, client);
     mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
+    // Handle buttons on core 0, core 1 pretty full with server,mqtt and telegram...
     button_init();
-    server_init();
+    xTaskCreatePinnedToCore(button_loop, "buttons", 4096, NULL, 0, NULL, 0);
   }
 }
 
@@ -190,7 +224,6 @@ void loop(void)
 {
   if ( WiFi.status() ==  WL_CONNECTED ) 
   {
-    button_loop();
     serverhandler->server.handleClient();
     telegramhandler->handle();
     mqtthandler->handle();
@@ -207,10 +240,14 @@ void loop(void)
       tft.fillScreen(TFT_BLACK);
       tft.printf("Wifi deconnected: attempt %i", count);
       ++count;
+      #ifdef __debug
+        Serial.printf("Wifi deconnected: attempt %i\n", count);
+      #endif
       if (count == 200) {
         Serial.println("Failed to reconnect, restarting now.");
         ESP.restart();
       } 
     }
+    displayServicesInfo();
   }
 }

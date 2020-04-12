@@ -10,6 +10,7 @@
 class TelegramHandler
 {
 private:
+    bool isInit = false;
     UniversalTelegramBot* bot;
     PreferenceHandler &preference;
     WiFiClientSecure &client;
