@@ -54,7 +54,7 @@ This code also has 6 dependencies which need to be added to your libraries:
 This library will allow you to easily set your board to your wifi. You'll need to get the development branch to have esp32 support.
 - UniversalTelegramBot: https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/editMessage. Telegram api for arduino. This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
 
-### Usage
+## Usage
 
 1. Wifi connection</br>
 You should first connect your esp32 to your local network. This is easily done thanks to the WifiManager library. Simply power on your device, and connect to the access point (AP) provided. Its name should be the one you provided in the variable called `APName` at the begining of the main.ino file, you can of course change it. 
