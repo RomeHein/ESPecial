@@ -31,7 +31,7 @@ void TelegramHandler::handle()
         numNewMessages = bot->getUpdates(bot->last_message_received + 1);
       }
       Bot_lasttime = millis();
-    } else if (!isInit || ! preference.telegram.token) {
+    } else if (!isInit || ! preference.telegram.token || !preference.telegram.active) {
       preference.health.telegram = 0;
     }
 }

@@ -43,10 +43,17 @@ TelegramHandler *telegramhandler;
 MqttHandler *mqtthandler;
 WiFiClientSecure client;
 WiFiClient clientNotSecure;
+
+// ESP32 access point mode
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
+// The button cursor indicates which pin is selected to display on the tft screen. -1 means we'll display system informations
 int buttonCursor = -1;
+
+// Delay between each tft display refresh 
+int delayBetweenScreenUpdate = 3000;
+long screenRefreshLastTime;
 
 void button_init()
 {
@@ -80,17 +87,6 @@ void button_init()
       displayGpioState(preferencehandler->gpios[buttonCursor]);
     }
   });
-}
-
-void button_loop(void *pvParameters)
-{
-  while(1) {
-    if ( WiFi.status() ==  WL_CONNECTED ) {
-      btn1.loop();
-      btn2.loop();
-    }
-    delay(50);
-  }
 }
 
 void tft_init()
@@ -132,7 +128,7 @@ void displayServicesInfo ()
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
   tft.println("HTTP server:");
-  if (preferencehandler->health.mqtt == 0) {
+  if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
     tft.setTextColor(TFT_BLUE);
     tft.println("Waiting for MQTT\n");
   } else {
@@ -141,10 +137,10 @@ void displayServicesInfo ()
   }
   tft.setTextColor(TFT_WHITE);
   tft.print("MQTT: ");
-  if (preferencehandler->health.mqtt == 0) {
+  if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
     tft.setTextColor(TFT_BLUE);
     tft.println("conecting...");
-  } else if (preferencehandler->health.mqtt == 1) {
+  } else if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 1) {
     tft.setTextColor(TFT_GREEN);
     tft.println("connected");
   } else {
@@ -249,5 +245,20 @@ void loop(void)
       } 
     }
     displayServicesInfo();
+  }
+}
+
+void button_loop(void *pvParameters)
+{
+  while(1) {
+    if ( WiFi.status() ==  WL_CONNECTED ) {
+      btn1.loop();
+      btn2.loop();
+    }
+    if (millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
+      displayServicesInfo();
+      screenRefreshLastTime = millis();
+    }
+    delay(50);
   }
 }

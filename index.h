@@ -1,5 +1,6 @@
 const char MAIN_page[] PROGMEM = R"=====(
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="shortcut icon" href="about:blank" />
 <html>
 <!-- HTML_STYLE -->
 <style>
@@ -413,6 +414,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                     headers: { contentType: false, processData:false },
                     body: JSON.stringify({token, active})
                 })
+                settings.telegram = {active, token}
             } catch (err) {
                 console.error(`Error: ${err}`)
             }
@@ -434,7 +436,9 @@ const char MAIN_page[] PROGMEM = R"=====(
                 headers: { contentType: false, processData:false },
                 body: JSON.stringify({active, fn, host, port, user, password, topic})
             })
+            settings.mqtt = {active, fn, host, port, user, password, topic}
             await mqttConnect()
+
         } catch (err) {
             console.error(`Error: ${err}`)
         }
