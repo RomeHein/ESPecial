@@ -21,10 +21,10 @@ Features:
 - Provides manual control over the pins thanks to the two buttons provided by the TTGO chip.
 
 ## Work in progress:
-- Interface
+- Web Interface
 
 ## Wish list
-- Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓
+- Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2008...
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
 
@@ -56,31 +56,32 @@ This library will allow you to easily set your board to your wifi. You'll need t
 
 ### Usage
 
-1. Wifi connection
+1. Wifi connection</br>
 You should first connect your esp32 to your local network. This is easily done thanks to the WifiManager library. Simply power on your device, and connect to the access point (AP) provided. Its name should be the one you provided in the variable called `APName` at the begining of the main.ino file, you can of course change it. 
 Once connected to the AP, a configuration window should appears. From here you can connect to your local network (the one provided by your rooter, internet box etc).
-
-2. Connect to the web interface
+2. Connect to the web interface</br>
 The ESP32 should now display its local IP on the tft screen. Simply enter the address provided on your favorite browser and enter.
 You are now on the page directly served by your ESP32! The interface is responsive and should be usable on your smartphone.
 It should look like this:
-<div>
+<p align="center">
     <img src="images/initial-control-panel.png" width="400">
-</div>
+</p>
 You now need to add your first pin handler. This is done by simply clicking on the 'plus' button in the top right corner.
-<div>
+<p align="center">
     <img src="images/add-first-panel.png" width="400">
-</div>
+</p>
 Choose the pin you want to control/listen from the list. This list will only display available pins, so you won't have doublons 👌.
 Press save when you are done.
 A new line should appear:
-<div>
+<p align="center">
     <img src="images/new-controls.png" width="400">
-</div>
+</p>
 You can now control the state of your pin by pressing the 'on/off' button, or edit its configuration.
 
-3. Use the rest API
+3. Use the rest API</br>
 Once controls added to your panel, their states can be accessed by hitting the rest api: 
+
+
 ```
 http://your.ip.local.ip/digital/pinNumber
 ```
@@ -93,25 +94,27 @@ or `off`
 http://your.ip.local.ip/digital/pinNumber/0
 ```
 
-4. Set your Telegram Bot
+4. Set your Telegram Bot</br>
 All this is cool, but what if you want to access/control your esp32 from outside your local network?
 The easiest/safest way is [Telegram Bot](https://core.telegram.org/bots). You'll find on that [page](https://core.telegram.org/bots#6-botfather) how to create a Telegram Bot in 5 minutes.
 Once created, and your bot token in good hands, just go back on your esp32 page and click the setting button. At the bottom of the page you should find the Telegram section, simple past your bot token here, and tick the active box.
 Now say hello to your bot!
-<div>
+<p align="center">
     <img src="images/telegram.png" width="400">
-</div>
+</p>
 When you first start the conversation with your bot, telegram will only display a `start` button. Tap it and if everything is ok, your bot should answer the available commands.
 You'll be able to control all pins in output mode by sending a `/cmd`. The bot will answer a list of buttons corresponding to the list you've set on the web interface of the ESP32, sweet!
 
-5. Set your MQTT client (advance)
+5. Set your MQTT client (advance)</br>
 MQTT is a really nice pubsub protocol. I really encourage you to integrate this feature in your home automation. This allows a two ways communication between your home bridge and your iot device (here the esp32) in a very lightweight way.
 To configure it, you'll need to enter the address of your MQTT broker aswell as your username and password for this broker.
 You can then set the topic in which the pin states will be published.
 The esp32 will listen for all pins on that topic like this:
-````
-mqtt://your.broker.address/yourTopic/friendlyName/gpios/pinNumber
+
 ```
+mqtt://your.broker.address:port/yourTopic/friendlyName/gpios/pinNumber
+```
+
 It will also publish any state update on the same logic.
 
 ## Contributing
