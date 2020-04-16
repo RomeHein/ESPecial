@@ -117,7 +117,7 @@ void ServerHandler::handleGpioEdit()
     {
         if (gpio.pin == doc["pin"].as<int>())
         {
-            bool saved = preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>());
+            bool saved = preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(), doc["settings"]["save"].as<int>());
             if (saved) {
                 const size_t capacity = JSON_OBJECT_SIZE(1) + 100;
                 StaticJsonDocument<capacity> doc;
@@ -126,6 +126,7 @@ void ServerHandler::handleGpioEdit()
                 object["label"] = gpio.label;
                 object["mode"] = gpio.mode;
                 object["state"] = gpio.state;
+                object["save"] = gpio.save;
                 String output;
                 serializeJson(doc[0], output);
                 server.send(200, "text/json", output);
@@ -155,8 +156,9 @@ void ServerHandler::handleGpioNew()
     const int pin = doc["settings"]["pin"].as<int>();
     const char* label = doc["settings"]["label"].as<char*>();
     const int mode = doc["settings"]["mode"].as<int>();
+    const int save = doc["settings"]["save"].as<int>();
     if (pin && label && mode) {
-        preference.addGpio(pin, label, mode);
+        preference.addGpio(pin, label, mode, save);
         server.send(200, "text/json", server.arg(0));
         return;
     }
@@ -167,7 +169,8 @@ void ServerHandler::handleGpioRemove()
 {
     bool removed = preference.removeGpio(atoi(server.pathArg(0).c_str()));
     if (removed){
-        server.send(404, "text/plain", "Done");
+        server.send(200, "text/plain", "Done");
+        return;
     }
     server.send(404, "text/plain", "Not found");
 }

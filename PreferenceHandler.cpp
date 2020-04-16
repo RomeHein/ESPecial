@@ -28,8 +28,8 @@ void PreferenceHandler::begin()
             Serial.println("Preferences: gpios not init, filling with default");
         #endif
         GpioFlash tmpGpios[]  = {
-            {13, "Exemple pin 13", OUTPUT, 0},
-            {17, "Exemple pin 17", INPUT, 0}
+            {13, "Exemple pin 13", OUTPUT, 0, 0},
+            {17, "Exemple pin 17", INPUT, 0, 0}
         };
         for (int i = 0; i < 2; i++) {
             gpios[i] = tmpGpios[i];
@@ -118,18 +118,20 @@ bool PreferenceHandler::removeGpio(int pin) {
     }
     return false;
 }
-bool PreferenceHandler::addGpio(int pin,const char* label, int mode) {
+bool PreferenceHandler::addGpio(int pin,const char* label, int mode, int saveState) {
     GpioFlash newGpio = {};
     newGpio.pin = pin;
     strcpy(newGpio.label, label);
     newGpio.mode = mode;
+    newGpio.save = saveState;
     gpios[firstEmptyGpioSlot()] = newGpio;
     pinMode(pin, mode);
-    newGpio.state = digitalRead(pin);
+    // If we don't save state, default state to 0
+    newGpio.state = saveState ? digitalRead(pin) : 0;
     save(PREFERENCES_GPIOS);
     return false;
 }
-bool PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode) {
+bool PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode, int newSave) {
     bool hasChanged = false;
     if (newPin && gpio.pin != newPin) {
         gpio.pin = newPin;
@@ -143,10 +145,15 @@ bool PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLabe
         gpio.mode = newMode;
         hasChanged = true;
     }
+    if (gpio.save != newSave) {
+        gpio.save = newSave;
+        hasChanged = true;
+    }
     if (hasChanged) {
         pinMode(gpio.pin, gpio.mode);
-        gpio.state = digitalRead(gpio.pin);
+        gpio.state = gpio.save ? digitalRead(gpio.pin) : 0;
         save(PREFERENCES_GPIOS);
+        gpio.state = digitalRead(gpio.pin);
         return true;
     }
     return false;
@@ -163,7 +170,9 @@ void PreferenceHandler::setGpioState(int pin, int value) {
                 gpio.state = value;
             }
             digitalWrite(pin, value);
-            save(PREFERENCES_GPIOS);
+            if (gpio.save) {
+                save(PREFERENCES_GPIOS);
+            }
             return;
         }
     }
@@ -178,6 +187,7 @@ String PreferenceHandler::getGpiosJson() {
             object["label"] = gpio.label;
             object["mode"] = gpio.mode;
             object["state"] = gpio.state;
+            object["save"] = gpio.save;
         }
     }
     String output;

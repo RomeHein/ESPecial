@@ -124,37 +124,40 @@ void displayGpioState(GpioFlash& gpio)
 
 void displayServicesInfo () 
 {
-  tft.setCursor(2, 0);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.println("HTTP server:");
-  if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
-    tft.setTextColor(TFT_BLUE);
-    tft.println("Waiting for MQTT\n");
-  } else {
-    tft.setTextColor(TFT_GREEN);
-    tft.println(WiFi.localIP());
-  }
-  tft.setTextColor(TFT_WHITE);
-  tft.print("MQTT: ");
-  if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
-    tft.setTextColor(TFT_BLUE);
-    tft.println("conecting...");
-  } else if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 1) {
-    tft.setTextColor(TFT_GREEN);
-    tft.println("connected");
-  } else {
-    tft.setTextColor(TFT_RED);
-    tft.println("off");
-  }
-  tft.setTextColor(TFT_WHITE);
-  tft.print("Telegram: ");
-  if (preferencehandler->health.telegram == 1) {
-    tft.setTextColor(TFT_GREEN);
-    tft.println("online");
-  } else {
-    tft.setTextColor(TFT_RED);
-    tft.println("offline");
+  if (millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
+    tft.setCursor(2, 0);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_WHITE);
+    tft.println("HTTP server:");
+    if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
+      tft.setTextColor(TFT_BLUE);
+      tft.println("Waiting for MQTT\n");
+    } else {
+      tft.setTextColor(TFT_GREEN);
+      tft.println(WiFi.localIP());
+    }
+    tft.setTextColor(TFT_WHITE);
+    tft.print("MQTT: ");
+    if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
+      tft.setTextColor(TFT_BLUE);
+      tft.println("conecting...");
+    } else if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 1) {
+      tft.setTextColor(TFT_GREEN);
+      tft.println("connected");
+    } else {
+      tft.setTextColor(TFT_RED);
+      tft.println("off");
+    }
+    tft.setTextColor(TFT_WHITE);
+    tft.print("Telegram: ");
+    if (preferencehandler->health.telegram == 1) {
+      tft.setTextColor(TFT_GREEN);
+      tft.println("online");
+    } else {
+      tft.setTextColor(TFT_RED);
+      tft.println("offline");
+    }
+    screenRefreshLastTime = millis();
   }
 }
 
@@ -207,7 +210,6 @@ void setup(void)
     preferencehandler->begin();
     serverhandler = new ServerHandler(*preferencehandler);
     serverhandler->begin();
-    displayServicesInfo();
     telegramhandler = new TelegramHandler(*preferencehandler, client);
     mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
     // Handle buttons on core 0, core 1 pretty full with server,mqtt and telegram...
@@ -224,6 +226,7 @@ void loop(void)
     telegramhandler->handle();
     mqtthandler->handle();
     readInputPins();
+    displayServicesInfo();
   } else
   {
     // wifi down, reconnect here
@@ -244,7 +247,6 @@ void loop(void)
         ESP.restart();
       } 
     }
-    displayServicesInfo();
   }
 }
 
@@ -254,10 +256,6 @@ void button_loop(void *pvParameters)
     if ( WiFi.status() ==  WL_CONNECTED ) {
       btn1.loop();
       btn2.loop();
-    }
-    if (millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
-      displayServicesInfo();
-      screenRefreshLastTime = millis();
     }
     delay(50);
   }

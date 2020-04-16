@@ -531,16 +531,18 @@ const char MAIN_page[] PROGMEM = R"=====(
         if (!row.classList.value.includes('open')) {
             row.appendChild(createEditElement(gpio))
             row.classList.add('open')
+            document.getElementById(`setSave-${gpio.pin}`).checked = gpio.save
         }
     }
 
     const saveSetting = async (element) => {
         const gpioPin = element.id.split('-')[1]
-        const isNew = gpioPin === 'new'
+        const isNew = (gpioPin === 'new')
         let req = { settings: {} }
         const newPin = document.getElementById(`setPin-${gpioPin}`).value
         const newLabel = document.getElementById(`setInputLabel-${gpioPin}`).value
         const newMode = document.getElementById(`setMode-${gpioPin}`).value
+        const newSaveState = document.getElementById(`setSave-${gpioPin}`).checked
         if (newPin && newPin != gpioPin) {
             req.settings.pin = +newPin
         }
@@ -550,6 +552,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         if (newMode) {
             req.settings.mode = newMode
         }
+        req.settings.save = newSaveState
         if (!isNew) {
             req.pin = gpioPin
         }
@@ -571,7 +574,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             } else {
                 gpios = gpios.map(oldGpio => {
                     if (oldGpio.pin == +gpioPin) {
-                        return { 'pin': newSetting.pin, 'label': newSetting.label, 'mode': newSetting.mode, 'state': newSetting.state }
+                        return { 'pin': newSetting.pin, 'label': newSetting.label, 'mode': newSetting.mode, 'state': newSetting.state, 'save': newSetting.save }
                     }
                     return oldGpio
                 })
@@ -662,16 +665,20 @@ const char MAIN_page[] PROGMEM = R"=====(
         child.classList.add('set')
         child.innerHTML = `<div class='set-inputs'>
                 <div class='row'>
-                    <label for='pin'>pin:</label>
+                    <label for='setPin-${gpio.pin}'>pin:</label>
                     <select id='setPin-${gpio.pin}' name='pin' onchange='updateModeOptions("${gpio.pin}")'>${pinOptions}</select>
                 </div>
                 <div class='row'>
-                    <label for='label'>label:</label>
+                    <label for='setInputLabel-${gpio.pin}'>label:</label>
                     <input id='setInputLabel-${gpio.pin}' type='text' name='label' placeholder='${gpio.label}'>
                 </div>
                 <div class='row'>
-                    <label for='mode'>input mode:</label>
+                    <label for='setMode-${gpio.pin}'>input mode:</label>
                     <select id='setMode-${gpio.pin}' name='mode'>${modeOptions}</select>
+                </div>
+                <div class='row'>
+                    <label for='setSave-${gpio.pin}'>Save state:</label>
+                    <input type='checkbox' name='save' id='setSave-${gpio.pin}'>
                 </div>
                 </div>
             <div class='set-buttons'>

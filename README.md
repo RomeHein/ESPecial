@@ -21,10 +21,12 @@ Features:
 - Provides manual control over the pins thanks to the two buttons provided by the TTGO chip.
 
 ## Work in progress:
-- Web Interface
+- Web Interface: fix some issues, particulary on mqtt connection
+- Servo handler: Add the hability to control servo motors
+- Actions! This will allow you to set custom handlers to gpios activity. Like displaying a message on the screen, sending custom message to Telegram, turning on/off other pins etc.
 
 ## Wish list
-- Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2008...
+- Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2018...
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
 
@@ -71,7 +73,8 @@ You now need to add your first pin handler. This is done by simply clicking on t
     <img src="images/add-first-panel.png" width="400">
 </p>
 Choose the pin you want to control/listen from the list. This list will only display available pins, so you won't have doublons 👌.
-Press save when you are done.
+The 'save state' checkbox will allow you to save a state in the flash memory of the controller, allowing you to get back your state even after a reboot.
+Once you are done with the settings, press 'save' to add the new GPIO.
 A new line should appear:
 <p align="center">
     <img src="images/new-controls.png" width="400">
@@ -80,7 +83,6 @@ You can now control the state of your pin by pressing the 'on/off' button, or ed
 
 3. Use the rest API</br>
 Once controls added to your panel, their states can be accessed by hitting the rest api: 
-
 
 ```
 http://your.ip.local.ip/digital/pinNumber

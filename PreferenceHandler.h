@@ -18,6 +18,7 @@ typedef struct
     char label[50];
     int8_t mode;
     int8_t state;
+    int8_t save;
  }  GpioFlash;
 
 typedef struct
@@ -50,8 +51,8 @@ public:
     // Gpio
     GpioFlash gpios[GPIO_PIN_COUNT];
     bool removeGpio(int pin);
-    bool addGpio(int pin,const char* label, int mode);
-    bool editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode = 0);
+    bool addGpio(int pin,const char* label, int mode, int save = 0);
+    bool editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode = 0, int save = 0);
     void setGpioState(int pin, int value);
     String getGpiosJson();
     // Mqtt
