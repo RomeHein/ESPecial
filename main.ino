@@ -69,13 +69,17 @@ void button_init()
     displayServicesInfo();
   });
   btn1.setPressedHandler([](Button2 &b) {
-    if (buttonCursor < GPIO_PIN_COUNT - 1) {
-      buttonCursor++;
-      displayGpioState(preferencehandler->gpios[buttonCursor]);
-    }
-    else {
-      buttonCursor = -1;
-    }
+    do {
+      if (buttonCursor < GPIO_PIN_COUNT - 1) {
+        buttonCursor++;
+        if (preferencehandler->gpios[buttonCursor].pin) {
+          displayGpioState(preferencehandler->gpios[buttonCursor]);
+        }
+      } else {
+        buttonCursor = -1;
+      }
+    } while (buttonCursor != -1 && !preferencehandler->gpios[buttonCursor].pin);
+      
     #ifdef __debug
       Serial.printf("Cursor: %i\n",buttonCursor);
     #endif
@@ -124,7 +128,7 @@ void displayGpioState(GpioFlash& gpio)
 
 void displayServicesInfo () 
 {
-  if (millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
+  if (buttonCursor == -1 && millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
     tft.setCursor(2, 0);
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_WHITE);
