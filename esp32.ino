@@ -55,6 +55,8 @@ int buttonCursor = -1;
 int delayBetweenScreenUpdate = 3000;
 long screenRefreshLastTime;
 
+int freeMemory;
+
 void button_init()
 {
   btn1.setLongClickHandler([](Button2 &b) {
@@ -162,6 +164,14 @@ void displayServicesInfo ()
       tft.println("offline");
     }
     screenRefreshLastTime = millis();
+
+    #ifdef __debug
+      tft.print("\nFree Memory:");
+      tft.println(ESP.getFreeHeap(),DEC);
+      tft.print("Memory loss:");
+      tft.println(freeMemory - ESP.getFreeHeap(),DEC);
+      freeMemory = ESP.getFreeHeap();
+    #endif
   }
 }
 
@@ -179,6 +189,7 @@ void switchAllGpioState(bool on)
 }
 
 void readInputPins() {
+  bool couldRunAction = false;
   for (GpioFlash& gpio : preferencehandler->gpios) {
     if (gpio.pin) {
       int newState = digitalRead(gpio.pin);
@@ -188,6 +199,81 @@ void readInputPins() {
 	      #endif
         gpio.state = newState;
         mqtthandler->publish(gpio.pin);
+        for (ConditionFlash& condition: preferencehandler->conditions) {
+          if (condition.pin == gpio.pin) {
+            #ifdef __debug
+              Serial.printf("Impacted condition detected: %s\n",condition.label);
+            #endif
+            couldRunAction = true;
+          }
+        }
+      }
+    }
+  }
+  if (couldRunAction) {
+    runAllRunnableActions();
+  }
+}
+
+void runAllRunnableActions() {
+  for (ActionFlash& action: preferencehandler->actions) {
+    if (action.autoRun) {
+      runAction(action);
+    }
+  }
+}
+
+void runAction(ActionFlash& action) {
+  #ifdef __debug
+    Serial.printf("Checking action: %s\n",action.label);
+  #endif
+  // Check if all conditions are fullfilled
+  bool canRun = true;
+  for (int conditionId: action.conditions) {
+    if (conditionId) {
+      for (ConditionFlash& condition: preferencehandler->conditions) {
+        if (condition.id == conditionId) {
+          const long value = digitalRead(condition.pin);
+          const bool criteria = (condition.type == 1 && value == condition.value) || (condition.type == 2 && value > condition.value) || (condition.type == 3 && value < condition.value);
+          canRun &= criteria;
+          #ifdef __debug
+            Serial.printf("Condition: %s result: %u\n",condition.label, criteria);
+          #endif
+          break;
+        }
+        if (!canRun) {
+          break;
+        }
+      } 
+    }
+  }
+  if (canRun) {
+    #ifdef __debug
+      Serial.printf("Running with type: %i\n",action.type);
+    #endif
+    // Run action
+    for (int repeat=0; repeat<action.loopCount; repeat++) {
+      if (action.type == 1) {
+
+      } else if (action.type == 2) {
+
+      } else if (action.type == 3) {
+        digitalWrite(action.pinC, action.valueC);
+      }
+      if (action.delay) {
+        delay(action.delay);
+      }
+    }
+  }
+  // Run next action if we are not trying to do an infinite loop
+  if (action.nextActionId && action.nextActionId != action.id) {
+    for (ActionFlash& nAction: preferencehandler->actions) {
+      if (nAction.id == action.nextActionId) {
+        #ifdef __debug
+          Serial.printf("Going to next action: %s\n",nAction.label);
+        #endif
+        runAction(nAction);
+        break;
       }
     }
   }
@@ -195,15 +281,12 @@ void readInputPins() {
 
 void setup(void)
 {
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, 0);
   Serial.begin(115200);
-
   tft_init();
-  
+  tft.println("Access point set.\nWifi network: ESP32");
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
-  tft.println("Access point set.\nWifi network: ESP32");
+  wm.setConnectTimeout(10);
   bool res;
   res = wm.autoConnect(APName,APPassword);
   if(!res) {

@@ -7,10 +7,25 @@
         text-align: center;
         font-family: helvetica;
         background-color: lightskyblue;
+        margin: 0;
     }
 
     form {
         display: flex;
+    }
+
+    .spacer {
+        display: block;
+        width: 100%;
+        height: 80px;
+    }
+
+    .header {
+        display: flex;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        background-color: white;
     }
 
     .container {
@@ -22,6 +37,7 @@
         border-radius: 5px;
         width: 500px;
         margin: auto;
+        margin-bottom: 10px;
     }
 
     .column {
@@ -44,17 +60,17 @@
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        width: 19%;
+        width: calc(35% - 10px);
         margin: 5px 0 5px;
         text-align: left;
     }
     .setting-container input[type='text'], input[type='checkbox'] {
-        width: 79%;
+        width: 65%;
         margin: 5px 0 5px;
         height: 30px;
         border: none;
         border-radius: 5px;
-        padding-left: 10px;
+        padding-left: 9px;
     }
     #file-update-label {
         background-color: white;
@@ -76,12 +92,16 @@
         display: none !important;
     }
 
-    #top-bar {
+    .header-container {
         display: flex;
         flex-direction: row;
-        justify-content: flex-end;
+        justify-content: space-between;
         flex-wrap: wrap;
         border-bottom: solid 1px lightgray;
+    }
+
+    .header-container > h2 {
+        padding-left: 10px;
     }
 
     .row>.label {
@@ -102,7 +122,7 @@
     }
 
     .set>.set-inputs input {
-        width: 80%;
+        width: 50%;
         height: 30px;
         border: none;
         border-radius: 5px;
@@ -112,7 +132,7 @@
     }
 
     select {
-        width: 50%;
+        width: calc(50% + 10px);
         height: 30px;
         border: none;
         margin-top: 5px;
@@ -271,28 +291,39 @@
         .row {
             border-bottom: 1px solid lightgray
         }
-        .stick {
-            top: 0px;
-            position: fixed;
-            width: 100%;
-            background-color: whitesmoke;
-        }
     }
 </style>
 <!-- HTML_DOM -->
 <body>
-    <h1 id='title'>Controls</h1>
+    <div class="spacer"></div>
+    <div class="header">
+        <a id='go-to-settings-button' onclick='switchPage()' class='btn edit'>settings</a>
+        <a id='home-button' onclick='switchPage()' class='btn edit hidden'>Home</a>
+    </div>
     <div class="lds-ring" id='page-loader'><div></div><div></div><div></div><div></div></div>
-    <div class='container'>
-        <div id='top-bar'>
-            <a id='go-to-settings' onclick='switchPage()' class='btn edit'>settings</a>
+    <div class='container' id="gpio-container">
+        <div id='gpio-header-bar' class="header-container">
+            <h2>Gpios control</h2>
             <a id='add-gpio' onclick='addGpio()' class='btn edit'>+</a>
-            <a id='back' onclick='switchPage()' class='btn edit hidden'>back</a>
         </div>
-        <div id='gpios' class='column'>
-            
+        <div id='gpios' class='column'></div>
+    </div>
+    <div class="container" id="action-container">
+        <div id='action-header-bar' class="header-container">
+            <h2>Actions</h2>
+            <a id='add-action' onclick='addAction()' class='btn edit'>+</a>
         </div>
-        <div id='settings' class='column hidden'>
+        <div id='actions' class='column'></div>
+    </div>
+    <div class="container" id="condition-container">
+        <div id='condition-header-bar' class="header-container">
+            <h2>Conditions</h2>
+            <a id='add-condition' onclick='addCondition()' class='btn edit'>+</a>
+        </div>
+        <div id='conditions' class='column'></div>
+    </div>
+    <div class="container hidden" id="setting-container">
+        <div class='column'>
             <div id='update' class='setting-container'>
                 <p>Software update</p>
                 <form onsubmit='submitUpdate(event)' enctype='multipart/form-data' id='upload-form'>
@@ -349,32 +380,13 @@
     var settings = {}
     var gpios = []
     var availableGpios = []
+    var actions = []
+    var conditions = []
     var isSettingsMenuActivated = false
-    const topBar = document.getElementById('top-bar')
-    const stickHightTrigger = topBar.offsetTop
 
-    const delay = (ms) => {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
+    const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)))
 
-    const switchPage = () => {
-        isSettingsMenuActivated = !isSettingsMenuActivated
-        const title = document.getElementById('title')
-        title.innerText = isSettingsMenuActivated ? 'Settings' : 'Controls'
-        if (isSettingsMenuActivated) {
-            document.getElementById('go-to-settings').classList.add('hidden')
-            document.getElementById('add-gpio').classList.add('hidden')
-            document.getElementById('gpios').classList.add('hidden')
-            document.getElementById('back').classList.remove('hidden')
-            document.getElementById('settings').classList.remove('hidden')
-        } else {
-            document.getElementById('go-to-settings').classList.remove('hidden')
-            document.getElementById('add-gpio').classList.remove('hidden')
-            document.getElementById('gpios').classList.remove('hidden')
-            document.getElementById('back').classList.add('hidden')
-            document.getElementById('settings').classList.add('hidden')
-        }
-    }
+    // Update software
 
     const fillUpdateInput = (element) => {
         const fileName = element.value.split('\\\\');
@@ -402,6 +414,8 @@
         }
     }
 
+    // Telegram
+
     const submitTelegram = async (e) => {
         e.preventDefault()
         const active = +document.getElementById(`telegram-active`).checked
@@ -419,6 +433,8 @@
             }
         }
     }
+
+    // MQTT
 
     const submitMqtt = async (e) => {
         e.preventDefault()
@@ -469,33 +485,14 @@
         retryText.classList.remove('hidden')
     }
 
+    // Gpios
+
     const fetchGpios = async () => {
         try {
             const res = await fetch(window.location.href + 'gpios');
             const newGpios = await res.json()
             if (newGpios && newGpios.length) {
                 gpios = newGpios
-            }
-        } catch (err) {
-            console.error(`Error: ${err}`);
-        }
-    }
-
-    const fetchSettings = async () => {
-        try {
-            const res = await fetch(window.location.href + 'settings');
-            const s = await res.json()
-            if (s) {
-                settings = s
-                document.getElementById(`telegram-active`).checked = settings.telegram.active
-                document.getElementById(`telegram-token`).value = settings.telegram.token
-                document.getElementById(`mqtt-active`).checked = settings.mqtt.active
-                document.getElementById(`mqtt-fn`).value = settings.mqtt.fn
-                document.getElementById(`mqtt-host`).value = settings.mqtt.host
-                document.getElementById(`mqtt-port`).value = settings.mqtt.port
-                document.getElementById(`mqtt-user`).value = settings.mqtt.user
-                document.getElementById(`mqtt-password`).value = settings.mqtt.password
-                document.getElementById(`mqtt-topic`).value = settings.mqtt.topic
             }
         } catch (err) {
             console.error(`Error: ${err}`);
@@ -511,7 +508,7 @@
         }
     }
 
-    const switchState = async (element) => {
+    const switchGpioState = async (element) => {
         try {
             const isOn = element.classList.value.includes('on')
             await fetch(`${window.location.href}digital/${element.id.split('-')[1]}/${isOn ? 0 : 1}`);
@@ -523,41 +520,156 @@
         }
     }
 
-    const openSetting = (element) => {
-        closeSettings()
-        const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1])
-        const row = document.getElementById('row-' + gpio.pin)
-        if (!row.classList.value.includes('open')) {
-            row.appendChild(createEditElement(gpio))
-            row.classList.add('open')
-            document.getElementById(`setSave-${gpio.pin}`).checked = gpio.save
+    const addGpio = () => {
+        closeAnySettings()
+        const topBar = document.getElementById('gpio-header-bar')
+        if (!topBar.classList.value.includes('open')) {
+            topBar.appendChild(createEditGpioPanel())
+            topBar.classList.add('open')
         }
     }
 
-    const saveSetting = async (element) => {
+    const deleteGpio = async (element) => {
+        const gpioPin = element.id.split('-')[1]
+        try {
+            await fetch(`${window.location.href}gpio/${gpioPin}`, {method: 'DELETE'});
+            await fetchGpios()
+            let row = document.getElementById('rowGpio-' + gpioPin)
+            closeAnySettings()
+            let column = document.getElementById('gpios')
+            column.removeChild(row)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    // Actions
+    const fetchActions = async () => {
+        try {
+            const res = await fetch(window.location.href + 'actions');
+            const newActions = await res.json()
+            if (newActions && newActions.length) {
+                actions = newActions
+            }
+        } catch (err) {
+            console.error(`Error: ${err}`);
+        }
+    }
+
+    const runAction = async (element) => {
+        const actionId = element.id.split('-')[1]
+        try {
+            await fetch(window.location.href + 'action/run/'+actionId);
+        } catch (err) {
+            console.error(`Error: ${err}`);
+        }
+    }
+
+    const addAction = () => {
+        closeAnySettings()
+        const topBar = document.getElementById('action-header-bar')
+        if (!topBar.classList.value.includes('open')) {
+            topBar.appendChild(createEditActionPanel())
+            topBar.classList.add('open')
+        }
+    }
+
+    const deleteAction = async (element) => {
+        const actionId = element.id.split('-')[1]
+        try {
+            await fetch(`${window.location.href}action/${actionId}`, {method: 'DELETE'});
+            await fetchActions()
+            let row = document.getElementById('rowAction-' + actionId)
+            closeAnySettings()
+            let column = document.getElementById('actions')
+            column.removeChild(row)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    // Conditions
+
+    const fetchConditions = async () => {
+        try {
+            const res = await fetch(window.location.href + 'conditions');
+            const newConditions = await res.json()
+            if (newConditions && newConditions.length) {
+                conditions = newConditions
+            }
+        } catch (err) {
+            console.error(`Error: ${err}`);
+        }
+    }
+
+    const addCondition = () => {
+        closeAnySettings()
+        const topBar = document.getElementById('condition-header-bar')
+        if (!topBar.classList.value.includes('open')) {
+            topBar.appendChild(createEditConditionPanel())
+            topBar.classList.add('open')
+        }
+    }
+
+    const deleteCondition = async (element) => {
+        const conditionId = element.id.split('-')[1]
+        try {
+            await fetch(`${window.location.href}condition/${conditionId}`, {method: 'DELETE'});
+            await fetchConditions()
+            let row = document.getElementById('rowCondition-' + conditionId)
+            closeAnySettings()
+            let column = document.getElementById('conditions')
+            column.removeChild(row)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    // Settings
+
+    const fetchSettings = async () => {
+        try {
+            const res = await fetch(window.location.href + 'settings');
+            const s = await res.json()
+            if (s) {
+                // Save settings
+                settings = s
+                // Add them to the dom
+                document.getElementById(`telegram-active`).checked = settings.telegram.active
+                document.getElementById(`telegram-token`).value = settings.telegram.token
+                document.getElementById(`mqtt-active`).checked = settings.mqtt.active
+                document.getElementById(`mqtt-fn`).value = settings.mqtt.fn
+                document.getElementById(`mqtt-host`).value = settings.mqtt.host
+                document.getElementById(`mqtt-port`).value = settings.mqtt.port
+                document.getElementById(`mqtt-user`).value = settings.mqtt.user
+                document.getElementById(`mqtt-password`).value = settings.mqtt.password
+                document.getElementById(`mqtt-topic`).value = settings.mqtt.topic
+            }
+        } catch (err) {
+            console.error(`Error: ${err}`);
+        }
+    }
+
+    const saveGpioSetting = async (element) => {
         const gpioPin = element.id.split('-')[1]
         const isNew = (gpioPin === 'new')
         let req = { settings: {} }
-        const newPin = document.getElementById(`setPin-${gpioPin}`).value
-        const newLabel = document.getElementById(`setInputLabel-${gpioPin}`).value
-        const newMode = document.getElementById(`setMode-${gpioPin}`).value
-        const newSaveState = document.getElementById(`setSave-${gpioPin}`).checked
+        const newPin = document.getElementById(`setGpioPin-${gpioPin}`).value
+        req.settings.label = newLabel = document.getElementById(`setGpioLabel-${gpioPin}`).value
+        req.settings.mode = newMode = document.getElementById(`setGpioMode-${gpioPin}`).value
+        req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked
         if (newPin && newPin != gpioPin) {
             req.settings.pin = +newPin
         }
-        if (newLabel) {
-            req.settings.label = newLabel
-        }
-        if (newMode) {
-            req.settings.mode = newMode
-        }
-        req.settings.save = newSaveState
         if (!isNew) {
             req.pin = gpioPin
         }
         try {
-            const resp = await fetch(`${window.location.href}gpio${isNew ? '/new' : ''}`, {
-                method: 'POST',
+            if (!newMode || !newLabel) {
+                throw new Error('Parameters missing, please fill all the inputs')
+            }
+            const resp = await fetch(`${window.location.href}gpio`, {
+                method: isNew ? 'POST' : 'PUT',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
@@ -567,86 +679,208 @@
             const newSetting = await resp.json()
             let column = document.getElementById('gpios')
             if (isNew) {
-                gpios.push(newSetting.settings)
-                column.insertBefore(createGpioElement(newSetting.settings), column.firstChild)
-                closeSettings()
+                gpios.push(newSetting)
+                column.insertBefore(createGpioControlRow(newSetting), column.firstChild)
+                closeAnySettings()
             } else {
-                gpios = gpios.map(oldGpio => {
-                    if (oldGpio.pin == +gpioPin) {
-                        return { 'pin': newSetting.pin, 'label': newSetting.label, 'mode': newSetting.mode, 'state': newSetting.state, 'save': newSetting.save }
-                    }
-                    return oldGpio
-                })
-                let oldRow = document.getElementById('row-' + gpioPin)
-                column.replaceChild(createGpioElement(newSetting), oldRow)
+                gpios = gpios.map(oldGpio => (oldGpio.pin == +gpioPin) ? { ...newSetting } : oldGpio)
+                let oldRow = document.getElementById('rowGpio-' + gpioPin)
+                column.replaceChild(createGpioControlRow(newSetting), oldRow)
             }
         } catch (err) {
             console.error(err)
         }
     }
 
-    const deleteGpio = async (element) => {
-        const gpioPin = element.id.split('-')[1]
+    const saveConditionSetting = async (element) => {
+        const condId = element.id.split('-')[1]
+        const isNew = (condId === 'new')
+        let req = { settings: {} }
+        if (!isNew) {
+            req.id = condId
+        }
+        req.settings.label = document.getElementById(`setConditionLabel-${condId}`).value
+        req.settings.type = document.getElementById(`setConditionType-${condId}`).value
+        req.settings.pin = document.getElementById(`setConditionPin-${condId}`).value
+        req.settings.value = document.getElementById(`setConditionValue-${condId}`).value
         try {
-            await fetch(`${window.location.href}gpio/${gpioPin}/delete`);
-            await fetchGpios()
-            let row = document.getElementById('row-' + gpioPin)
-            closeSettings()
-            let column = document.getElementById('gpios')
-            column.removeChild(row)
+            if (!req.settings.label || !req.settings.pin || !req.settings.value) {
+                throw new Error('Parameters missing, please fill all the inputs.')
+            }
+            const resp = await fetch(`${window.location.href}condition`, {
+                method: isNew ? 'POST' : 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(req)
+            });
+            const newSetting = await resp.json()
+            let column = document.getElementById('conditions')
+            if (isNew) {
+                conditions.push(newSetting)
+                column.insertBefore(createConditionRow(newSetting), column.firstChild)
+                closeAnySettings()
+            } else {
+                conditions = conditions.map(oldCond => (oldCond.id == +condId) ? {...newSetting} : oldCond)
+                let oldRow = document.getElementById('rowCondition-' + condId)
+                column.replaceChild(createConditionRow(newSetting), oldRow)
+            }
         } catch (err) {
             console.error(err)
         }
     }
 
-    const closeSettings = () => {
+    const saveActionSetting = async (element) => {
+        const actionId = element.id.split('-')[1]
+        const isNew = (actionId === 'new')
+        let req = { settings: {} }
+        if (!isNew) {
+            req.id = actionId
+        }
+        req.settings.label = document.getElementById(`setActionLabel-${actionId}`).value
+        req.settings.type = +document.getElementById(`setActionType-${actionId}`).value
+        req.settings.conditions = [...document.getElementById(`setActionCondition-${actionId}`).options].reduce((acc, option) => {
+            if (option.selected === true) {
+                acc.push(+option.value);
+            }
+            return acc;
+        }, [])
+        req.settings.autoRun = document.getElementById(`setActionAutoRun-${actionId}`).checked
+        req.settings.message = document.getElementById(`setActionMessage-${actionId}`).value
+        req.settings.pinC = +document.getElementById(`setActionPinC-${actionId}`).value
+        req.settings.valueC = +document.getElementById(`setActionPinValueC-${actionId}`).value
+        req.settings.loopCount = +document.getElementById(`setActionLoopCount-${actionId}`).value
+        req.settings.delay = +document.getElementById(`setActionDelay-${actionId}`).value
+        req.settings.nextActionId = +document.getElementById(`setNextAction-${actionId}`).value
+        try {
+            if (!req.settings.label || !req.settings.type) {
+                throw new Error('Parameters missing, please fill at least label and type inputs.')
+            }
+            const resp = await fetch(`${window.location.href}action`, {
+                method: isNew ? 'POST' : 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(req)
+            });
+            const newSetting = await resp.json()
+            let column = document.getElementById('actions')
+            if (isNew) {
+                actions.push(newSetting)
+                column.insertBefore(createActionRow(newSetting), column.firstChild)
+                closeAnySettings()
+            } else {
+                actions = actions.map(oldAction => (oldAction.id == +actionId) ? {...newSetting} : oldAction)
+                let oldRow = document.getElementById('rowAction-' + actionId)
+                column.replaceChild(createActionRow(newSetting), oldRow)
+            }
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    const openGpioSetting = (element) => {
+        closeAnySettings()
+        const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1])
+        const row = document.getElementById('rowGpio-' + gpio.pin)
+        if (!row.classList.value.includes('open')) {
+            row.appendChild(createEditGpioPanel(gpio))
+            row.classList.add('open')
+            document.getElementById(`setGpioSave-${gpio.pin}`).checked = gpio.save
+        }
+    }
+
+    const openActionSetting = (element) => {
+        closeAnySettings()
+        const action = actions.find(action => action.id === +element.id.split('-')[1])
+        const row = document.getElementById('rowAction-' + action.id)
+        if (!row.classList.value.includes('open')) {
+            row.appendChild(createEditActionPanel(action))
+            row.classList.add('open')
+            document.getElementById(`setActionAutoRun-${action.id}`).checked = action.autoRun
+        }
+    }
+
+    const openConditionSetting = (element) => {
+        closeAnySettings()
+        const condition = conditions.find(condition => condition.id === +element.id.split('-')[1])
+        const row = document.getElementById('rowCondition-' + condition.id)
+        if (!row.classList.value.includes('open')) {
+            row.appendChild(createEditConditionPanel(condition))
+            row.classList.add('open')
+        }
+    }
+
+    const closeAnySettings = () => {
         document.querySelectorAll('.open').forEach(row => {
             row.classList.remove('open')
             row.removeChild(row.lastChild)
         })
     }
 
-    const addGpio = () => {
-        closeSettings()
-        const topBar = document.getElementById('top-bar')
-        if (!topBar.classList.value.includes('open')) {
-            topBar.appendChild(createEditElement())
-            topBar.classList.add('open')
-        }
-    }
-
-    const updateModeOptions = (pin) => {
-        const selectPin = document.getElementById(`setPin-${pin || 'new'}`)
-        const selectMode = document.getElementById(`setMode-${pin || 'new'}`)
-
-        const availableGpioInfos = availableGpios.find(gpio => gpio.pin == selectPin.value)
-        if (availableGpioInfos.inputOnly && selectMode.childElementCount === 3) {
-            selectMode.removeChild(selectMode.lastChild)
-        } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 2) {
-            let option = document.createElement('div')
-            option.innerHTML = `<option value=2>OUTPUT</option>`
-            selectMode.appendChild(option.firstChild)
-        }
-    }
     // Element creation
 
-    const createGpioElement = (gpio) => {
+    const switchPage = () => {
+        isSettingsMenuActivated = !isSettingsMenuActivated
+        if (isSettingsMenuActivated) {
+            document.getElementById('go-to-settings-button').classList.add('hidden')
+            document.getElementById('gpio-container').classList.add('hidden')
+            document.getElementById('action-container').classList.add('hidden')
+            document.getElementById('condition-container').classList.add('hidden')
+            document.getElementById('home-button').classList.remove('hidden')
+            document.getElementById('setting-container').classList.remove('hidden')
+        } else {
+            document.getElementById('go-to-settings-button').classList.remove('hidden')
+            document.getElementById('gpio-container').classList.remove('hidden')
+            document.getElementById('action-container').classList.remove('hidden')
+            document.getElementById('condition-container').classList.remove('hidden')
+            document.getElementById('home-button').classList.add('hidden')
+            document.getElementById('setting-container').classList.add('hidden')
+        }
+    }
+
+    const createGpioControlRow = (gpio) => {
         let child = document.createElement('div');
-        child.innerHTML = `<div class='row' id='row-${gpio.pin}'>
+        child.innerHTML = `<div class='row' id='rowGpio-${gpio.pin}'>
             <div class='label'> ${gpio.label}</div>
             <div class='btn-container'>
-                <a onclick='openSetting(this)' id='edit-${gpio.pin}' class='btn edit'>edit</a>
-                <a onclick='switchState(this)' id='state-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>
+                <a onclick='openGpioSetting(this)' id='editGpio-${gpio.pin}' class='btn edit'>edit</a>
+                <a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>
             </div>
         </div>`
         return child.firstChild;
     }
 
-    const createEditElement = (gpio) => {
+    const createActionRow = (action) => {
+        let child = document.createElement('div');
+        child.innerHTML = `<div class='row' id='rowAction-${action.id}'>
+            <div class='label'> ${action.label}</div>
+            <div class='btn-container'>
+                <a onclick='openActionSetting(this)' id='editAction-${action.id}' class='btn edit'>edit</a>
+                <a onclick='runAction(this)' id='runAction-${action.id}' class='btn on>run</a>
+            </div>
+        </div>`
+        return child.firstChild;
+    }
+
+    const createConditionRow = (condition) => {
+        let child = document.createElement('div');
+        child.innerHTML = `<div class='row' id='rowCondition-${condition.id}'>
+            <div class='label'> ${condition.label}</div>
+            <div class='btn-container'>
+                <a onclick='openConditionSetting(this)' id='editCondition-${condition.id}' class='btn edit'>edit</a>
+            </div>
+        </div>`
+        return child.firstChild;
+    }
+
+    // The edit panel for setting gpios
+    const createEditGpioPanel = (gpio) => {
         if (!gpio) {
             gpio = {
-                pin: 'new',
-                label: 'Label will be displayed on the lcd screen'
+                pin: 'new'
             }
         }
         let modeOptions = `<option ${gpio.mode == 1 ? 'selected' : ''} value=1>INPUT</option><option ${gpio.mode == 5 ? 'selected' : ''} value=5>INPUT_PULLUP</option>`
@@ -664,26 +898,139 @@
         child.classList.add('set')
         child.innerHTML = `<div class='set-inputs'>
                 <div class='row'>
-                    <label for='setPin-${gpio.pin}'>pin:</label>
-                    <select id='setPin-${gpio.pin}' name='pin' onchange='updateModeOptions("${gpio.pin}")'>${pinOptions}</select>
+                    <label for='setGpioPin-${gpio.pin}'>pin:</label>
+                    <select id='setGpioPin-${gpio.pin}' name='pin' onchange='updateModeOptions("${gpio.pin}")'>${pinOptions}</select>
                 </div>
                 <div class='row'>
-                    <label for='setInputLabel-${gpio.pin}'>label:</label>
-                    <input id='setInputLabel-${gpio.pin}' type='text' name='label' placeholder='${gpio.label}'>
+                    <label for='setGpioLabel-${gpio.pin}'>label:</label>
+                    <input id='setGpioLabel-${gpio.pin}' type='text' name='label' value='${gpio.label || ''}' placeholder="Controller's title">
                 </div>
                 <div class='row'>
-                    <label for='setMode-${gpio.pin}'>input mode:</label>
-                    <select id='setMode-${gpio.pin}' name='mode'>${modeOptions}</select>
+                    <label for='setGpioMode-${gpio.pin}'>input mode:</label>
+                    <select id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
                 </div>
                 <div class='row'>
-                    <label for='setSave-${gpio.pin}'>Save state:</label>
-                    <input type='checkbox' name='save' id='setSave-${gpio.pin}' value='${gpio.save}'>
+                    <label for='setGpioSave-${gpio.pin}'>Save state:</label>
+                    <input type='checkbox' name='save' id='setGpioSave-${gpio.pin}' value='${gpio.save}'>
                 </div>
                 </div>
             <div class='set-buttons'>
-                <a onclick='closeSettings()' id='cancel-${gpio.pin}' class='btn cancel'>cancel</a>
-                ${gpio.pin === "new" ? '' : `<a onclick='deleteGpio(this)' id='delete-${gpio.pin}' class='btn delete'>delete</a>`}
-                <a onclick='saveSetting(this)' id='save-${gpio.pin}' class='btn save'>save</a>
+                <a onclick='closeAnySettings()' id='cancelGpio-${gpio.pin}' class='btn cancel'>cancel</a>
+                ${gpio.pin === "new" ? '' : `<a onclick='deleteGpio(this)' id='deleteGpio-${gpio.pin}' class='btn delete'>delete</a>`}
+                <a onclick='saveGpioSetting(this)' id='saveGpio-${gpio.pin}' class='btn save'>save</a>
+            </div>`
+        return child
+    }
+
+    // The edit panel for setting gpios
+    const createEditActionPanel = (action) => {
+        if (!action) {
+            action = {
+                id: 'new',
+                conditions: [],
+                type: 1,
+                loopCount: 0
+            }
+        }
+        let conditionOptions = conditions.map(condition => {
+            const isSelected = action.conditions.includes(condition.id)
+            return `<option ${isSelected ? 'selected' : ''} value=${condition.id}>${condition.label}</option>`
+        })
+        let nextActionOptions = actions.reduce((acc,a) => acc+`<option ${action.nextActionId === a.id ? 'selected' : ''} value=${a.id}>${a.label}</option>`,``)
+        let gpioOptions = gpios.reduce((acc,gpio) =>  acc+`<option ${action.pinC === gpio.pin ? 'selected' : ''} value=${gpio.pin}>${gpio.label}</option>`,``)
+        let child = document.createElement('div')
+        child.classList.add('set')
+        child.innerHTML = `<div class='set-inputs'>
+                <div class='row'>
+                    <label for='setActionLabel-${action.id}'>label:</label>
+                    <input id='setActionLabel-${action.id}' type='text' name='label' value='${action.label||''}' placeholder='Describe your action'>
+                </div>
+                <div class='row'>
+                    <label for='setActionCondition-${action.id}'>Conditions:</label>
+                    <select id='setActionCondition-${action.id}' name='condition' multiple>${conditionOptions}</select>
+                </div>
+                <div class='row'>
+                    <label for='setActionAutoRun-${action.id}'>Auto run:</label>
+                    <input type='checkbox' name='autorun' id='setActionAutoRun-${action.id}' value='${action.autoRun}'>
+                </div>
+                <div class='row'>
+                    <label for='setActionType-${action.id}'>type:</label>
+                    <select id='setActionType-${action.id}' name='type' onchange='updateActionTypes("${action.id}")'>
+                        <option ${action.type === 1 ? 'selected' : ''} value=1>Send Telegram Notification</option>
+                        <option ${action.type === 2 ? 'selected' : ''} value=2>Display on tft screen</option>
+                        <option ${action.type === 3 ? 'selected' : ''} value=3>Set Pin to value</option>
+                    </select>
+                </div>
+                <div class='row ${action.type === 3 ? 'hidden' : ''}'>
+                    <label for='setActionMessage-${action.id}'>message:</label>
+                    <input id='setActionMessage-${action.id}' type='text' name='message' value='${action.message||''}' placeholder='Message to display or send'>
+                </div>
+                <div class='row ${action.type !== 3 ? 'hidden' : ''}'>
+                    <label for='setActionPinC-${action.id}'>Gpio to control:</label>
+                    <select id='setActionPinC-${action.id}' name='gpio'>${gpioOptions}</select>
+                </div>
+                <div class='row ${action.type !== 3 ? 'hidden' : ''}'>
+                    <label for='setActionPinValueC-${action.id}'>Gpio value:</label>
+                    <input id='setActionPinValueC-${action.id}' type='number' name='gpioValue' value='${action.valueC||''}' placeholder='Set the gpio value when the action is triggered'>
+                </div>
+                <div class='row'>
+                    <label for='setActionLoopCount-${action.id}'>Repeat action:</label>
+                    <input id='setActionLoopCount-${action.id}' type='number' name='loopCount' value='${action.loopCount||''}' placeholder='How many times the action must be repeat'>
+                </div>
+                <div class='row'>
+                    <label for='setActionDelay-${action.id}'>Delay between loop:</label>
+                    <input id='setActionDelay-${action.id}' type='number' name='delay' value='${action.delay||''}' placeholder='Pause between each execution'>
+                </div>
+                <div class='row'>
+                    <label for='setNextAction-${action.id}'>Next action:</label>
+                    <select id='setNextAction-${action.id}' name='next'><option value=0>None</option>${nextActionOptions}</select>
+                </div>
+                </div>
+            <div class='set-buttons'>
+                <a onclick='closeAnySettings()' id='cancelAction-${action.id}' class='btn cancel'>cancel</a>
+                ${action.id === "new" ? '' : `<a onclick='deleteAction(this)' id='deleteAction-${action.id}' class='btn delete'>delete</a>`}
+                <a onclick='saveActionSetting(this)' id='saveAction-${action.id}' class='btn save'>save</a>
+            </div>`
+        return child
+    }
+
+    // The edit panel for setting gpios
+    const createEditConditionPanel = (condition) => {
+        if (!condition) {
+            condition = {
+                id: 'new',
+                type: 1,
+            }
+        }
+        let gpioOptions = gpios.reduce((acc,gpio) =>  acc+`<option ${condition.pin === gpio.pin ? 'selected' : ''} value=${gpio.pin}>${gpio.label}</option>`,``)
+        let child = document.createElement('div')
+        child.classList.add('set')
+        child.innerHTML = `<div class='set-inputs'>
+                <div class='row'>
+                    <label for='setConditionLabel-${condition.id}'>label:</label>
+                    <input id='setConditionLabel-${condition.id}' type='text' name='label' value='${condition.label || ''}' placeholder='A title to describe your condition'>
+                </div>
+                <div class='row'>
+                    <label for='setConditionType-${condition.id}'>type:</label>
+                    <select id='setConditionType-${condition.id}' name='type'>
+                        <option ${condition.type === 1 ? 'selected' : ''} value=1>Pin value is equal to</option>
+                        <option ${condition.type === 2 ? 'selected' : ''} value=2>Pin value is greater than</option>
+                        <option ${condition.type === 3 ? 'selected' : ''} value=3>Pin value is less then</option>
+                    </select>
+                </div>
+                <div class='row'>
+                    <label for='setConditionPin-${condition.id}'>Gpio to control:</label>
+                    <select id='setConditionPin-${condition.id}' name='pin'>${gpioOptions}</select>
+                </div>
+                <div class='row'>
+                    <label for='setConditionValue-${condition.id}'>Gpio value:</label>
+                    <input id='setConditionValue-${condition.id}' type='number' name='gpioValue' value='${condition.value || ''}' placeholder='what value will trigger the condition'>
+                </div>
+                </div>
+            <div class='set-buttons'>
+                <a onclick='closeAnySettings()' id='cancelAction-${condition.id}' class='btn cancel'>cancel</a>
+                ${condition.id === "new" ? '' : `<a onclick='deleteCondition(this)' id='deleteCondition-${condition.id}' class='btn delete'>delete</a>`}
+                <a onclick='saveConditionSetting(this)' id='saveCondition-${condition.id}' class='btn save'>save</a>
             </div>`
         return child
     }
@@ -695,23 +1042,55 @@
         return spinner
     }
 
+     // Change the input of available mode for a given pin
+     const updateModeOptions = (pin) => {
+        const selectPin = document.getElementById(`setGpioPin-${pin || 'new'}`)
+        const selectMode = document.getElementById(`setGpioMode-${pin || 'new'}`)
+
+        const availableGpioInfos = availableGpios.find(gpio => gpio.pin == selectPin.value)
+        if (availableGpioInfos.inputOnly && selectMode.childElementCount === 3) {
+            selectMode.removeChild(selectMode.lastChild)
+        } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 2) {
+            let option = document.createElement('div')
+            option.innerHTML = `<option value=2>OUTPUT</option>`
+            selectMode.appendChild(option.firstChild)
+        }
+    }
+
+    const updateActionTypes = (id) => {
+        const selectType = document.getElementById(`setActionType-${id || 'new'}`)
+        if (+selectType.value !== 3) {
+            document.getElementById(`setActionPinC-${id || 'new'}`).parentElement.classList.add('hidden')
+            document.getElementById(`setActionPinValueC-${id || 'new'}`).parentElement.classList.add('hidden')
+            document.getElementById(`setActionMessage-${id || 'new'}`).parentElement.classList.remove('hidden')
+        } else {
+            document.getElementById(`setActionPinC-${id || 'new'}`).parentElement.classList.remove('hidden')
+            document.getElementById(`setActionPinValueC-${id || 'new'}`).parentElement.classList.remove('hidden')
+            document.getElementById(`setActionMessage-${id || 'new'}`).parentElement.classList.add('hidden')
+        }
+    }
+
+    // Events
+
     window.onload = async () => {
         await fetchGpios()
-        await fetchAvailableGpios()
-        const container = document.getElementById('gpios')
+        const containerG = document.getElementById('gpios')
         gpios.forEach(gpio => {
-            container.appendChild(createGpioElement(gpio))
+            containerG.appendChild(createGpioControlRow(gpio))
+        })
+        await fetchActions()
+        const containerA = document.getElementById('actions')
+        actions.forEach(action => {
+            containerA.appendChild(createActionRow(action))
+        })
+        await fetchConditions()
+        const containerC = document.getElementById('conditions')
+        conditions.forEach(condition => {
+            containerC.appendChild(createConditionRow(condition))
         })
         await fetchSettings()
         document.getElementById('page-loader').remove()
-    };
-
-    window.onscroll = () => {
-        if (window.pageYOffset > stickHightTrigger) {
-            topBar.classList.add("stick")
-        } else {
-            topBar.classList.remove("stick")
-        }
+        await fetchAvailableGpios()
     };
 </script>
 <!-- HTML_SCRIPT_END -->

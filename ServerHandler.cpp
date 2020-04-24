@@ -13,26 +13,50 @@ void ServerHandler::begin()
         Serial.println("Server: init");
     #endif
     server.on("/", [this]() { handleRoot(); });
+    server.onNotFound([this]() {handleNotFound(); });
     server.on("/clear/settings", [this]() { handleClearSettings(); });
     server.on("/health", [this]() { handleSystemHealth(); });
-    server.on("/gpios", [this]() { getGpios(); });
     server.on("/settings", [this]() { getSettings(); });
-    server.on("/gpios/available", [this]() { handleAvailableGpios(); });
-    server.on("/digital/{}/{}", [this]() { handleSetGpioState(); });
-    server.on("/digital/{}", [this]() { handleGetGpioState(); });
-    server.on("/gpio/{}/delete", [this]() { handleGpioRemove(); });
-    server.on("/gpio", HTTP_POST, [this]() { handleGpioEdit(); });
-    server.on("/gpio/new", HTTP_POST, [this]() { handleGpioNew(); });
     server.on("/install", HTTP_POST, [this]() { handleUpload(); }, [this]() { install(); });
     server.on("/mqtt", HTTP_POST, [this]() { handleMqttEdit(); });
     server.on("/mqtt/retry", [this]() { handleMqttRetry(); });
     server.on("/telegram", HTTP_POST, [this]() { handleTelegramEdit(); });
-    server.onNotFound([this]() {handleNotFound(); });
+
+    // Gpio related endpoints
+    server.on("/digital/{}/{}", [this]() { handleSetGpioState(); });
+    server.on("/digital/{}", [this]() { handleGetGpioState(); });
+    server.on("/gpios/available", [this]() { handleAvailableGpios(); });
+    server.on("/gpios", [this]() { getGpios(); });
+    server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
+    server.on("/gpio", HTTP_PUT, [this]() { handleGpioEdit(); });
+    server.on("/gpio", HTTP_POST, [this]() { handleGpioNew(); });
+    server.on("/gpios", [this]() { getGpios(); });
+    server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
+    server.on("/gpio", HTTP_PUT, [this]() { handleGpioEdit(); });
+    server.on("/gpio", HTTP_POST, [this]() { handleGpioNew(); });
+
+    // Action related endpoints
+    server.on("/actions", [this]() { getActions(); });
+    server.on("/action/{}", HTTP_DELETE,[this]() { handleActionRemove(); });
+    server.on("/action/run/{}", [this]() { handleRunAction(); });
+    server.on("/action", HTTP_PUT, [this]() { handleActionEdit(); });
+    server.on("/action", HTTP_POST, [this]() { handleActionNew(); });
+
+    // Condition related endpoints
+    server.on("/conditions", [this]() { getConditions(); });
+    server.on("/condition/{}", HTTP_DELETE,[this]() { handleConditionRemove(); });
+    server.on("/condition", HTTP_PUT, [this]() { handleConditionEdit(); });
+    server.on("/condition", HTTP_POST, [this]() { handleConditionNew(); });
 
     server.begin();
 }
 
 // Main
+
+void ServerHandler::handleRoot()
+{
+    server.send(200, "text/html", MAIN_page);
+}
 
 void ServerHandler::handleNotFound()
 {
@@ -61,13 +85,6 @@ void ServerHandler::handleSystemHealth()
     return;
 }
 
-void ServerHandler::handleRoot()
-{
-    server.sendHeader("Connection", "close");
-    String s = MAIN_page;
-    server.send(200, "text/html", s);
-}
-
 // Settings
 
 void ServerHandler::getSettings() {
@@ -90,6 +107,85 @@ void ServerHandler::getSettings() {
     return;
 }
 
+void ServerHandler::handleUpload()
+{
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+    ESP.restart(); 
+}
+
+void ServerHandler::install()
+{
+    HTTPUpload& upload = server.upload();
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Update: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        /* flashing firmware to ESP*/
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) {
+            Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+        } else {
+            Update.printError(Serial);
+        }
+    } 
+}
+
+void ServerHandler::handleMqttEdit () {
+    const size_t capacity = JSON_OBJECT_SIZE(6) + 300;
+    DynamicJsonDocument doc(capacity);
+
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.c_str());
+        return;
+    }
+    const int active = doc["active"].as<int>();
+    const char* fn = doc["fn"].as<char*>();
+    const char* host = doc["host"].as<char*>();
+    const int port = doc["port"].as<int>();
+    const char* user = doc["user"].as<char*>();
+    const char* password = doc["password"].as<char*>();
+    const char* topic = doc["topic"].as<char*>();
+    if (fn && host && port && user && password && topic) {
+        preference.editMqtt(active,fn,host,port,user,password,topic);
+        server.send(200, "text/json", server.arg(0));
+        return;
+    }
+    server.send(404, "text/plain", "Missing parameters");
+}
+
+void ServerHandler::handleMqttRetry() {
+    preference.health.mqtt = 0;
+    server.send(200, "text/plain", "Retrying");
+}
+
+void ServerHandler::handleTelegramEdit () {
+    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
+    DynamicJsonDocument doc(capacity);
+
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.c_str());
+        return;
+    }
+    const char* token = doc["token"].as<char*>();
+    const int active = doc["active"].as<int>();
+    if (token) {
+        preference.editTelegram(token, active);
+        server.send(200, "text/json", server.arg(0));
+        return;
+    }
+    server.send(404, "text/plain", "Missing parameters");
+}
+
 // Gpio hanlding
 
 void ServerHandler::getGpios() 
@@ -100,10 +196,7 @@ void ServerHandler::getGpios()
 
 void ServerHandler::handleGpioEdit()
 {
-    server.sendHeader("Connection", "close");
-    const size_t capacity = JSON_OBJECT_SIZE(1) + 100;
-    DynamicJsonDocument doc(capacity);
-
+    DynamicJsonDocument doc(GPIO_JSON_CAPACITY);
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
         #ifdef __debug
@@ -117,23 +210,8 @@ void ServerHandler::handleGpioEdit()
     {
         if (gpio.pin == doc["pin"].as<int>())
         {
-            bool saved = preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(), doc["settings"]["save"].as<int>());
-            if (saved) {
-                const size_t capacity = JSON_OBJECT_SIZE(1) + 100;
-                StaticJsonDocument<capacity> doc;
-                JsonObject object = doc.createNestedObject();
-                object["pin"] = gpio.pin;
-                object["label"] = gpio.label;
-                object["mode"] = gpio.mode;
-                object["state"] = gpio.state;
-                object["save"] = gpio.save;
-                String output;
-                serializeJson(doc[0], output);
-                server.send(200, "text/json", output);
-                return;
-            } else {
-                server.send(404, "text/plain", "Could not save");
-            }
+            server.send(200, "text/json", preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(), doc["settings"]["save"].as<int>()));
+            return;
         }
     }
     server.send(404, "text/plain", "Not found");
@@ -141,9 +219,7 @@ void ServerHandler::handleGpioEdit()
 
 void ServerHandler::handleGpioNew()
 {
-    server.sendHeader("Connection", "close");
-    const size_t capacity = JSON_OBJECT_SIZE(4) + 90;
-    DynamicJsonDocument doc(capacity);
+    DynamicJsonDocument doc(GPIO_JSON_CAPACITY);
 
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
@@ -158,8 +234,7 @@ void ServerHandler::handleGpioNew()
     const int mode = doc["settings"]["mode"].as<int>();
     const int save = doc["settings"]["save"].as<int>();
     if (pin && label && mode) {
-        preference.addGpio(pin, label, mode, save);
-        server.send(200, "text/json", server.arg(0));
+        server.send(200, "text/json", preference.addGpio(pin, label, mode, save));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");
@@ -208,85 +283,147 @@ void ServerHandler::handleSetGpioState()
     handleGetGpioState();
 }
 
-// Settings API
+// actions
 
-void ServerHandler::handleUpload()
+void ServerHandler::getActions() 
 {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    ESP.restart(); 
+    server.send(200, "text/json", preference.getActionsJson());
+    return;
 }
 
-void ServerHandler::install()
-{
-    HTTPUpload& upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-        Serial.printf("Update: %s\n", upload.filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-            Update.printError(Serial);
-        }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        /* flashing firmware to ESP*/
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-            Update.printError(Serial);
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {
-            Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-        } else {
-            Update.printError(Serial);
-        }
-    } 
+void ServerHandler::handleRunAction() {
+
 }
-
-void ServerHandler::handleMqttEdit () {
-    server.sendHeader("Connection", "close");
-    const size_t capacity = JSON_OBJECT_SIZE(6) + 300;
-    DynamicJsonDocument doc(capacity);
-
+void ServerHandler::handleActionEdit()
+{
+    DynamicJsonDocument doc(ACTION_JSON_CAPACITY);
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+        #ifdef __debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
         return;
     }
-    const int active = doc["active"].as<int>();
-    const char* fn = doc["fn"].as<char*>();
-    const char* host = doc["host"].as<char*>();
-    const int port = doc["port"].as<int>();
-    const char* user = doc["user"].as<char*>();
-    const char* password = doc["password"].as<char*>();
-    const char* topic = doc["topic"].as<char*>();
-    if (fn && host && port && user && password && topic) {
-        preference.editMqtt(active,fn,host,port,user,password,topic);
-        server.send(200, "text/json", server.arg(0));
+
+    for (ActionFlash& action : preference.actions)
+    {
+        if (action.id == doc["id"].as<int>())
+        {
+            int conditions[MAX_ACTIONS_CONDITIONS_NUMBER] = {};
+            int i = 0;
+            for(int conditionId: doc["settings"]["conditions"].as<JsonArray>()) {
+                conditions[i] = conditionId;
+                i++;
+            }
+            server.send(200, "text/json", preference.editAction(action, doc["settings"]["label"].as<char*>(),doc["settings"]["type"].as<int>(), conditions,doc["settings"]["autoRun"].as<int>(),doc["settings"]["message"].as<char*>(),doc["settings"]["pinC"].as<int>(), doc["settings"]["valueC"].as<int>(),doc["settings"]["loopCount"].as<int>(),doc["settings"]["delay"].as<int>(), doc["settings"]["nextActionId"].as<int>()));
+            return;
+        }
+    }
+    server.send(404, "text/plain", "Not found");
+}
+
+void ServerHandler::handleActionNew()
+{
+    DynamicJsonDocument doc(ACTION_JSON_CAPACITY);
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        #ifdef __debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
+        return;
+    }
+    const char* label = doc["settings"]["label"].as<char*>();
+    const int type = doc["settings"]["type"].as<int>();
+    int conditions[MAX_ACTIONS_CONDITIONS_NUMBER] = {};
+    int i = 0;
+    for(int conditionId: doc["settings"]["conditions"].as<JsonArray>()) {
+        conditions[i] = conditionId;
+        i++;
+    }
+    const int autoRun = doc["settings"]["autoRun"].as<int>();
+    const char* mes = doc["settings"]["message"].as<char*>();
+    const int pinC = doc["settings"]["pinC"].as<int>();
+    const int valueC = doc["settings"]["valueC"].as<int>();
+    const int loopCount = doc["settings"]["loopCount"].as<int>();
+    const int delay = doc["settings"]["delay"].as<int>();
+    const int nextActionId = doc["settings"]["nextActionId"].as<int>();
+    if (label && type) {
+        server.send(200, "text/json", preference.addAction(label, type, conditions, autoRun, mes, pinC, valueC, loopCount, delay, nextActionId));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");
 }
 
-void ServerHandler::handleMqttRetry() {
-    preference.health.mqtt = 0;
-    server.send(200, "text/plain", "Retrying");
-}
-
-void ServerHandler::handleTelegramEdit () {
-    server.sendHeader("Connection", "close");
-    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
-    DynamicJsonDocument doc(capacity);
-
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+void ServerHandler::handleActionRemove() 
+{
+    bool removed = preference.removeAction(atoi(server.pathArg(0).c_str()));
+    if (removed){
+        server.send(200, "text/plain", "Done");
         return;
     }
-    const char* token = doc["token"].as<char*>();
-    const int active = doc["active"].as<int>();
-    if (token) {
-        preference.editTelegram(token, active);
-        server.send(200, "text/json", server.arg(0));
+    server.send(404, "text/plain", "Not found");
+}
+
+// Conditions
+
+void ServerHandler::getConditions() 
+{
+    server.send(200, "text/json", preference.getConditionsJson());
+    return;
+}
+
+void ServerHandler::handleConditionEdit()
+{
+    DynamicJsonDocument doc(CONDITION_JSON_CAPACITY);
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        #ifdef __debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
+        return;
+    }
+    for (ConditionFlash& condition : preference.conditions)
+    {
+        if (condition.id == doc["id"].as<int>())
+        {
+            server.send(200, "text/json", preference.editCondition(condition,doc["settings"]["type"].as<int>(),doc["settings"]["label"].as<char*>(), doc["settings"]["pin"].as<int>(),doc["settings"]["value"].as<int>()));
+            return;
+        }
+    }
+    server.send(404, "text/plain", "Not found");
+}
+
+void ServerHandler::handleConditionNew()
+{
+    DynamicJsonDocument doc(CONDITION_JSON_CAPACITY);
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        #ifdef __debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
+        return;
+    }
+    const char* label = doc["settings"]["label"].as<char*>();
+    const int type = doc["settings"]["type"].as<int>();
+    const int pin = doc["settings"]["pin"].as<int>();
+    const int value = doc["settings"]["value"].as<int>();
+    if (label && type && pin) {
+        server.send(200, "text/json", preference.addCondition(label, type, pin, value));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");
+}
+
+void ServerHandler::handleConditionRemove() 
+{
+    bool removed = preference.removeCondition(atoi(server.pathArg(0).c_str()));
+    if (removed){
+        server.send(200, "text/plain", "Done");
+        return;
+    }
+    server.send(404, "text/plain", "Not found");
 }

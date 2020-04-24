@@ -10,24 +10,40 @@ class ServerHandler
 {
 private:
     PreferenceHandler &preference;
+    void handleRoot();
+    void handleNotFound();
+    void handleClearSettings();
+    void handleSystemHealth();
     void getSettings();
+    void install();
+    void handleUpload();
+    void handleUpdate();
+
+    void handleMqttEdit();
+    void handleMqttRetry();
+    void handleTelegramEdit();
+
+    
     void getGpios();
     void handleAvailableGpios();
     void handleSetGpioState();
     void handleGetGpioState();
-    void handleRoot();
     void handleGpioEdit();
     void handleGpioRemove();
     void handleGpioNew();
-    void handleUpload();
-    void handleUpdate();
-    void handleMqttEdit();
-    void handleMqttRetry();
-    void handleTelegramEdit();
-    void install();
-    void handleNotFound();
-    void handleClearSettings();
-    void handleSystemHealth();
+
+    void getActions();
+    void handleRunAction();
+    void handleActionEdit();
+    void handleActionRemove();
+    void handleActionNew();
+
+    void getConditions();
+    void handleConditionEdit();
+    void handleConditionRemove();
+    void handleConditionNew();
+    
+    
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     WebServer server = {80};
