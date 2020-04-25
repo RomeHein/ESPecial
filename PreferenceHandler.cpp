@@ -5,15 +5,7 @@
 //unmark following line to enable debug mode
 #define __debug
 
-#define PREFERENCES_NAME "esp32-api"
-#define PREFERENCES_GPIOS "gpios"
-#define PREFERENCES_ACTION "action"
-#define PREFERENCES_CONDITION "condition"
-#define PREFERENCES_MQTT "mqtt"
-#define PREFERENCES_TELEGRAM "telegram"
-
 Preferences preferences;
-
 void PreferenceHandler::begin()
 {
     preferences.begin(PREFERENCES_NAME, false);
@@ -277,10 +269,14 @@ bool PreferenceHandler::editMqtt(int newActive, const char* newFn, const char* n
 
 // Telegram
 
-bool PreferenceHandler::editTelegram(const char* newToken,int newActive) {
+bool PreferenceHandler::editTelegram(const char* newToken,const char* newChatId, int newActive) {
     bool hasChanged = false;
     if (newToken && strcmp(telegram.token, newToken) != 0) {
         strcpy(telegram.token, newToken);
+        hasChanged = true;
+    }
+    if (newChatId && strcmp(telegram.currentChatId, newChatId) != 0) {
+        strcpy(telegram.currentChatId, newChatId);
         hasChanged = true;
     }
     if (telegram.active != newActive) {

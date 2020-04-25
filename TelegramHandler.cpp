@@ -30,6 +30,15 @@ void TelegramHandler::handle()
         handleNewMessages(numNewMessages);
         numNewMessages = bot->getUpdates(bot->last_message_received + 1);
       }
+      // Empty messages queued
+      for (int i=0; i<lastMessageQueuedPosition; i++) {
+        #ifdef __debug  
+          Serial.printf("Telegram: sending message: %s\n", messagesQueue[i]);
+        #endif
+        bot->sendMessage(preference.telegram.currentChatId, messagesQueue[i]);
+      }
+      memset(messagesQueue, 0, sizeof(messagesQueue));
+      lastMessageQueuedPosition = 0;
       Bot_lasttime = millis();
     } else if (!isInit || ! preference.telegram.token || !preference.telegram.active) {
       preference.health.telegram = 0;
@@ -38,7 +47,7 @@ void TelegramHandler::handle()
 
 String TelegramHandler::generateInlineKeyboards() {
   const size_t capacity = JSON_ARRAY_SIZE(1+(GPIO_PIN_COUNT/2)) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(2)+100);
-  StaticJsonDocument<capacity> doc;
+  DynamicJsonDocument doc(capacity);
   for (int i = 0; i<GPIO_PIN_COUNT; i++) {
     JsonArray subArray = doc.createNestedArray();
     if (preference.gpios[i].pin && preference.gpios[i].mode == OUTPUT) {
@@ -76,7 +85,6 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
     } else {
       String chat_id = String(bot->messages[i].chat_id);
       String text = bot->messages[i].text;
-
       String from_name = bot->messages[i].from_name;
       if (from_name == "") from_name = "Guest";
 
@@ -92,7 +100,31 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
 
         bot->sendMessage(chat_id, welcome, "Markdown");
       }
+
+      // We save here the current chat_id in case we want to send message later on
+      strcpy(preference.telegram.currentChatId, chat_id.c_str());
+      preference.save(PREFERENCES_TELEGRAM);
     }
+  }
+}
+
+void TelegramHandler::queueMessage(const char* message) {
+  if (isInit && preference.telegram.token && preference.telegram.active && preference.telegram.currentChatId) {
+    #ifdef __debug  
+      Serial.printf("Telegram: queued message: %s\n",message);
+    #endif
+    if (lastMessageQueuedPosition<MAX_QUEUED_MESSAGE_NUMBER) {
+      strcpy(messagesQueue[lastMessageQueuedPosition],message);
+      lastMessageQueuedPosition++;
+    } else {
+      #ifdef __debug  
+        Serial.printf("Telegram: reach message queued maximum: %i\n",MAX_QUEUED_MESSAGE_NUMBER);
+      #endif
+    }
+  } else {
+    #ifdef __debug  
+      Serial.println("Telegram: could not send message, check chatId, token or active state.");
+    #endif
   }
 }
 

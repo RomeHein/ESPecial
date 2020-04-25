@@ -3,7 +3,6 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <TFT_eSPI.h>
-#include <Button2.h>
 
 #include "ServerHandler.h"
 #include "PreferenceHandler.h"
@@ -30,13 +29,8 @@
 #define TFT_BL 4 // Display backlight control pin
 #define ADC_EN 14
 #define ADC_PIN 34
-#define BUTTON_1 35
-#define BUTTON_2 0
-#define LED 2
 
 TFT_eSPI tft(135, 240);
-Button2 btn1(BUTTON_1);
-Button2 btn2(BUTTON_2);
 ServerHandler *serverhandler;
 PreferenceHandler *preferencehandler;
 TelegramHandler *telegramhandler;
@@ -48,52 +42,15 @@ WiFiClient clientNotSecure;
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
-// The button cursor indicates which pin is selected to display on the tft screen. -1 means we'll display system informations
-int buttonCursor = -1;
-
 // Delay between each tft display refresh 
 int delayBetweenScreenUpdate = 3000;
 long screenRefreshLastTime;
 
+// Debounce delay
+long lastDebounceTime = 0;
+int debounceDelay = 50;
+
 int freeMemory;
-
-void button_init()
-{
-  btn1.setLongClickHandler([](Button2 &b) {
-    tft.fillScreen(TFT_BLACK);
-    tft.setCursor(1, 0);
-    tft.print("Turned off all");
-    switchAllGpioState(false);
-  });
-  btn2.setLongClickHandler([](Button2 &b) {
-    // Go back to info screen;
-    buttonCursor = -1;
-    displayServicesInfo();
-  });
-  btn1.setPressedHandler([](Button2 &b) {
-    do {
-      if (buttonCursor < GPIO_PIN_COUNT - 1) {
-        buttonCursor++;
-        if (preferencehandler->gpios[buttonCursor].pin) {
-          displayGpioState(preferencehandler->gpios[buttonCursor]);
-        }
-      } else {
-        buttonCursor = -1;
-      }
-    } while (buttonCursor != -1 && !preferencehandler->gpios[buttonCursor].pin);
-      
-    #ifdef __debug
-      Serial.printf("Cursor: %i\n",buttonCursor);
-    #endif
-  });
-
-  btn2.setPressedHandler([](Button2 &b) {
-    if (buttonCursor > -1) {
-      switchSelectedGpioState();
-      displayGpioState(preferencehandler->gpios[buttonCursor]);
-    }
-  });
-}
 
 void tft_init()
 {
@@ -106,8 +63,7 @@ void tft_init()
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(2);
 
-  if (TFT_BL > 0)
-  {                                         // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
+  if (TFT_BL > 0){                                         // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
     pinMode(TFT_BL, OUTPUT);                // Set backlight pin to output mode
     digitalWrite(TFT_BL, TFT_BACKLIGHT_ON); // Turn backlight on. TFT_BACKLIGHT_ON has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
   }
@@ -120,17 +76,10 @@ void turnOffScreen()
   tft.writecommand(TFT_DISPOFF);
   tft.writecommand(TFT_SLPIN);
 }
-void displayGpioState(GpioFlash& gpio)
-{
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(1, 0);
-  tft.printf("%s\nPin %i\nActual state: %i",gpio.label,gpio.pin,digitalRead(gpio.pin));
-}
 
 void displayServicesInfo () 
 {
-  if (buttonCursor == -1 && millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
+  if (millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
     tft.setCursor(2, 0);
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_WHITE);
@@ -175,43 +124,33 @@ void displayServicesInfo ()
   }
 }
 
-void switchSelectedGpioState()
-{
-  int currentstate = digitalRead(preferencehandler->gpios[buttonCursor].pin);
-  digitalWrite(preferencehandler->gpios[buttonCursor].pin, currentstate == 0 ? 1 : 0);
-}
-
-void switchAllGpioState(bool on)
-{
-  for (GpioFlash& gpio : preferencehandler->gpios) {
-    digitalWrite(gpio.pin, on);
-  }
-}
-
 void readInputPins() {
-  bool couldRunAction = false;
-  for (GpioFlash& gpio : preferencehandler->gpios) {
-    if (gpio.pin) {
-      int newState = digitalRead(gpio.pin);
-      if (gpio.state != newState) {
-        #ifdef __debug
-          Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
-	      #endif
-        gpio.state = newState;
-        mqtthandler->publish(gpio.pin);
-        for (ConditionFlash& condition: preferencehandler->conditions) {
-          if (condition.pin == gpio.pin) {
-            #ifdef __debug
-              Serial.printf("Impacted condition detected: %s\n",condition.label);
-            #endif
-            couldRunAction = true;
+  if (millis() > debounceDelay + lastDebounceTime) {
+    bool couldRunAction = false;
+    for (GpioFlash& gpio : preferencehandler->gpios) {
+      if (gpio.pin) {
+        int newState = digitalRead(gpio.pin);
+        if (gpio.state != newState) {
+          #ifdef __debug
+            Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
+          #endif
+          gpio.state = newState;
+          mqtthandler->publish(gpio.pin);
+          for (ConditionFlash& condition: preferencehandler->conditions) {
+            if (condition.pin == gpio.pin) {
+              #ifdef __debug
+                Serial.printf("Impacted condition detected: %s\n",condition.label);
+              #endif
+              couldRunAction = true;
+            }
           }
+          lastDebounceTime = millis();
         }
       }
     }
-  }
-  if (couldRunAction) {
-    runAllRunnableActions();
+    if (couldRunAction) {
+      runAllRunnableActions();
+    }
   }
 }
 
@@ -253,8 +192,8 @@ void runAction(ActionFlash& action) {
     #endif
     // Run action
     for (int repeat=0; repeat<action.loopCount; repeat++) {
-      if (action.type == 1) {
-
+      if (action.type == 1 && action.mes) {
+        telegramhandler->queueMessage(action.mes);
       } else if (action.type == 2) {
 
       } else if (action.type == 3) {
@@ -266,7 +205,7 @@ void runAction(ActionFlash& action) {
     }
   }
   // Run next action if we are not trying to do an infinite loop
-  if (action.nextActionId && action.nextActionId != action.id) {
+  if (canRun && action.nextActionId && action.nextActionId != action.id) {
     for (ActionFlash& nAction: preferencehandler->actions) {
       if (nAction.id == action.nextActionId) {
         #ifdef __debug
@@ -299,9 +238,8 @@ void setup(void)
     serverhandler->begin();
     telegramhandler = new TelegramHandler(*preferencehandler, client);
     mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
-    // Handle buttons on core 0, core 1 pretty full with server,mqtt and telegram...
-    button_init();
-    xTaskCreatePinnedToCore(button_loop, "buttons", 4096, NULL, 0, NULL, 0);
+
+    xTaskCreatePinnedToCore(input_loop, "readInputs", 12288, NULL, 0, NULL, 0);
   }
 }
 
@@ -310,9 +248,8 @@ void loop(void)
   if ( WiFi.status() ==  WL_CONNECTED ) 
   {
     serverhandler->server.handleClient();
-    telegramhandler->handle();
     mqtthandler->handle();
-    readInputPins();
+    telegramhandler->handle();
     displayServicesInfo();
   } else
   {
@@ -337,13 +274,12 @@ void loop(void)
   }
 }
 
-void button_loop(void *pvParameters)
+void input_loop(void *pvParameters)
 {
   while(1) {
-    if ( WiFi.status() ==  WL_CONNECTED ) {
-      btn1.loop();
-      btn2.loop();
+    if (WiFi.status() ==  WL_CONNECTED) {
+      readInputPins();
+      vTaskDelay(10);
     }
-    delay(50);
   }
 }

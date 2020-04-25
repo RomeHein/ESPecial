@@ -4,6 +4,13 @@
 #define PreferenceHandler_h
 #include <Arduino.h>
 
+#define PREFERENCES_NAME "esp32-api"
+#define PREFERENCES_GPIOS "gpios"
+#define PREFERENCES_ACTION "action"
+#define PREFERENCES_CONDITION "condition"
+#define PREFERENCES_MQTT "mqtt"
+#define PREFERENCES_TELEGRAM "telegram"
+
 // Yes only 20 to limit memeory usage
 #define MAX_ACTIONS_NUMBER 20 // Maximum actions number that can be set in the system
 #define MAX_ACTIONS_CONDITIONS_NUMBER 5 // Maximum number of conditions in a given action
@@ -72,6 +79,7 @@ typedef struct
 {
     char token[200];
     int8_t active;
+    char currentChatId[50];
 }  TelegramFlash;
  
 class PreferenceHandler
@@ -115,6 +123,6 @@ public:
     bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);
     // Telegram
     TelegramFlash telegram;
-    bool editTelegram(const char* token,int active);
+    bool editTelegram(const char* token,const char* newChatId,int active);
 };
 #endif

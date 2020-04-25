@@ -177,9 +177,10 @@ void ServerHandler::handleTelegramEdit () {
         return;
     }
     const char* token = doc["token"].as<char*>();
+    const char* chatId = doc["chatId"].as<char*>();
     const int active = doc["active"].as<int>();
     if (token) {
-        preference.editTelegram(token, active);
+        preference.editTelegram(token,chatId,active);
         server.send(200, "text/json", server.arg(0));
         return;
     }
