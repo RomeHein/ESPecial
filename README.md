@@ -8,6 +8,7 @@ Features:
 <div>
     <img src="images/sample-home.png" width="200">
     <img src="images/edit-gpio-panel.png" width="200">
+    <img src="images/add-action-panel.png" width="200">
     <img src="images/settings.png" width="200">
 </div>
 
@@ -83,7 +84,7 @@ A new line should appear:
     <img src="images/gpios-new-line.png" width="400">
 </p>
 You can now control the state of your pin by pressing the 'on/off' button, or edit its configuration.
-
+<br>
 3. Automation!
 
 And now the best part: set actions that will triggered based on gpios state or telegram/mqtt/api events!
@@ -101,10 +102,13 @@ Now we can set our first action. Simply click the add button in the action secti
     <img src="images/add-condition-panel.png" width="400">
 </p>
 Actions are based on conditions. You can select multiple conditions. But keep in mind that in order to run, all conditions have to be true. 
+
 If you select the auto run option, the action will be triggered whenever its conditions become true. This can be very handy if you want to send a Telegram notification when a gpio value changes.
 You can simulate a `while` loop by setting the `repeat action` input. Just keep in mind that if you leave it empty or set it to 0, the action won't trigger. So set it to `1` at least.
+
 You can specify a delay between each loop. Note that a long delay will block the process. 
 Yes, actions run sequencially. The process maintain an actions queue where the oldest action queued is played first. So don't go crazy on that `delay` option 😉.
+
 You can also specify the next action. This is very handy to easily program complex behaviours.
 
 4. Use the rest API</br>
