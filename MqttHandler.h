@@ -13,6 +13,7 @@ typedef struct
 {
     char debug[256];
     char gpio[256];
+    char action[256];
     char config[256];
  }  MqttTopic;
 
@@ -31,6 +32,7 @@ private:
 public:
     ~MqttHandler() { delete mqtt_client; };
     MqttHandler(PreferenceHandler& preference, WiFiClient &client) : preference(preference), client(client) {};
+    int actionsQueued[MAX_ACTIONS_NUMBER] = {};
     void begin();
     void handle();
     void disconnect();

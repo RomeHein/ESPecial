@@ -15,6 +15,7 @@
 #define MAX_ACTIONS_NUMBER 20 // Maximum actions number that can be set in the system
 #define MAX_ACTIONS_CONDITIONS_NUMBER 5 // Maximum number of conditions in a given action
 #define MAX_CONDITIONS_NUMBER 20 // Maximum conditions number that can be set in the system
+#define MAX_TELEGRAM_USERS_NUMBER 10 // Maximum user number that can user telegram bot
 
 #define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(5) + 80 + 150
 #define GPIOS_JSON_CAPACITY JSON_ARRAY_SIZE(GPIO_PIN_COUNT) + GPIO_PIN_COUNT*(GPIO_JSON_CAPACITY)
@@ -80,6 +81,7 @@ typedef struct
     char token[200];
     int8_t active;
     char currentChatId[50];
+    int32_t users[MAX_TELEGRAM_USERS_NUMBER];
 }  TelegramFlash;
  
 class PreferenceHandler
@@ -104,7 +106,7 @@ public:
     bool removeGpio(int pin);
     String addGpio(int pin, const char* label, int mode, int save = 0);
     String editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode = 0, int save = 0);
-    void setGpioState(int pin, int value);
+    void setGpioState(int pin, int value = -1);
     String getGpiosJson();
     // Action
     ActionFlash actions[MAX_ACTIONS_NUMBER];
@@ -123,6 +125,6 @@ public:
     bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);
     // Telegram
     TelegramFlash telegram;
-    bool editTelegram(const char* token,const char* newChatId,int active);
+    bool editTelegram(const char* token,const char* newChatId,const int* newUsers,int active);
 };
 #endif

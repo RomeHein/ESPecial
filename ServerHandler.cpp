@@ -88,11 +88,16 @@ void ServerHandler::handleSystemHealth()
 // Settings
 
 void ServerHandler::getSettings() {
-    const size_t capacity = JSON_OBJECT_SIZE(7) + 300;
+    const size_t capacity = JSON_OBJECT_SIZE(8) + JSON_ARRAY_SIZE(MAX_TELEGRAM_USERS_NUMBER) + 300;
     StaticJsonDocument<(capacity)> doc;
     JsonObject telegram = doc.createNestedObject("telegram");
     telegram["active"] = preference.telegram.active;
     telegram["token"] = preference.telegram.token;
+    telegram["users"] = preference.telegram.token;
+    JsonArray users = telegram.createNestedArray("users");
+    for (int userId: preference.telegram.users) {
+        if (userId) users.add(userId);
+    }
     JsonObject mqtt = doc.createNestedObject("mqtt");
     mqtt["active"] = preference.mqtt.active;
     mqtt["fn"] = preference.mqtt.fn;
@@ -179,8 +184,14 @@ void ServerHandler::handleTelegramEdit () {
     const char* token = doc["token"].as<char*>();
     const char* chatId = doc["chatId"].as<char*>();
     const int active = doc["active"].as<int>();
+    int users[MAX_TELEGRAM_USERS_NUMBER] = {};
+    int i = 0;
+    for(int userId: doc["users"].as<JsonArray>()) {
+        users[i] = userId;
+        i++;
+    }
     if (token) {
-        preference.editTelegram(token,chatId,active);
+        preference.editTelegram(token,chatId,users,active);
         server.send(200, "text/json", server.arg(0));
         return;
     }
@@ -293,7 +304,14 @@ void ServerHandler::getActions()
 }
 
 void ServerHandler::handleRunAction() {
-
+    // queue action id, to be picked up by esp32.ino script
+    for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
+        if (actionsQueued[i] == 0) {
+            actionsQueued[i] = id;
+            break;
+        }
+    }
+    server.send(200, "text/plain", "Done");
 }
 void ServerHandler::handleActionEdit()
 {

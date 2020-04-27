@@ -364,6 +364,8 @@ const char MAIN_page[] PROGMEM = R"=====(
                     <input type='checkbox' name='active' id='telegram-active'>
                     <label for='telegram-token'>Token:</label>
                     <input type='text' name='token' id='telegram-token'>
+                    <label for='telegram-users'>Authorised users: (empty if public)</label>
+                    <input type='text' name='users' id='telegram-users' placeholder="telegram user ids, separeted by a comma.">
                     <input id='submit-telegram-pref' type='submit'class='btn save' value='Save'>
                 </form>
             </div>
@@ -374,6 +376,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
     </div>
 </body>
+
 </html>
 <!-- HTML_SCRIPT -->
 <script>
@@ -420,12 +423,13 @@ const char MAIN_page[] PROGMEM = R"=====(
         e.preventDefault()
         const active = +document.getElementById(`telegram-active`).checked
         const token = document.getElementById(`telegram-token`).value
-        if (token != settings.telegram.token || active != settings.telegram.active) {
+        const users = document.getElementById(`telegram-users`).value.split(',').map(id => +id)
+        if (token != settings.telegram.token || active != settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
             try {
                 const res = await fetch(window.location.href + 'telegram', {
                     method: 'POST',
                     headers: { contentType: false, processData:false },
-                    body: JSON.stringify({token, active})
+                    body: JSON.stringify({token, active, users})
                 })
                 settings.telegram = {active, token}
             } catch (err) {
@@ -637,6 +641,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                 // Add them to the dom
                 document.getElementById(`telegram-active`).checked = settings.telegram.active
                 document.getElementById(`telegram-token`).value = settings.telegram.token
+                document.getElementById(`telegram-users`).value = settings.telegram.users.filter(userId => userId != 0).join(',')
                 document.getElementById(`mqtt-active`).checked = settings.mqtt.active
                 document.getElementById(`mqtt-fn`).value = settings.mqtt.fn
                 document.getElementById(`mqtt-host`).value = settings.mqtt.host
@@ -859,7 +864,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             <div class='label'> ${action.label}</div>
             <div class='btn-container'>
                 <a onclick='openActionSetting(this)' id='editAction-${action.id}' class='btn edit'>edit</a>
-                <a onclick='runAction(this)' id='runAction-${action.id}' class='btn on>run</a>
+                <a onclick='runAction(this)' id='runAction-${action.id}' class='btn on'>run</a>
             </div>
         </div>`
         return child.firstChild;

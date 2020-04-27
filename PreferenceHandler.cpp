@@ -269,7 +269,7 @@ bool PreferenceHandler::editMqtt(int newActive, const char* newFn, const char* n
 
 // Telegram
 
-bool PreferenceHandler::editTelegram(const char* newToken,const char* newChatId, int newActive) {
+bool PreferenceHandler::editTelegram(const char* newToken,const char* newChatId,const int* newUsers, int newActive) {
     bool hasChanged = false;
     if (newToken && strcmp(telegram.token, newToken) != 0) {
         strcpy(telegram.token, newToken);
@@ -281,6 +281,10 @@ bool PreferenceHandler::editTelegram(const char* newToken,const char* newChatId,
     }
     if (telegram.active != newActive) {
         telegram.active = newActive;
+        hasChanged = true;
+    }
+    if (newUsers && memcmp(telegram.users, newUsers, sizeof(telegram.users)) != 0) {
+        memcpy(telegram.users, newUsers, sizeof(telegram.users));
         hasChanged = true;
     }
     if (hasChanged) {

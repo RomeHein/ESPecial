@@ -30,6 +30,8 @@
 #define ADC_EN 14
 #define ADC_PIN 34
 
+#define MAX_QUEUED_ACTIONS 10
+
 TFT_eSPI tft(135, 240);
 ServerHandler *serverhandler;
 PreferenceHandler *preferencehandler;
@@ -63,7 +65,7 @@ void tft_init()
   tft.setTextDatum(MC_DATUM);
   tft.setTextSize(2);
 
-  if (TFT_BL > 0){                                         // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
+  if (TFT_BL > 0){                          // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
     pinMode(TFT_BL, OUTPUT);                // Set backlight pin to output mode
     digitalWrite(TFT_BL, TFT_BACKLIGHT_ON); // Turn backlight on. TFT_BACKLIGHT_ON has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
   }
@@ -136,6 +138,7 @@ void readInputPins() {
           #endif
           gpio.state = newState;
           mqtthandler->publish(gpio.pin);
+          // Check if one of the conditions set by the user were impacted by the new pin state
           for (ConditionFlash& condition: preferencehandler->conditions) {
             if (condition.pin == gpio.pin) {
               #ifdef __debug
@@ -158,6 +161,43 @@ void runAllRunnableActions() {
   for (ActionFlash& action: preferencehandler->actions) {
     if (action.autoRun) {
       runAction(action);
+    }
+  }
+}
+
+void pickUpQueuedActions() {
+  for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
+    if (telegramhandler->actionsQueued[i] == 0) break;
+    #ifdef __debug
+      Serial.printf("Telegram action id queued detected: %i\n",telegramhandler->actionsQueued[i]);
+    #endif
+    runAction(telegramhandler->actionsQueued[i]);
+  }
+  for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
+    if (serverhandler->actionsQueued[i] == 0) break;
+    #ifdef __debug
+      Serial.printf("Server action id queued detected: %i\n",serverhandler->actionsQueued[i]);
+    #endif
+    runAction(serverhandler->actionsQueued[i]);
+  }
+  for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
+    if (mqtthandler->actionsQueued[i] == 0) break;
+    #ifdef __debug
+      Serial.printf("Mqtt action id queued detected: %i\n",mqtthandler->actionsQueued[i]);
+    #endif
+    runAction(mqtthandler->actionsQueued[i]);
+  }
+  // Reset queues once actions executed
+  memset(telegramhandler->actionsQueued, 0, sizeof(telegramhandler->actionsQueued));
+  memset(serverhandler->actionsQueued, 0, sizeof(serverhandler->actionsQueued));
+  memset(mqtthandler->actionsQueued, 0, sizeof(mqtthandler->actionsQueued));
+}
+
+void runAction(int id) {
+  for (ActionFlash& action: preferencehandler->actions) {
+    if (action.id == id) {
+      runAction(action);
+      break;
     }
   }
 }
@@ -192,10 +232,16 @@ void runAction(ActionFlash& action) {
     #endif
     // Run action
     for (int repeat=0; repeat<action.loopCount; repeat++) {
+      // Type 1: Add a message to the telegram queue. Telegram handle will pick it up and send it.
       if (action.type == 1 && action.mes) {
         telegramhandler->queueMessage(action.mes);
-      } else if (action.type == 2) {
-
+      // Type 2: Display message on the tft screen.
+      } else if (action.type == 2 && action.mes) {
+        tft.setCursor(2, 0);
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextColor(TFT_WHITE);
+        tft.println(action.mes);
+      // Type 3: set pin to value
       } else if (action.type == 3) {
         digitalWrite(action.pinC, action.valueC);
       }
@@ -230,31 +276,30 @@ void setup(void)
   res = wm.autoConnect(APName,APPassword);
   if(!res) {
         Serial.println("Failed to connect");
-        // ESP.restart();
   } else {
+    // Set all handlers.
     preferencehandler = new PreferenceHandler();
     preferencehandler->begin();
     serverhandler = new ServerHandler(*preferencehandler);
     serverhandler->begin();
     telegramhandler = new TelegramHandler(*preferencehandler, client);
     mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
-
+    // Set input reading on a different thread
+    // Note: could maybe replaced by the telegramHandler
     xTaskCreatePinnedToCore(input_loop, "readInputs", 12288, NULL, 0, NULL, 0);
   }
 }
 
 void loop(void)
 {
-  if ( WiFi.status() ==  WL_CONNECTED ) 
-  {
+  if ( WiFi.status() ==  WL_CONNECTED ) {
     serverhandler->server.handleClient();
     mqtthandler->handle();
     telegramhandler->handle();
     displayServicesInfo();
-  } else
-  {
+  } else {
     // wifi down, reconnect here
-   WiFi.begin();
+    WiFi.begin();
     int count = 0;
     while (WiFi.status() != WL_CONNECTED && count < 200 ) 
     {
@@ -279,6 +324,7 @@ void input_loop(void *pvParameters)
   while(1) {
     if (WiFi.status() ==  WL_CONNECTED) {
       readInputPins();
+      pickUpQueuedActions();
       vTaskDelay(10);
     }
   }

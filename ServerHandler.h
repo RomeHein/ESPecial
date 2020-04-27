@@ -6,8 +6,7 @@
 #include <WebServer.h>
 #include "PreferenceHandler.h"
 
-class ServerHandler
-{
+class ServerHandler {
 private:
     PreferenceHandler &preference;
     void handleRoot();
@@ -23,7 +22,6 @@ private:
     void handleMqttRetry();
     void handleTelegramEdit();
 
-    
     void getGpios();
     void handleAvailableGpios();
     void handleSetGpioState();
@@ -47,6 +45,7 @@ private:
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     WebServer server = {80};
+    int actionsQueued[MAX_ACTIONS_NUMBER] = {};
     void begin();
 };
 #endif

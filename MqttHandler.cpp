@@ -23,6 +23,7 @@ void MqttHandler::begin()
 
         snprintf(topic.config, 512, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
         snprintf(topic.gpio, 512, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.action, 512, "%s/%s/action\0", preference.mqtt.topic, preference.mqtt.fn);
         snprintf(topic.debug, 512, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
         isInit = true;
     }
@@ -89,6 +90,9 @@ void MqttHandler::connect() {
             char gpiosTopic[strlen(topic.gpio)+3];
             sprintf(gpiosTopic, "%s/+\0",topic.gpio);
             mqtt_client->subscribe(gpiosTopic);
+            char actionsTopic[strlen(topic.action)+3];
+            sprintf(actionsTopic, "%s/+\0",topic.action);
+            mqtt_client->subscribe(actionsTopic);
             mqtt_client->subscribe(topic.config);
             mqtt_client->subscribe(topic.debug);
             publishConfig();
@@ -118,10 +122,10 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
     message[length] = '\0';
     if (strstr(topic,this->topic.gpio)) {
         int len = (strlen(topic) - strlen(this->topic.gpio))+1;
-        char cpin[len];
-        strncpy(cpin, topic + strlen(this->topic.gpio)+1, len-1);
-        cpin[len] = '\0';
-        int pin = atoi(cpin);
+        char pin_c[len];
+        strncpy(pin_c, topic + strlen(this->topic.gpio)+1, len-1);
+        pin_c[len] = '\0';
+        int pin = atoi(pin_c);
         int state = atoi(message);
         #ifdef __debug
             Serial.printf("MQTT: message %s for pin %i\n", message, pin);
