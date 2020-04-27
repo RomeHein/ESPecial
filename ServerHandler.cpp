@@ -304,6 +304,7 @@ void ServerHandler::getActions()
 }
 
 void ServerHandler::handleRunAction() {
+    const int id = atoi(server.pathArg(0).c_str());
     // queue action id, to be picked up by esp32.ino script
     for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
         if (actionsQueued[i] == 0) {
