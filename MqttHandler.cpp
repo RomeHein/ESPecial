@@ -137,6 +137,25 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
                 Serial.print("MQTT: state unchanged. Message dissmissed\n");
             #endif
         }
+    } else if (strstr(topic,this->topic.action)) {
+        int len = (strlen(topic) - strlen(this->topic.action))+1;
+        char id_c[len];
+        strncpy(id_c, topic + strlen(this->topic.action)+1, len-1);
+        id_c[len] = '\0';
+        int id = atoi(id_c);
+        int state = atoi(message);
+        #ifdef __debug
+            Serial.printf("MQTT: message %s for action id %i\n", message, id);
+        #endif
+        if (state) {
+            // queue action id, to be picked up by esp32.ino script
+            for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
+                if (actionsQueued[i] == 0) {
+                    actionsQueued[i] = id;
+                    break;
+                }
+            }
+        }
     }
 }
 
