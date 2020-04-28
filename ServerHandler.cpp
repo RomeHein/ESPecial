@@ -42,12 +42,6 @@ void ServerHandler::begin()
     server.on("/action", HTTP_PUT, [this]() { handleActionEdit(); });
     server.on("/action", HTTP_POST, [this]() { handleActionNew(); });
 
-    // Condition related endpoints
-    server.on("/conditions", [this]() { getConditions(); });
-    server.on("/condition/{}", HTTP_DELETE,[this]() { handleConditionRemove(); });
-    server.on("/condition", HTTP_PUT, [this]() { handleConditionEdit(); });
-    server.on("/condition", HTTP_POST, [this]() { handleConditionNew(); });
-
     server.begin();
 }
 
@@ -330,11 +324,15 @@ void ServerHandler::handleActionEdit()
     {
         if (action.id == doc["id"].as<int>())
         {
-            int conditions[MAX_ACTIONS_CONDITIONS_NUMBER] = {};
-            int i = 0;
-            for(int conditionId: doc["settings"]["conditions"].as<JsonArray>()) {
-                conditions[i] = conditionId;
-                i++;
+            int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4] = {};
+            int j = 0;
+            for(JsonArray condition: doc["settings"]["conditions"].as<JsonArray>()) {
+                int16_t conditionToFlash[4];
+                for (int k = 0; k<4; k++) {
+                    conditionToFlash[k] = condition[k];
+                }
+                memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
+                j++;
             }
             server.send(200, "text/json", preference.editAction(action, doc["settings"]["label"].as<char*>(),doc["settings"]["type"].as<int>(), conditions,doc["settings"]["autoRun"].as<int>(),doc["settings"]["message"].as<char*>(),doc["settings"]["pinC"].as<int>(), doc["settings"]["valueC"].as<int>(),doc["settings"]["loopCount"].as<int>(),doc["settings"]["delay"].as<int>(), doc["settings"]["nextActionId"].as<int>()));
             return;
@@ -356,11 +354,15 @@ void ServerHandler::handleActionNew()
     }
     const char* label = doc["settings"]["label"].as<char*>();
     const int type = doc["settings"]["type"].as<int>();
-    int conditions[MAX_ACTIONS_CONDITIONS_NUMBER] = {};
-    int i = 0;
-    for(int conditionId: doc["settings"]["conditions"].as<JsonArray>()) {
-        conditions[i] = conditionId;
-        i++;
+    int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4] = {};
+    int j = 0;
+    for(JsonArray condition: doc["settings"]["conditions"].as<JsonArray>()) {
+        int16_t conditionToFlash[4];
+        for (int k = 0; k<4; k++) {
+            conditionToFlash[k] = condition[k];
+        }
+        memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
+        j++;
     }
     const int autoRun = doc["settings"]["autoRun"].as<int>();
     const char* mes = doc["settings"]["message"].as<char*>();
@@ -379,68 +381,6 @@ void ServerHandler::handleActionNew()
 void ServerHandler::handleActionRemove() 
 {
     bool removed = preference.removeAction(atoi(server.pathArg(0).c_str()));
-    if (removed){
-        server.send(200, "text/plain", "Done");
-        return;
-    }
-    server.send(404, "text/plain", "Not found");
-}
-
-// Conditions
-
-void ServerHandler::getConditions() 
-{
-    server.send(200, "text/json", preference.getConditionsJson());
-    return;
-}
-
-void ServerHandler::handleConditionEdit()
-{
-    DynamicJsonDocument doc(CONDITION_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
-    for (ConditionFlash& condition : preference.conditions)
-    {
-        if (condition.id == doc["id"].as<int>())
-        {
-            server.send(200, "text/json", preference.editCondition(condition,doc["settings"]["type"].as<int>(),doc["settings"]["label"].as<char*>(), doc["settings"]["pin"].as<int>(),doc["settings"]["value"].as<int>()));
-            return;
-        }
-    }
-    server.send(404, "text/plain", "Not found");
-}
-
-void ServerHandler::handleConditionNew()
-{
-    DynamicJsonDocument doc(CONDITION_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
-    const char* label = doc["settings"]["label"].as<char*>();
-    const int type = doc["settings"]["type"].as<int>();
-    const int pin = doc["settings"]["pin"].as<int>();
-    const int value = doc["settings"]["value"].as<int>();
-    if (label && type && pin) {
-        server.send(200, "text/json", preference.addCondition(label, type, pin, value));
-        return;
-    }
-    server.send(404, "text/plain", "Missing parameters");
-}
-
-void ServerHandler::handleConditionRemove() 
-{
-    bool removed = preference.removeCondition(atoi(server.pathArg(0).c_str()));
     if (removed){
         server.send(200, "text/plain", "Done");
         return;

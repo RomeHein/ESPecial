@@ -35,12 +35,6 @@ private:
     void handleActionEdit();
     void handleActionRemove();
     void handleActionNew();
-
-    void getConditions();
-    void handleConditionEdit();
-    void handleConditionRemove();
-    void handleConditionNew();
-    
     
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};

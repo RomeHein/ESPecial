@@ -120,7 +120,9 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
         message[i] = (char)payload[i];
     }
     message[length] = '\0';
+    // Check if topic is contained in the topic payload
     if (strstr(topic,this->topic.gpio)) {
+        // Logic to get what pin was published
         int len = (strlen(topic) - strlen(this->topic.gpio))+1;
         char pin_c[len];
         strncpy(pin_c, topic + strlen(this->topic.gpio)+1, len-1);

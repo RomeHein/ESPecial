@@ -32,14 +32,6 @@ void PreferenceHandler::begin()
         // memcpy(actions, buffer, schLen);
     }
 
-    // Init condition preferences
-    {
-        size_t schLen = preferences.getBytes(PREFERENCES_CONDITION, NULL, NULL);
-        char buffer[schLen];
-        preferences.getBytes(PREFERENCES_CONDITION, buffer, schLen);
-        memcpy(conditions, buffer, schLen);
-    }
-
     // Init telegram preferences
     {
         size_t schLen = preferences.getBytes(PREFERENCES_TELEGRAM, NULL, NULL);
@@ -81,8 +73,6 @@ void PreferenceHandler::save(char* preference) {
         // The struct for ActionFlash does not seem to work properly with the putBytes. 
         // Need further investigation
         preferences.putString(PREFERENCES_ACTION, getActionsJson());
-    }else if (strcmp(preference, PREFERENCES_CONDITION) == 0) {
-        preferences.putBytes(PREFERENCES_CONDITION, &conditions, sizeof(conditions));
     }else if (strcmp(preference, PREFERENCES_MQTT) == 0) {
         preferences.putBytes(PREFERENCES_MQTT, &mqtt, sizeof(mqtt));
     }else if (strcmp(preference, PREFERENCES_TELEGRAM) == 0) {
@@ -98,12 +88,6 @@ int PreferenceHandler::newId(char *preference) {
         for (ActionFlash& action: actions) {
             if (action.id>=newId) {
                 newId = action.id + 1;
-            }
-        }
-    } else if (preference == PREFERENCES_CONDITION) {
-        for (ConditionFlash& condition: conditions) {
-            if (condition.id>=newId) {
-                newId = condition.id + 1;
             }
         }
     }
@@ -326,13 +310,17 @@ void PreferenceHandler::setActionsFromJson(const char* json) {
         newAction.nextActionId = action["nextActionId"].as<int>();
         newAction.autoRun = action["autoRun"].as<int>();
         newAction.delay = action["delay"].as<int>();
-        int8_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER] = {};
+        int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4] = {};
         int j = 0;
-        for(int8_t conditionId: action["conditions"].as<JsonArray>()) {
-            conditions[j] = conditionId;
+        for(JsonArray condition: action["conditions"].as<JsonArray>()) {
+            int16_t conditionToFlash[4];
+            for (int k = 0; k<4; k++) {
+                conditionToFlash[k] = condition[k];
+            }
+            memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
             j++;
         }
-        memcpy(newAction.conditions, conditions, 5);
+        memcpy(newAction.conditions, conditions, sizeof(conditions));
         actions[i] = newAction;
         i++;
     }
@@ -351,8 +339,13 @@ String PreferenceHandler::actionToJson(ActionFlash& action) {
     doc["nextActionId"] = action.nextActionId;
     doc["delay"] = action.delay;
     JsonArray conditions = doc.createNestedArray("conditions");
-    for (int condition: action.conditions) {
-        conditions.add(condition);
+    for (int i = 0; i<MAX_ACTIONS_CONDITIONS_NUMBER; i++) {
+        if (action.conditions[1]) { // Check if the condition has an operator type, in that case, it's define, so add it
+            JsonArray condition = conditions.createNestedArray();
+            for (int16_t param: action.conditions[i]) {
+                condition.add(param);
+            }
+        }
     }
     String output;
     serializeJson(doc, output);
@@ -382,12 +375,12 @@ bool PreferenceHandler::removeAction(int id) {
     }
     return false;
 }
-String PreferenceHandler::addAction(const char* label, int type,const int* conditions,int autoRun, const char* message, int pinC, int valueC, int loopCount,int delay, int nextActionId) {
+String PreferenceHandler::addAction(const char* label, int type,const int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4],int autoRun, const char* message, int pinC, int valueC, int loopCount,int delay, int nextActionId) {
     ActionFlash newAction = {};
     newAction.id = newId(PREFERENCES_ACTION);
     newAction.type = type;
     strcpy(newAction.label, label);
-    memcpy(newAction.conditions, conditions, sizeof(newAction.conditions));
+    memcpy(newAction.conditions, conditions, sizeof(int16_t) * MAX_ACTIONS_CONDITIONS_NUMBER * 4);
     newAction.autoRun = autoRun;
     strcpy(newAction.mes, message);
     newAction.pinC = pinC;
@@ -399,7 +392,7 @@ String PreferenceHandler::addAction(const char* label, int type,const int* condi
     save(PREFERENCES_ACTION);
     return actionToJson(newAction);
 }
-String PreferenceHandler::editAction(ActionFlash& action, const char* newLabel, int newType,const int* newConditions,int newAutoRun, const char* newMessage,int newPinC, int newValueC, int newLoopCount,int newDelay, int newNextActionId) {
+String PreferenceHandler::editAction(ActionFlash& action, const char* newLabel, int newType,const int16_t newConditions[MAX_ACTIONS_NUMBER][4],int newAutoRun, const char* newMessage,int newPinC, int newValueC, int newLoopCount,int newDelay, int newNextActionId) {
     bool hasChanged = false;
     if (newConditions && memcmp(action.conditions, newConditions, sizeof(action.conditions)) != 0) {
         memcpy(action.conditions, newConditions, sizeof(action.conditions));
@@ -445,85 +438,4 @@ String PreferenceHandler::editAction(ActionFlash& action, const char* newLabel, 
         save(PREFERENCES_ACTION);
     }
     return actionToJson(action);
-}
-
-// Condition
-int PreferenceHandler::firstEmptyConditionSlot() {
-    const int count = sizeof(conditions)/sizeof(*conditions);
-    for (int i=0;i<count;i++) {
-        if (!conditions[i].id) {
-            return i;
-        }
-    }
-    return count-1;
-}
-
-String PreferenceHandler::conditionToJson(ConditionFlash& condition) {
-    StaticJsonDocument<CONDITION_JSON_CAPACITY> doc;
-    doc["id"] = condition.id;
-    doc["label"] = condition.label;
-    doc["type"] = condition.type;
-    doc["pin"] = condition.pin;
-    doc["value"] = condition.value;
-    String output;
-    serializeJson(doc, output);
-    return output;
-}
-
-String PreferenceHandler::getConditionsJson() {
-    DynamicJsonDocument doc(CONDITIONS_JSON_CAPACITY);
-    for (ConditionFlash& condition : conditions) {
-        if (condition.id) {
-            doc.add(serialized(conditionToJson(condition)));
-        }
-    }
-    String output;
-    serializeJson(doc, output);
-    return output;
-}
-
-bool PreferenceHandler::removeCondition(int id) {
-    const int count = sizeof(conditions)/sizeof(*conditions);
-    for (int i=0;i<count;i++) {
-        if (conditions[i].id == id) {
-            conditions[i] = {};
-            save(PREFERENCES_CONDITION);
-            return true;
-        }
-    }
-    return false;
-}
-String PreferenceHandler::addCondition(const char* label, int type, int pin, int value) {
-    ConditionFlash newCondition = {};
-    newCondition.id = newId(PREFERENCES_CONDITION);
-    newCondition.type = type;
-    strcpy(newCondition.label, label);
-    newCondition.pin = pin;
-    newCondition.value = value;
-    conditions[firstEmptyConditionSlot()] = newCondition;
-    save(PREFERENCES_CONDITION);
-    return conditionToJson(newCondition);
-}
-String PreferenceHandler::editCondition(ConditionFlash& condition, int newType,const char* newLabel, int newPin, int newValue) {
-    bool hasChanged = false;
-    if (newLabel && strcmp(condition.label, newLabel) != 0) {
-        strcpy(condition.label, newLabel);
-        hasChanged = true;
-    }
-    if (newType && condition.type != newType) {
-        condition.type = newType;
-        hasChanged = true;
-    }
-    if (newPin && condition.pin != newPin) {
-        condition.pin = newPin;
-        hasChanged = true;
-    }
-    if (condition.value != newValue) {
-        condition.value = newValue;
-        hasChanged = true;
-    }
-    if (hasChanged) {
-        save(PREFERENCES_CONDITION);
-    }
-    return conditionToJson(condition);
 }

@@ -138,21 +138,11 @@ void readInputPins() {
           #endif
           gpio.state = newState;
           mqtthandler->publish(gpio.pin);
-          // Check if one of the conditions set by the user were impacted by the new pin state
-          for (ConditionFlash& condition: preferencehandler->conditions) {
-            if (condition.pin == gpio.pin) {
-              #ifdef __debug
-                Serial.printf("Impacted condition detected: %s\n",condition.label);
-              #endif
-              couldRunAction = true;
-            }
-          }
+          // Now check for any runnable actions
+          runAllRunnableActions();
           lastDebounceTime = millis();
         }
       }
-    }
-    if (couldRunAction) {
-      runAllRunnableActions();
     }
   }
 }
@@ -208,22 +198,31 @@ void runAction(ActionFlash& action) {
   #endif
   // Check if all conditions are fullfilled
   bool canRun = true;
-  for (int conditionId: action.conditions) {
-    if (conditionId) {
-      for (ConditionFlash& condition: preferencehandler->conditions) {
-        if (condition.id == conditionId) {
-          const long value = digitalRead(condition.pin);
-          const bool criteria = (condition.type == 1 && value == condition.value) || (condition.type == 2 && value > condition.value) || (condition.type == 3 && value < condition.value);
-          canRun &= criteria;
-          #ifdef __debug
-            Serial.printf("Condition: %s result: %u\n",condition.label, criteria);
-          #endif
-          break;
-        }
-        if (!canRun) {
-          break;
-        }
-      } 
+  for (int i=0; i<MAX_ACTIONS_NUMBER;i++) {
+    // Ignore condition if we don't have a valid math operator, and if the previous condition had a logic operator at the end.
+    if (action.conditions[i][1] && ((i>0 && action.conditions[i-1][3])||i==0)) {
+      const long value = digitalRead(action.conditions[i][0]);
+      bool criteria;
+      if (action.conditions[i][1] == 1) {
+        criteria = (value == action.conditions[i][2]);
+      } else if (action.conditions[i][1] == 2) {
+        criteria = (value != action.conditions[i][2]);
+      } else if (action.conditions[i][1] == 3) {
+        criteria = (value > action.conditions[i][2]);
+      } else if (action.conditions[i][1] == 4) {
+        criteria = (value < action.conditions[i][2]);
+      }
+      if (i == 0) {
+        canRun = criteria;
+      } else if (action.conditions[i-1][3] == 1) {
+        canRun &= criteria;
+      } else if (action.conditions[i-1][3] == 2) {
+        canRun |= criteria;
+      } else if (action.conditions[i-1][3] == 3) {
+        canRun ^= criteria;
+      }
+    } else {
+      break;
     }
   }
   if (canRun) {
@@ -250,8 +249,8 @@ void runAction(ActionFlash& action) {
       }
     }
   }
-  // Run next action if we are not trying to do an infinite loop
-  if (canRun && action.nextActionId && action.nextActionId != action.id) {
+  // Run next action if we are not trying to do a nauty infinite loop
+  if (action.nextActionId && action.nextActionId != action.id) {
     for (ActionFlash& nAction: preferencehandler->actions) {
       if (nAction.id == action.nextActionId) {
         #ifdef __debug
