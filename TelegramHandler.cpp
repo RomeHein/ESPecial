@@ -59,12 +59,12 @@ String TelegramHandler::generateButtonFormat(GpioFlash& gpio) {
   return output;
 }
 
-String TelegramHandler::generateButtonFormat(ActionFlash& action) {
+String TelegramHandler::generateButtonFormat(AutomationFlash& a) {
   const size_t capacity = JSON_OBJECT_SIZE(2) + 200;
   DynamicJsonDocument doc(capacity);
-  doc["text"] = action.label;
+  doc["text"] = a.label;
   char callback[50];
-  snprintf(callback, sizeof(callback), "a-%i", action.id);
+  snprintf(callback, sizeof(callback), "a-%i", a.id);
   doc["callback_data"] = callback;
   String output;
   serializeJson(doc, output);
@@ -92,20 +92,20 @@ String TelegramHandler::generateInlineKeyboardsForGpios() {
   return output;
 }
 
-String TelegramHandler::generateInlineKeyboardsForActions() {
-  const size_t capacity = JSON_ARRAY_SIZE(1+(MAX_ACTIONS_NUMBER/2)) + MAX_ACTIONS_NUMBER*(JSON_OBJECT_SIZE(2)+100);
+String TelegramHandler::generateInlineKeyboardsForAutomations() {
+  const size_t capacity = JSON_ARRAY_SIZE(1+(MAX_AUTOMATIONS_NUMBER/2)) + MAX_AUTOMATIONS_NUMBER*(JSON_OBJECT_SIZE(2)+100);
   DynamicJsonDocument doc(capacity);
-  for (int i = 0; i<MAX_ACTIONS_NUMBER; i++) {
+  for (int i = 0; i<MAX_AUTOMATIONS_NUMBER; i++) {
     JsonArray subArray = doc.createNestedArray();
-    if (preference.actions[i].id) {
-        subArray.add(serialized(generateButtonFormat(preference.actions[i])));
+    if (preference.automations[i].id) {
+        subArray.add(serialized(generateButtonFormat(preference.automations[i])));
     }
     do
     {
       i++;
-    } while (i<MAX_ACTIONS_NUMBER && !preference.actions[i].id);
-    if (preference.actions[i].id && i<MAX_ACTIONS_NUMBER) {
-        subArray.add(serialized(generateButtonFormat(preference.actions[i])));
+    } while (i<MAX_AUTOMATIONS_NUMBER && !preference.automations[i].id);
+    if (preference.automations[i].id && i<MAX_AUTOMATIONS_NUMBER) {
+        subArray.add(serialized(generateButtonFormat(preference.automations[i])));
     }
   }
   String output;
@@ -136,12 +136,12 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
       if (cmd[0] == 'g') {
         preference.setGpioState(id);
         bot->sendMessageWithInlineKeyboard(bot->messages[i].chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios(), bot->messages[i].message_id);
-      // 'a' is a command for actions
+      // 'a' is a command for automations
       } else {
-        // queue action id, to be picked up by esp32.ino script
-        for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
-          if (actionsQueued[i] == 0) {
-            actionsQueued[i] = id;
+        // queue automation id, to be picked up by esp32.ino script
+        for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+          if (automationsQueued[i] == 0) {
+            automationsQueued[i] = id;
             break;
           }
         }
@@ -154,11 +154,11 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
 
       if (authorised && text == "/gpios") {
         bot->sendMessageWithInlineKeyboard(chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios());
-      } else if (authorised && text == "/actions") {
-        bot->sendMessageWithInlineKeyboard(chat_id, "Actions list", "", generateInlineKeyboardsForActions());
+      } else if (authorised && text == "/auto") {
+        bot->sendMessageWithInlineKeyboard(chat_id, "Automations list", "", generateInlineKeyboardsForAutomations());
       }else if (text == "/start") {
         char welcome[512];
-        snprintf(welcome,512,"Welcome to your ESP32 telegram bot, %s.\nHere you'll be able to control your ESP32.\nFirst, add your telegram id to the authorised list (in settings panel) to restrict your bot access:\n %s.\n\n/gpios : returns an inline keyboard to control gpios set in output mode\n/state : returns gpios' state in input mode\n/actions : returns an inline keyboard to trigger actions\n",from_name,bot->messages[i].from_id);
+        snprintf(welcome,512,"Welcome to your ESP32 telegram bot, %s.\nHere you'll be able to control your ESP32.\nFirst, add your telegram id to the authorised list (in settings panel) to restrict your bot access:\n %s.\n\n/gpios : returns an inline keyboard to control gpios set in output mode\n/state : returns gpios' state in input mode\n/auto : returns an inline keyboard to trigger automations\n",from_name,bot->messages[i].from_id);
         bot->sendMessage(chat_id, welcome, "Markdown");
       } else {
         char mes[256];

@@ -23,7 +23,7 @@ void MqttHandler::begin()
 
         snprintf(topic.config, 512, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
         snprintf(topic.gpio, 512, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.action, 512, "%s/%s/action\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.automation, 512, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
         snprintf(topic.debug, 512, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
         isInit = true;
     }
@@ -90,9 +90,9 @@ void MqttHandler::connect() {
             char gpiosTopic[strlen(topic.gpio)+3];
             sprintf(gpiosTopic, "%s/+\0",topic.gpio);
             mqtt_client->subscribe(gpiosTopic);
-            char actionsTopic[strlen(topic.action)+3];
-            sprintf(actionsTopic, "%s/+\0",topic.action);
-            mqtt_client->subscribe(actionsTopic);
+            char automationsTopic[strlen(topic.automation)+3];
+            sprintf(automationsTopic, "%s/+\0",topic.automation);
+            mqtt_client->subscribe(automationsTopic);
             mqtt_client->subscribe(topic.config);
             mqtt_client->subscribe(topic.debug);
             publishConfig();
@@ -139,21 +139,21 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
                 Serial.print("MQTT: state unchanged. Message dissmissed\n");
             #endif
         }
-    } else if (strstr(topic,this->topic.action)) {
-        int len = (strlen(topic) - strlen(this->topic.action))+1;
+    } else if (strstr(topic,this->topic.automation)) {
+        int len = (strlen(topic) - strlen(this->topic.automation))+1;
         char id_c[len];
-        strncpy(id_c, topic + strlen(this->topic.action)+1, len-1);
+        strncpy(id_c, topic + strlen(this->topic.automation)+1, len-1);
         id_c[len] = '\0';
         int id = atoi(id_c);
         int state = atoi(message);
         #ifdef __debug
-            Serial.printf("MQTT: message %s for action id %i\n", message, id);
+            Serial.printf("MQTT: message %s for automation id %i\n", message, id);
         #endif
         if (state) {
-            // queue action id, to be picked up by esp32.ino script
-            for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
-                if (actionsQueued[i] == 0) {
-                    actionsQueued[i] = id;
+            // queue automation id, to be picked up by esp32.ino script
+            for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+                if (automationsQueued[i] == 0) {
+                    automationsQueued[i] = id;
                     break;
                 }
             }

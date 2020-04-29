@@ -30,16 +30,16 @@ private:
     void handleGpioRemove();
     void handleGpioNew();
 
-    void getActions();
-    void handleRunAction();
-    void handleActionEdit();
-    void handleActionRemove();
-    void handleActionNew();
+    void getAutomations();
+    void handleRunAutomation();
+    void handleAutomationEdit();
+    void handleAutomationRemove();
+    void handleAutomationNew();
     
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     WebServer server = {80};
-    int actionsQueued[MAX_ACTIONS_NUMBER] = {};
+    int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     void begin();
 };
 #endif

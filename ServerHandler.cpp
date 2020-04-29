@@ -35,12 +35,12 @@ void ServerHandler::begin()
     server.on("/gpio", HTTP_PUT, [this]() { handleGpioEdit(); });
     server.on("/gpio", HTTP_POST, [this]() { handleGpioNew(); });
 
-    // Action related endpoints
-    server.on("/actions", [this]() { getActions(); });
-    server.on("/action/{}", HTTP_DELETE,[this]() { handleActionRemove(); });
-    server.on("/action/run/{}", [this]() { handleRunAction(); });
-    server.on("/action", HTTP_PUT, [this]() { handleActionEdit(); });
-    server.on("/action", HTTP_POST, [this]() { handleActionNew(); });
+    // Automation related endpoints
+    server.on("/automations", [this]() { getAutomations(); });
+    server.on("/automation/{}", HTTP_DELETE,[this]() { handleAutomationRemove(); });
+    server.on("/automation/run/{}", [this]() { handleRunAutomation(); });
+    server.on("/automation", HTTP_PUT, [this]() { handleAutomationEdit(); });
+    server.on("/automation", HTTP_POST, [this]() { handleAutomationNew(); });
 
     server.begin();
 }
@@ -289,28 +289,28 @@ void ServerHandler::handleSetGpioState()
     handleGetGpioState();
 }
 
-// actions
+// automationq
 
-void ServerHandler::getActions() 
+void ServerHandler::getAutomations() 
 {
-    server.send(200, "text/json", preference.getActionsJson());
+    server.send(200, "text/json", preference.getAutomationsJson());
     return;
 }
 
-void ServerHandler::handleRunAction() {
+void ServerHandler::handleRunAutomation() {
     const int id = atoi(server.pathArg(0).c_str());
-    // queue action id, to be picked up by esp32.ino script
-    for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
-        if (actionsQueued[i] == 0) {
-            actionsQueued[i] = id;
+    // queue automation id, to be picked up by esp32.ino script
+    for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+        if (automationsQueued[i] == 0) {
+            automationsQueued[i] = id;
             break;
         }
     }
     server.send(200, "text/plain", "Done");
 }
-void ServerHandler::handleActionEdit()
+void ServerHandler::handleAutomationEdit()
 {
-    DynamicJsonDocument doc(ACTION_JSON_CAPACITY);
+    DynamicJsonDocument doc(AUTOMATION_JSON_CAPACITY);
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
         #ifdef __debug
@@ -320,11 +320,11 @@ void ServerHandler::handleActionEdit()
         return;
     }
 
-    for (ActionFlash& action : preference.actions)
+    for (AutomationFlash& a : preference.automations)
     {
-        if (action.id == doc["id"].as<int>())
+        if (a.id == doc["id"].as<int>())
         {
-            int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4] = {};
+            int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4] = {};
             int j = 0;
             for(JsonArray condition: doc["settings"]["conditions"].as<JsonArray>()) {
                 int16_t conditionToFlash[4];
@@ -334,16 +334,26 @@ void ServerHandler::handleActionEdit()
                 memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
                 j++;
             }
-            server.send(200, "text/json", preference.editAction(action, doc["settings"]["label"].as<char*>(),doc["settings"]["type"].as<int>(), conditions,doc["settings"]["autoRun"].as<int>(),doc["settings"]["message"].as<char*>(),doc["settings"]["pinC"].as<int>(), doc["settings"]["valueC"].as<int>(),doc["settings"]["loopCount"].as<int>(),doc["settings"]["delay"].as<int>(), doc["settings"]["nextActionId"].as<int>()));
+            char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100] = {};
+            int l = 0;
+            for(JsonArray action: doc["settings"]["actions"].as<JsonArray>()) {
+                char actionToFlash[3][100];
+                for (int k = 0; k<3; k++) {
+                    strcpy(actionToFlash[k], action[k].as<char*>());
+                }
+                memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
+                l++;
+            }
+            server.send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(), doc["settings"]["nextAutomationId"].as<int>()));
             return;
         }
     }
     server.send(404, "text/plain", "Not found");
 }
 
-void ServerHandler::handleActionNew()
+void ServerHandler::handleAutomationNew()
 {
-    DynamicJsonDocument doc(ACTION_JSON_CAPACITY);
+    DynamicJsonDocument doc(AUTOMATION_JSON_CAPACITY);
     DeserializationError error = deserializeJson(doc, server.arg(0));
     if (error) {
         #ifdef __debug
@@ -353,8 +363,7 @@ void ServerHandler::handleActionNew()
         return;
     }
     const char* label = doc["settings"]["label"].as<char*>();
-    const int type = doc["settings"]["type"].as<int>();
-    int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4] = {};
+    int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4] = {};
     int j = 0;
     for(JsonArray condition: doc["settings"]["conditions"].as<JsonArray>()) {
         int16_t conditionToFlash[4];
@@ -364,23 +373,29 @@ void ServerHandler::handleActionNew()
         memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
         j++;
     }
+    char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100] = {};
+    int l = 0;
+    for(JsonArray action: doc["settings"]["actions"].as<JsonArray>()) {
+        char actionToFlash[3][100];
+        for (int k = 0; k<3; k++) {
+            strcpy(actionToFlash[k], action[k].as<char*>());
+        }
+        memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
+        l++;
+    }
     const int autoRun = doc["settings"]["autoRun"].as<int>();
-    const char* mes = doc["settings"]["message"].as<char*>();
-    const int pinC = doc["settings"]["pinC"].as<int>();
-    const int valueC = doc["settings"]["valueC"].as<int>();
     const int loopCount = doc["settings"]["loopCount"].as<int>();
-    const int delay = doc["settings"]["delay"].as<int>();
-    const int nextActionId = doc["settings"]["nextActionId"].as<int>();
-    if (label && type) {
-        server.send(200, "text/json", preference.addAction(label, type, conditions, autoRun, mes, pinC, valueC, loopCount, delay, nextActionId));
+    const int nextAutomationId = doc["settings"]["nextAutomationId"].as<int>();
+    if (label) {
+        server.send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount, nextAutomationId));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");
 }
 
-void ServerHandler::handleActionRemove() 
+void ServerHandler::handleAutomationRemove() 
 {
-    bool removed = preference.removeAction(atoi(server.pathArg(0).c_str()));
+    bool removed = preference.removeAutomation(atoi(server.pathArg(0).c_str()));
     if (removed){
         server.send(200, "text/plain", "Done");
         return;

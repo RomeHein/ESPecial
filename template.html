@@ -218,7 +218,14 @@
     .input-mode.off {
         color: tomato;
     }
-    #condition-editor select,#condition-editor input, #condition-editor-result>.row select, #condition-editor-result>.row input{
+    #condition-editor select,
+    #condition-editor input, 
+    #condition-editor-result>.row select, 
+    #condition-editor-result>.row input,
+    #action-editor select,
+    #action-editor input, 
+    #action-editor-result>.row select, 
+    #action-editor-result>.row input{
         width: 15%;
     }
     #blocker {
@@ -311,12 +318,12 @@
         </div>
         <div id='gpios' class='column'></div>
     </div>
-    <div class="container" id="action-container">
-        <div id='action-header-bar' class="header-container">
+    <div class="container" id="automation-container">
+        <div id='automation-header-bar' class="header-container">
             <h2>Automations</h2>
-            <a id='add-action' onclick='addAction()' class='btn edit'>+</a>
+            <a id='add-automation' onclick='addAutomation()' class='btn edit'>+</a>
         </div>
-        <div id='actions' class='column'></div>
+        <div id='automations' class='column'></div>
     </div>
     <div class="container hidden" id="setting-container">
         <div class='column'>
@@ -378,7 +385,7 @@
     var settings = {};
     var gpios = [];
     var availableGpios = [];
-    var actions = [];
+    var automations = [];
     var isSettingsMenuActivated = false;
 
     const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
@@ -541,45 +548,45 @@
         }
     };
 
-    // Actions
-    const fetchActions = async () => {
+    // Automations
+    const fetchAutomations = async () => {
         try {
-            const res = await fetch(window.location.href + 'actions');
-            const newActions = await res.json();
-            if (newActions && newActions.length) {
-                actions = newActions;
+            const res = await fetch(window.location.href + 'automations');
+            const newAutomations = await res.json();
+            if (newAutomations && newAutomations.length) {
+                automations = newAutomations;
             }
         } catch (err) {
             console.error(`Error: ${err}`);
         }
     };
 
-    const runAction = async (element) => {
-        const actionId = element.id.split('-')[1];
+    const runAutomation = async (element) => {
+        const automationId = element.id.split('-')[1];
         try {
-            await fetch(window.location.href + 'action/run/'+actionId);
+            await fetch(window.location.href + 'automation/run/'+automationId);
         } catch (err) {
             console.error(`Error: ${err}`);
         }
     };
 
-    const addAction = () => {
+    const addAutomation = () => {
         closeAnySettings();
-        const topBar = document.getElementById('action-header-bar');
+        const topBar = document.getElementById('automation-header-bar');
         if (!topBar.classList.value.includes('open')) {
-            topBar.appendChild(createEditActionPanel());
+            topBar.appendChild(createEditAutomationPanel());
             topBar.classList.add('open');
         }
     };
 
-    const deleteAction = async (element) => {
-        const actionId = element.id.split('-')[1];
+    const deleteAutomation = async (element) => {
+        const automationId = element.id.split('-')[1];
         try {
-            await fetch(`${window.location.href}action/${actionId}`, {method: 'DELETE'});
-            await fetchActions();
-            let row = document.getElementById('rowAction-' + actionId);
+            await fetch(`${window.location.href}automation/${automationId}`, {method: 'DELETE'});
+            await fetchAutomations();
+            let row = document.getElementById('rowAutomation-' + automationId);
             closeAnySettings();
-            let column = document.getElementById('actions');
+            let column = document.getElementById('automations');
             column.removeChild(row);
         } catch (err) {
             console.error(err);
@@ -654,15 +661,14 @@
         }
     };
 
-    const saveActionSetting = async (element) => {
-        const actionId = element.id.split('-')[1];
-        const isNew = (actionId === 'new');
+    const saveAutomationSetting = async (element) => {
+        const automationId = element.id.split('-')[1];
+        const isNew = (automationId === 'new');
         let req = { settings: {} };
         if (!isNew) {
-            req.id = actionId;
+            req.id = automationId;
         }
-        req.settings.label = document.getElementById(`setActionLabel-${actionId}`).value;
-        req.settings.type = +document.getElementById(`setActionType-${actionId}`).value;
+        req.settings.label = document.getElementById(`setAutomationLabel-${automationId}`).value;
         req.settings.conditions = [...document.getElementById(`condition-editor-result`).childNodes].map(rowElement => {
             const id = +rowElement.id.split('-')[1];
             return [
@@ -672,18 +678,22 @@
                 +document.getElementById(`addNextSignCondition-${id}`).value,
             ];
         })
-        req.settings.autoRun = document.getElementById(`setActionAutoRun-${actionId}`).checked;
-        req.settings.message = document.getElementById(`setActionMessage-${actionId}`).value;
-        req.settings.pinC = +document.getElementById(`setActionPinC-${actionId}`).value;
-        req.settings.valueC = +document.getElementById(`setActionPinValueC-${actionId}`).value;
-        req.settings.loopCount = +document.getElementById(`setActionLoopCount-${actionId}`).value;
-        req.settings.delay = +document.getElementById(`setActionDelay-${actionId}`).value;
-        req.settings.nextActionId = +document.getElementById(`setNextAction-${actionId}`).value;
+        req.settings.actions = [...document.getElementById(`action-editor-result`).childNodes].map(rowElement => {
+            const id = +rowElement.id.split('-')[1];
+            return [
+                document.getElementById(`addTypeAction-${id}`).value,
+                document.getElementById(`addValueAction-${id}`).value,
+                document.getElementById(`addGpioAction-${id}`).value
+            ];
+        })
+        req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
+        req.settings.loopCount = +document.getElementById(`setAutomationLoopCount-${automationId}`).value;
+        req.settings.nextAutomationId = +document.getElementById(`setNextAutomation-${automationId}`).value;
         try {
-            if (!req.settings.label || !req.settings.type) {
+            if (!req.settings.label) {
                 throw new Error('Parameters missing, please fill at least label and type inputs.');
             }
-            const resp = await fetch(`${window.location.href}action`, {
+            const resp = await fetch(`${window.location.href}automation`, {
                 method: isNew ? 'POST' : 'PUT',
                 headers: {
                     'Accept': 'application/json',
@@ -692,15 +702,15 @@
                 body: JSON.stringify(req)
             });
             const newSetting = await resp.json();
-            let column = document.getElementById('actions');
+            let column = document.getElementById('automations');
             if (isNew) {
-                actions.push(newSetting);
-                column.insertBefore(createActionRow(newSetting), column.firstChild);
+                automations.push(newSetting);
+                column.insertBefore(createAutomationRow(newSetting), column.firstChild);
                 closeAnySettings();
             } else {
-                actions = actions.map(oldAction => (oldAction.id == +actionId) ? {...newSetting} : oldAction);
-                let oldRow = document.getElementById('rowAction-' + actionId);
-                column.replaceChild(createActionRow(newSetting), oldRow);
+                automations = automations.map(oldAutomation => (oldAutomation.id == +automationId) ? {...newSetting} : oldAutomation);
+                let oldRow = document.getElementById('rowAutomation-' + automationId);
+                column.replaceChild(createAutomationRow(newSetting), oldRow);
             }
         } catch (err) {
             console.error(err);
@@ -718,22 +728,28 @@
         }
     };
 
-    const openActionSetting = (element) => {
+    const openAutomationSetting = (element) => {
         closeAnySettings();
-        const action = actions.find(action => action.id === +element.id.split('-')[1]);
-        const row = document.getElementById('rowAction-' + action.id);
+        const automation = automations.find(automation => automation.id === +element.id.split('-')[1]);
+        const row = document.getElementById('rowAutomation-' + automation.id);
         if (!row.classList.value.includes('open')) {
-            row.appendChild(createEditActionPanel(action));
-            addConditionEditor(true);
+            row.appendChild(createEditAutomationPanel(automation));
             // Fill conditions
-            action.conditions.forEach(condition => {
+            automation.conditions.forEach(condition => {
                 // Check if the condition contains a valid math operator sign
                 if (condition[1]) {
-                    addConditionEditor(false,condition);
+                    addConditionEditor(condition);
+                }
+            })
+            // Fill actions
+            automation.actions.forEach(action => {
+                // Check if the action contains a valid type
+                if (action[0]) {
+                    addActionEditor(action);
                 }
             })
             row.classList.add('open');
-            document.getElementById(`setActionAutoRun-${action.id}`).checked = action.autoRun;
+            document.getElementById(`setAutomationAutoRun-${automation.id}`).checked = automation.autoRun;
         }
     };
 
@@ -751,13 +767,13 @@
         if (isSettingsMenuActivated) {
             document.getElementById('go-to-settings-button').classList.add('hidden');
             document.getElementById('gpio-container').classList.add('hidden');
-            document.getElementById('action-container').classList.add('hidden');
+            document.getElementById('automation-container').classList.add('hidden');
             document.getElementById('home-button').classList.remove('hidden');
             document.getElementById('setting-container').classList.remove('hidden');
         } else {
             document.getElementById('go-to-settings-button').classList.remove('hidden');
             document.getElementById('gpio-container').classList.remove('hidden');
-            document.getElementById('action-container').classList.remove('hidden');
+            document.getElementById('automation-container').classList.remove('hidden');
             document.getElementById('home-button').classList.add('hidden');
             document.getElementById('setting-container').classList.add('hidden');
         }
@@ -775,13 +791,13 @@
         return child.firstChild;
     };
 
-    const createActionRow = (action) => {
+    const createAutomationRow = (automation) => {
         let child = document.createElement('div');
-        child.innerHTML = `<div class='row' id='rowAction-${action.id}'>
-            <div class='label'> ${action.label}</div>
+        child.innerHTML = `<div class='row' id='rowAutomation-${automation.id}'>
+            <div class='label'> ${automation.label}</div>
             <div class='btn-container'>
-                <a onclick='openActionSetting(this)' id='editAction-${action.id}' class='btn edit'>edit</a>
-                <a onclick='runAction(this)' id='runAction-${action.id}' class='btn on'>run</a>
+                <a onclick='openAutomationSetting(this)' id='editAutomation-${automation.id}' class='btn edit'>edit</a>
+                <a onclick='runAutomation(this)' id='runAutomation-${automation.id}' class='btn on'>run</a>
             </div>
         </div>`;
         return child.firstChild;
@@ -833,10 +849,11 @@
         return child;
     };
 
-    const deleteConditionEditor = (element) => {
+    const deleteRowEditor = (element) => {
+        const isCondition = element.id.split('-')[0] === 'deleteCondition';
         const rowNumber = +element.id.split('-')[1] || 0;
-        const conditionEditorResultElement = document.getElementById(`condition-editor-result`);
-        const conditionRowElement = document.getElementById(`condition-${rowNumber}`);
+        const conditionEditorResultElement = document.getElementById(`${isCondition ? 'condition' : 'action'}-editor-result`);
+        const conditionRowElement = document.getElementById(`${isCondition ? 'condition' : 'action'}-${rowNumber}`);
         conditionEditorResultElement.removeChild(conditionRowElement); 
     };
 
@@ -873,79 +890,90 @@
                             <option value=2 ${selectedNextSign == 2 ? 'selected':''}>OR</option>
                             <option value=3 ${selectedNextSign == 3 ? 'selected':''}>XOR</option>
                         </select>
-                        <a onclick='deleteConditionEditor(this)' id='deleteCondition${conditionNumber}' class='btn delete'>delete</a>`
+                        <a onclick='deleteRowEditor(this)' id='deleteCondition${conditionNumber}' class='btn delete'>delete</a>`
         conditionEditorElement.appendChild(rowElement);
     };
 
+    const addActionEditor = (action) => {
+        let selectedType = 0;
+        let selectedValue = 0;
+        let selectedPin = 0;
+        if (action) {
+            selectedType = action[0];
+            selectedValue = action[1];
+            selectedPin = action[2];
+        }
+
+        let gpioActionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedPin == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
+        
+        const actionEditorElement = document.getElementById(`action-editor-result`);
+        const actionNumber = '-' + actionEditorElement.childElementCount;
+        const rowElement = document.createElement('div');
+        rowElement.id = `action${actionNumber}`;
+        rowElement.classList.add('row');
+        rowElement.innerHTML = `<select id='addTypeAction${actionNumber}' name='signAction'>
+                            <option value=1 ${selectedType == 1 ? 'selected':''}>Set Gpio pin</option>
+                            <option value=2 ${selectedType == 2 ? 'selected':''}>Send telegram message</option>
+                            <option value=3 ${selectedType == 3 ? 'selected':''}>Display text on tft screen</option>
+                            <option value=4 ${selectedType == 4 ? 'selected':''}>Delay</option>
+                        </select>
+                        <select id='addGpioAction${actionNumber}' name='gpioCondition'>${gpioActionOptions}</select>
+                        <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' placeholder='value'>
+                        <a onclick='deleteRowEditor(this)' id='deleteAction${actionNumber}' class='btn delete'>delete</a>`
+        actionEditorElement.appendChild(rowElement);
+    };
+
     // The edit panel for setting gpios
-    const createEditActionPanel = (action) => {
-        if (!action) {
-            action = {
+    const createEditAutomationPanel = (automation) => {
+        if (!automation) {
+            automation = {
                 id: 'new',
                 conditions: [],
                 type: 1,
                 loopCount: 0
             };
         }
-        let nextActionOptions = actions.reduce((acc,a) => acc+`<option ${action.nextActionId === a.id ? 'selected' : ''} value=${a.id}>${a.label}</option>`,``);
-        let gpioOptions = gpios.reduce((acc,gpio) =>  acc+`<option ${action.pinC === gpio.pin ? 'selected' : ''} value=${gpio.pin}>${gpio.label}</option>`,``);
+        let nextAutomationOptions = automations.reduce((acc,a) => acc+`<option ${automation.nextAutomationId === a.id ? 'selected' : ''} value=${a.id}>${a.label}</option>`,``);
+        let gpioOptions = gpios.reduce((acc,gpio) =>  acc+`<option ${automation.pinC === gpio.pin ? 'selected' : ''} value=${gpio.pin}>${gpio.label}</option>`,``);
         let gpioConditionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin}>${gpio.label}</option>`,``);
         let child = document.createElement('div');
         child.classList.add('set');
         child.innerHTML = `<div class='set-inputs'>
                 <div class='row'>
-                    <label for='setActionLabel-${action.id}'>label:</label>
-                    <input id='setActionLabel-${action.id}' type='text' name='label' value='${action.label||''}' placeholder='Describe your action'>
+                    <label for='setAutomationLabel-${automation.id}'>Label:</label>
+                    <input id='setAutomationLabel-${automation.id}' type='text' name='label' value='${automation.label||''}' placeholder='Describe your automation'>
                 </div>
                 <div class='row'>
-                    <label for='setActionAutoRun-${action.id}'>Auto run:</label>
-                    <input type='checkbox' name='autorun' id='setActionAutoRun-${action.id}' value='${action.autoRun}'>
+                    <label for='setAutomationAutoRun-${automation.id}'>Auto run:</label>
+                    <input type='checkbox' name='autorun' id='setAutomationAutoRun-${automation.id}' value='${automation.autoRun}'>
+                </div>
+                <div class='row'>
+                    <label for='setAutomationLoopCount-${automation.id}'>Repeat automation:</label>
+                    <input id='setAutomationLoopCount-${automation.id}' type='number' name='loopCount' value='${automation.loopCount||''}' placeholder='How many times the automation must be repeat'>
+                </div>
+                <div class='row'>
+                    <label for='setNextAutomation-${automation.id}'>Next automation:</label>
+                    <select id='setNextAutomation-${automation.id}' name='next'><option value=0>None</option>${nextAutomationOptions}</select>
                 </div>
                 <div class='column'>
-                    
                     <div id='condition-editor' class='row'>
                         <div>Condition editor</div>
-                        <a onclick='addConditionEditor()' id='addCondition-${action.id}' class='btn save'>new</a>
+                        <a onclick='addConditionEditor()' id='addCondition-${automation.id}' class='btn save'>new</a>
                     </div>
                     <div id='condition-editor-result' class="column"></div>
                 </div>
-                <div class='row'>
-                    <label for='setActionType-${action.id}'>type:</label>
-                    <select id='setActionType-${action.id}' name='type' onchange='updateActionTypes("${action.id}")'>
-                        <option ${action.type === 1 ? 'selected' : ''} value=1>Send Telegram Notification</option>
-                        <option ${action.type === 2 ? 'selected' : ''} value=2>Display on tft screen</option>
-                        <option ${action.type === 3 ? 'selected' : ''} value=3>Set Pin to value</option>
-                    </select>
-                </div>
-                <div class='row ${action.type === 3 ? 'hidden' : ''}'>
-                    <label for='setActionMessage-${action.id}'>message:</label>
-                    <input id='setActionMessage-${action.id}' type='text' name='message' value='${action.message||''}' placeholder='Message to display or send'>
-                </div>
-                <div class='row ${action.type !== 3 ? 'hidden' : ''}'>
-                    <label for='setActionPinC-${action.id}'>Gpio to control:</label>
-                    <select id='setActionPinC-${action.id}' name='gpio'>${gpioOptions}</select>
-                </div>
-                <div class='row ${action.type !== 3 ? 'hidden' : ''}'>
-                    <label for='setActionPinValueC-${action.id}'>Gpio value:</label>
-                    <input id='setActionPinValueC-${action.id}' type='number' name='gpioValue' value='${action.valueC||''}' placeholder='Set the gpio value when the action is triggered'>
-                </div>
-                <div class='row'>
-                    <label for='setActionLoopCount-${action.id}'>Repeat action:</label>
-                    <input id='setActionLoopCount-${action.id}' type='number' name='loopCount' value='${action.loopCount||''}' placeholder='How many times the action must be repeat'>
-                </div>
-                <div class='row'>
-                    <label for='setActionDelay-${action.id}'>Delay between loop:</label>
-                    <input id='setActionDelay-${action.id}' type='number' name='delay' value='${action.delay||''}' placeholder='Pause between each execution'>
-                </div>
-                <div class='row'>
-                    <label for='setNextAction-${action.id}'>Next action:</label>
-                    <select id='setNextAction-${action.id}' name='next'><option value=0>None</option>${nextActionOptions}</select>
+                <div class='column'>
+                    <div id='action-editor' class='row'>
+                        <div>Action editor</div>
+                        <a onclick='addActionEditor()' id='addAction-${automation.id}' class='btn save'>new</a>
+                    </div>
+                    <div id='action-editor-result' class="column"></div>
                 </div>
                 </div>
             <div class='set-buttons'>
-                <a onclick='closeAnySettings()' id='cancelAction-${action.id}' class='btn cancel'>cancel</a>
-                ${action.id === "new" ? '' : `<a onclick='deleteAction(this)' id='deleteAction-${action.id}' class='btn delete'>delete</a>`}
-                <a onclick='saveActionSetting(this)' id='saveAction-${action.id}' class='btn save'>save</a>
+                <a onclick='closeAnySettings()' id='cancelAutomation-${automation.id}' class='btn cancel'>cancel</a>
+                ${automation.id === "new" ? '' : `<a onclick='deleteAutomation(this)' id='deleteAutomation-${automation.id}' class='btn delete'>delete</a>`}
+                <a onclick='saveAutomationSetting(this)' id='saveAutomation-${automation.id}' class='btn save'>save</a>
             </div>`;
         return child;
     };
@@ -972,16 +1000,16 @@
         }
     };
 
-    const updateActionTypes = (id) => {
-        const selectType = document.getElementById(`setActionType-${id || 'new'}`);
+    const updateAutomationTypes = (id) => {
+        const selectType = document.getElementById(`setAutomationType-${id || 'new'}`);
         if (+selectType.value !== 3) {
-            document.getElementById(`setActionPinC-${id || 'new'}`).parentElement.classList.add('hidden');
-            document.getElementById(`setActionPinValueC-${id || 'new'}`).parentElement.classList.add('hidden');
-            document.getElementById(`setActionMessage-${id || 'new'}`).parentElement.classList.remove('hidden');
+            document.getElementById(`setAutomationPinC-${id || 'new'}`).parentElement.classList.add('hidden');
+            document.getElementById(`setAutomationPinValueC-${id || 'new'}`).parentElement.classList.add('hidden');
+            document.getElementById(`setAutomationMessage-${id || 'new'}`).parentElement.classList.remove('hidden');
         } else {
-            document.getElementById(`setActionPinC-${id || 'new'}`).parentElement.classList.remove('hidden');
-            document.getElementById(`setActionPinValueC-${id || 'new'}`).parentElement.classList.remove('hidden');
-            document.getElementById(`setActionMessage-${id || 'new'}`).parentElement.classList.add('hidden');
+            document.getElementById(`setAutomationPinC-${id || 'new'}`).parentElement.classList.remove('hidden');
+            document.getElementById(`setAutomationPinValueC-${id || 'new'}`).parentElement.classList.remove('hidden');
+            document.getElementById(`setAutomationMessage-${id || 'new'}`).parentElement.classList.add('hidden');
         }
     };
 
@@ -993,10 +1021,10 @@
         gpios.forEach(gpio => {
             containerG.appendChild(createGpioControlRow(gpio));
         });
-        await fetchActions();
-        const containerA = document.getElementById('actions');
-        actions.forEach(action => {
-            containerA.appendChild(createActionRow(action));
+        await fetchAutomations();
+        const containerA = document.getElementById('automations');
+        automations.forEach(automation => {
+            containerA.appendChild(createAutomationRow(automation));
         });
         await fetchSettings();
         document.getElementById('page-loader').remove();

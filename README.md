@@ -101,7 +101,7 @@ Now we can set our first action. Simply click the add button in the action secti
 <p align="center">
     <img src="images/add-condition-panel.png" width="400">
 </p>
-Actions are based on conditions. You can select multiple conditions. But keep in mind that in order to run, all conditions have to be true. 
+Automations are based on conditions. You can select multiple conditions. But keep in mind that in order to run, all conditions have to be true. 
 
 If you select the auto run option, the action will be triggered whenever its conditions become true. This can be very handy if you want to send a Telegram notification when a gpio value changes.
 You can simulate a `while` loop by setting the `repeat action` input. Just keep in mind that if you leave it empty or set it to 0, the action won't trigger. So set it to `1` at least.
@@ -128,7 +128,7 @@ http://your.ip.local.ip/digital/pinNumber/0
 
 And simply send:
 ```
-http://your.ip.local.ip/action/actionId
+http://your.ip.local.ip/automationtion/automationId
 ```
 to run a specific action. Note that all conditions you have specified for than action must be fullfilled in order to execute it.
 

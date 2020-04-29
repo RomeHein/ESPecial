@@ -21,15 +21,15 @@ void PreferenceHandler::begin()
         memcpy(gpios, buffer, schLen);
     }
 
-    // Init action preferences
+    // Init automation preferences
     {
-        setActionsFromJson(preferences.getString(PREFERENCES_ACTION, "[]").c_str());
-        // Note: Can't figure it out why the following code does not work with the ActionFlash array struct.
+        setAutomationsFromJson(preferences.getString(PREFERENCES_AUTOMATION, "[]").c_str());
+        // Note: Can't figure it out why the following code does not work with the AutomationFlash array struct.
         // The first object is saving well, but all other are not...
-        // size_t schLen = preferences.getBytes(PREFERENCES_ACTION, NULL, NULL);
+        // size_t schLen = preferences.getBytes(PREFERENCES_AUTOMATION, NULL, NULL);
         // char buffer[schLen];
-        // preferences.getBytes(PREFERENCES_ACTION, buffer, schLen);
-        // memcpy(actions, buffer, schLen);
+        // preferences.getBytes(PREFERENCES_AUTOMATION, buffer, schLen);
+        // memcpy(automations, buffer, schLen);
     }
 
     // Init telegram preferences
@@ -68,11 +68,11 @@ void PreferenceHandler::save(char* preference) {
     #endif
     if (strcmp(preference, PREFERENCES_GPIOS) == 0) {
         preferences.putBytes(PREFERENCES_GPIOS, &gpios, sizeof(gpios));
-    }else if (strcmp(preference, PREFERENCES_ACTION) == 0) {
+    }else if (strcmp(preference, PREFERENCES_AUTOMATION) == 0) {
         // Note: saving a string instead of bytes. 
-        // The struct for ActionFlash does not seem to work properly with the putBytes. 
+        // The struct for AutomationFlash does not seem to work properly with the putBytes. 
         // Need further investigation
-        preferences.putString(PREFERENCES_ACTION, getActionsJson());
+        preferences.putString(PREFERENCES_AUTOMATION, getAutomationsJson());
     }else if (strcmp(preference, PREFERENCES_MQTT) == 0) {
         preferences.putBytes(PREFERENCES_MQTT, &mqtt, sizeof(mqtt));
     }else if (strcmp(preference, PREFERENCES_TELEGRAM) == 0) {
@@ -84,10 +84,10 @@ void PreferenceHandler::save(char* preference) {
 // Return the highest id of an array, + 1
 int PreferenceHandler::newId(char *preference) {
     int newId = 1;
-    if (preference == PREFERENCES_ACTION) {
-        for (ActionFlash& action: actions) {
-            if (action.id>=newId) {
-                newId = action.id + 1;
+    if (preference == PREFERENCES_AUTOMATION) {
+        for (AutomationFlash& automation: automations) {
+            if (automation.id>=newId) {
+                newId = automation.id + 1;
             }
         }
     }
@@ -276,19 +276,19 @@ bool PreferenceHandler::editTelegram(const char* newToken,const char* newChatId,
     }
     return hasChanged;
 }
-// Action
-int PreferenceHandler::firstEmptyActionSlot() {
-    const int count = sizeof(actions)/sizeof(*actions);
+// Automation
+int PreferenceHandler::firstEmptyAutomationSlot() {
+    const int count = sizeof(automations)/sizeof(*automations);
     for (int i=0;i<count;i++) {
-        if (!actions[i].id) {
+        if (!automations[i].id) {
             return i;
         }
     }
     return count-1;
 }
 
-void PreferenceHandler::setActionsFromJson(const char* json) {
-    DynamicJsonDocument doc(ACTIONS_JSON_CAPACITY);
+void PreferenceHandler::setAutomationsFromJson(const char* json) {
+    DynamicJsonDocument doc(AUTOMATIONS_JSON_CAPACITY);
     DeserializationError error = deserializeJson(doc, json);
     if (error) {
         #ifdef __debug
@@ -298,21 +298,16 @@ void PreferenceHandler::setActionsFromJson(const char* json) {
         return;
     }
     int i = 0;
-    for (JsonObject action : doc.as<JsonArray>()) {
-        ActionFlash newAction = {};
-        newAction.id = action["id"].as<int>();
-        newAction.type = action["type"].as<int>();
-        strcpy(newAction.label, action["label"].as<char*>());
-        strcpy(newAction.mes, action["message"].as<char*>());
-        newAction.pinC = action["pinC"].as<int>();
-        newAction.valueC = action["valueC"].as<int>();
-        newAction.loopCount = action["loopCount"].as<int>();
-        newAction.nextActionId = action["nextActionId"].as<int>();
-        newAction.autoRun = action["autoRun"].as<int>();
-        newAction.delay = action["delay"].as<int>();
-        int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4] = {};
+    for (JsonObject a : doc.as<JsonArray>()) {
+        AutomationFlash newAutomation = {};
+        newAutomation.id = a["id"].as<int>();
+        strcpy(newAutomation.label, a["label"].as<char*>());
+        newAutomation.autoRun = a["autoRun"].as<int>();
+        newAutomation.loopCount = a["loopCount"].as<int>();
+        newAutomation.nextAutomationId = a["nextAutomationId"].as<int>();
+        int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4] = {};
         int j = 0;
-        for(JsonArray condition: action["conditions"].as<JsonArray>()) {
+        for(JsonArray condition: a["conditions"].as<JsonArray>()) {
             int16_t conditionToFlash[4];
             for (int k = 0; k<4; k++) {
                 conditionToFlash[k] = condition[k];
@@ -320,30 +315,47 @@ void PreferenceHandler::setActionsFromJson(const char* json) {
             memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
             j++;
         }
-        memcpy(newAction.conditions, conditions, sizeof(conditions));
-        actions[i] = newAction;
+        memcpy(newAutomation.conditions, conditions, sizeof(conditions));
+
+        char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100] = {};
+        int l = 0;
+        for(JsonArray action: a["actions"].as<JsonArray>()) {
+            char actionToFlash[3][100];
+            for (int k = 0; k<3; k++) {
+                strcpy(actionToFlash[k], action[k].as<char*>());
+            }
+            memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
+            l++;
+        }
+        memcpy(newAutomation.actions, actions, sizeof(actions));
+
+        automations[i] = newAutomation;
         i++;
     }
 }
 
-String PreferenceHandler::actionToJson(ActionFlash& action) {
-    DynamicJsonDocument doc(ACTION_JSON_CAPACITY);
-    doc["id"] = action.id;
-    doc["label"] = action.label;
-    doc["autoRun"] = action.autoRun;
-    doc["type"] = action.type;
-    doc["message"] = action.mes;
-    doc["pinC"] = action.pinC;
-    doc["valueC"] = action.valueC;
-    doc["loopCount"] = action.loopCount;
-    doc["nextActionId"] = action.nextActionId;
-    doc["delay"] = action.delay;
+String PreferenceHandler::automationToJson(AutomationFlash& a) {
+    DynamicJsonDocument doc(AUTOMATION_JSON_CAPACITY);
+    doc["id"] = a.id;
+    doc["label"] = a.label;
+    doc["autoRun"] = a.autoRun;
+    doc["loopCount"] = a.loopCount;
+    doc["nextAutomationId"] = a.nextAutomationId;
     JsonArray conditions = doc.createNestedArray("conditions");
-    for (int i = 0; i<MAX_ACTIONS_CONDITIONS_NUMBER; i++) {
-        if (action.conditions[1]) { // Check if the condition has an operator type, in that case, it's define, so add it
+    for (int i = 0; i<MAX_AUTOMATIONS_CONDITIONS_NUMBER; i++) {
+        if (a.conditions[i][1]) { // Check if the condition has an operator type, in that case, it's define, so add it
             JsonArray condition = conditions.createNestedArray();
-            for (int16_t param: action.conditions[i]) {
+            for (int16_t param: a.conditions[i]) {
                 condition.add(param);
+            }
+        }
+    }
+    JsonArray actions = doc.createNestedArray("actions");
+    for (int i = 0; i<MAX_AUTOMATION_ACTION_NUMBER; i++) {
+        if (a.actions[i][0] && strlen(a.actions[i][0])!=0) { // Check if the action has a type, in that case, it's define, so add it
+            JsonArray action = actions.createNestedArray();
+            for (int j=0; j<3; j++) {
+                action.add(a.actions[i][j]);
             }
         }
     }
@@ -352,11 +364,11 @@ String PreferenceHandler::actionToJson(ActionFlash& action) {
     return output;
 }
 
-String PreferenceHandler::getActionsJson() {
-    DynamicJsonDocument doc(ACTIONS_JSON_CAPACITY);
-    for (ActionFlash& action : actions) {
-        if (action.id) {
-            doc.add(serialized(actionToJson(action)));
+String PreferenceHandler::getAutomationsJson() {
+    DynamicJsonDocument doc(AUTOMATIONS_JSON_CAPACITY);
+    for (AutomationFlash& a : automations) {
+        if (a.id) {
+            doc.add(serialized(automationToJson(a)));
         }
     }
     String output;
@@ -364,78 +376,58 @@ String PreferenceHandler::getActionsJson() {
     return output;
 }
 
-bool PreferenceHandler::removeAction(int id) {
-    const int count = sizeof(actions)/sizeof(*actions);
+bool PreferenceHandler::removeAutomation(int id) {
+    const int count = sizeof(automations)/sizeof(*automations);
     for (int i=0;i<count;i++) {
-        if (actions[i].id == id) {
-            actions[i] = {};
-            save(PREFERENCES_ACTION);
+        if (automations[i].id == id) {
+            automations[i] = {};
+            save(PREFERENCES_AUTOMATION);
             return true;
         }
     }
     return false;
 }
-String PreferenceHandler::addAction(const char* label, int type,const int16_t conditions[MAX_ACTIONS_CONDITIONS_NUMBER][4],int autoRun, const char* message, int pinC, int valueC, int loopCount,int delay, int nextActionId) {
-    ActionFlash newAction = {};
-    newAction.id = newId(PREFERENCES_ACTION);
-    newAction.type = type;
-    strcpy(newAction.label, label);
-    memcpy(newAction.conditions, conditions, sizeof(int16_t) * MAX_ACTIONS_CONDITIONS_NUMBER * 4);
-    newAction.autoRun = autoRun;
-    strcpy(newAction.mes, message);
-    newAction.pinC = pinC;
-    newAction.valueC = valueC;
-    newAction.loopCount = loopCount;
-    newAction.nextActionId = nextActionId;
-    newAction.delay = delay;
-    actions[firstEmptyActionSlot()] = newAction;
-    save(PREFERENCES_ACTION);
-    return actionToJson(newAction);
+String PreferenceHandler::addAutomation(const char* label,int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100], int loopCount, int nextAutomationId) {
+    AutomationFlash newAutomation = {};
+    newAutomation.id = newId(PREFERENCES_AUTOMATION);
+    strcpy(newAutomation.label, label);
+    memcpy(newAutomation.conditions, conditions, sizeof(newAutomation.conditions));
+    memcpy(newAutomation.actions, actions, sizeof(newAutomation.actions));
+    newAutomation.autoRun = autoRun;
+    newAutomation.loopCount = loopCount;
+    newAutomation.nextAutomationId = nextAutomationId;
+    automations[firstEmptyAutomationSlot()] = newAutomation;
+    save(PREFERENCES_AUTOMATION);
+    return automationToJson(newAutomation);
 }
-String PreferenceHandler::editAction(ActionFlash& action, const char* newLabel, int newType,const int16_t newConditions[MAX_ACTIONS_NUMBER][4],int newAutoRun, const char* newMessage,int newPinC, int newValueC, int newLoopCount,int newDelay, int newNextActionId) {
+String PreferenceHandler::editAutomation(AutomationFlash& automation, const char* newLabel, int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][3][100], int newLoopCount, int newNextAutomationId) {
     bool hasChanged = false;
-    if (newConditions && memcmp(action.conditions, newConditions, sizeof(action.conditions)) != 0) {
-        memcpy(action.conditions, newConditions, sizeof(action.conditions));
+    if (newConditions && memcmp(automation.conditions, newConditions, sizeof(automation.conditions)) != 0) {
+        memcpy(automation.conditions, newConditions, sizeof(automation.conditions));
         hasChanged = true;
     }
-    if (newAutoRun && action.autoRun != newAutoRun) {
-        action.autoRun = newAutoRun;
+    if (newActions && memcmp(automation.actions, newActions, sizeof(automation.actions)) != 0) {
+        memcpy(automation.actions, newActions, sizeof(automation.actions));
         hasChanged = true;
     }
-    if (newLabel && strcmp(action.label, newLabel) != 0) {
-        strcpy(action.label, newLabel);
+    if (newAutoRun && automation.autoRun != newAutoRun) {
+        automation.autoRun = newAutoRun;
         hasChanged = true;
     }
-    if (newMessage && strcmp(action.mes, newMessage) != 0) {
-        strcpy(action.mes, newMessage);
+    if (newLabel && strcmp(automation.label, newLabel) != 0) {
+        strcpy(automation.label, newLabel);
         hasChanged = true;
     }
-    if (newType && action.type != newType) {
-        action.type = newType;
+    if (automation.loopCount != newLoopCount) {
+        automation.loopCount = newLoopCount;
         hasChanged = true;
     }
-    if (newPinC && action.pinC != newPinC) {
-        action.pinC = newPinC;
-        hasChanged = true;
-    }
-    if (action.valueC != newValueC) {
-        action.valueC = newValueC;
-        hasChanged = true;
-    }
-    if (action.loopCount != newLoopCount) {
-        action.loopCount = newLoopCount;
-        hasChanged = true;
-    }
-    if (action.delay != newDelay) {
-        action.delay = newDelay;
-        hasChanged = true;
-    }
-    if (action.nextActionId != newNextActionId) {
-        action.nextActionId = newNextActionId;
+    if (automation.nextAutomationId != newNextAutomationId) {
+        automation.nextAutomationId = newNextAutomationId;
         hasChanged = true;
     }
     if (hasChanged) {
-        save(PREFERENCES_ACTION);
+        save(PREFERENCES_AUTOMATION);
     }
-    return actionToJson(action);
+    return automationToJson(automation);
 }

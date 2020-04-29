@@ -30,7 +30,7 @@
 #define ADC_EN 14
 #define ADC_PIN 34
 
-#define MAX_QUEUED_ACTIONS 10
+#define MAX_QUEUED_AUTOMATIONS 10
 
 TFT_eSPI tft(135, 240);
 ServerHandler *serverhandler;
@@ -128,7 +128,6 @@ void displayServicesInfo ()
 
 void readInputPins() {
   if (millis() > debounceDelay + lastDebounceTime) {
-    bool couldRunAction = false;
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
         int newState = digitalRead(gpio.pin);
@@ -138,87 +137,87 @@ void readInputPins() {
           #endif
           gpio.state = newState;
           mqtthandler->publish(gpio.pin);
-          // Now check for any runnable actions
-          runAllRunnableActions();
-          lastDebounceTime = millis();
+          // Now check for any runnable automations
+          runAllRunnableAutomations();
         }
       }
     }
+    lastDebounceTime = millis();
   }
 }
 
-void runAllRunnableActions() {
-  for (ActionFlash& action: preferencehandler->actions) {
-    if (action.autoRun) {
-      runAction(action);
+void runAllRunnableAutomations() {
+  for (AutomationFlash& automation: preferencehandler->automations) {
+    if (automation.autoRun) {
+      runAutomation(automation);
     }
   }
 }
 
-void pickUpQueuedActions() {
-  for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
-    if (telegramhandler->actionsQueued[i] == 0) break;
+void pickUpQueuedAutomations() {
+  for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+    if (telegramhandler->automationsQueued[i] == 0) break;
     #ifdef __debug
-      Serial.printf("Telegram action id queued detected: %i\n",telegramhandler->actionsQueued[i]);
+      Serial.printf("Telegram automation id queued detected: %i\n",telegramhandler->automationsQueued[i]);
     #endif
-    runAction(telegramhandler->actionsQueued[i]);
+    runAutomation(telegramhandler->automationsQueued[i]);
   }
-  for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
-    if (serverhandler->actionsQueued[i] == 0) break;
+  for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+    if (serverhandler->automationsQueued[i] == 0) break;
     #ifdef __debug
-      Serial.printf("Server action id queued detected: %i\n",serverhandler->actionsQueued[i]);
+      Serial.printf("Server automation id queued detected: %i\n",serverhandler->automationsQueued[i]);
     #endif
-    runAction(serverhandler->actionsQueued[i]);
+    runAutomation(serverhandler->automationsQueued[i]);
   }
-  for (int i=0; i<MAX_ACTIONS_NUMBER; i++) {
-    if (mqtthandler->actionsQueued[i] == 0) break;
+  for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+    if (mqtthandler->automationsQueued[i] == 0) break;
     #ifdef __debug
-      Serial.printf("Mqtt action id queued detected: %i\n",mqtthandler->actionsQueued[i]);
+      Serial.printf("Mqtt automation id queued detected: %i\n",mqtthandler->automationsQueued[i]);
     #endif
-    runAction(mqtthandler->actionsQueued[i]);
+    runAutomation(mqtthandler->automationsQueued[i]);
   }
-  // Reset queues once actions executed
-  memset(telegramhandler->actionsQueued, 0, sizeof(telegramhandler->actionsQueued));
-  memset(serverhandler->actionsQueued, 0, sizeof(serverhandler->actionsQueued));
-  memset(mqtthandler->actionsQueued, 0, sizeof(mqtthandler->actionsQueued));
+  // Reset queues once automations executed
+  memset(telegramhandler->automationsQueued, 0, sizeof(telegramhandler->automationsQueued));
+  memset(serverhandler->automationsQueued, 0, sizeof(serverhandler->automationsQueued));
+  memset(mqtthandler->automationsQueued, 0, sizeof(mqtthandler->automationsQueued));
 }
 
-void runAction(int id) {
-  for (ActionFlash& action: preferencehandler->actions) {
-    if (action.id == id) {
-      runAction(action);
+void runAutomation(int id) {
+  for (AutomationFlash& automation: preferencehandler->automations) {
+    if (automation.id == id) {
+      runAutomation(automation);
       break;
     }
   }
 }
 
-void runAction(ActionFlash& action) {
+void runAutomation(AutomationFlash& automation) {
   #ifdef __debug
-    Serial.printf("Checking action: %s\n",action.label);
+    Serial.printf("Checking automation: %s\n",automation.label);
   #endif
   // Check if all conditions are fullfilled
   bool canRun = true;
-  for (int i=0; i<MAX_ACTIONS_NUMBER;i++) {
+  for (int i=0; i<MAX_AUTOMATIONS_NUMBER;i++) {
     // Ignore condition if we don't have a valid math operator, and if the previous condition had a logic operator at the end.
-    if (action.conditions[i][1] && ((i>0 && action.conditions[i-1][3])||i==0)) {
-      const long value = digitalRead(action.conditions[i][0]);
+    if (automation.conditions[i][1] && ((i>0 && automation.conditions[i-1][3])||i==0)) {
+      const long value = digitalRead(automation.conditions[i][0]);
       bool criteria;
-      if (action.conditions[i][1] == 1) {
-        criteria = (value == action.conditions[i][2]);
-      } else if (action.conditions[i][1] == 2) {
-        criteria = (value != action.conditions[i][2]);
-      } else if (action.conditions[i][1] == 3) {
-        criteria = (value > action.conditions[i][2]);
-      } else if (action.conditions[i][1] == 4) {
-        criteria = (value < action.conditions[i][2]);
+      if (automation.conditions[i][1] == 1) {
+        criteria = (value == automation.conditions[i][2]);
+      } else if (automation.conditions[i][1] == 2) {
+        criteria = (value != automation.conditions[i][2]);
+      } else if (automation.conditions[i][1] == 3) {
+        criteria = (value > automation.conditions[i][2]);
+      } else if (automation.conditions[i][1] == 4) {
+        criteria = (value < automation.conditions[i][2]);
       }
       if (i == 0) {
         canRun = criteria;
-      } else if (action.conditions[i-1][3] == 1) {
+      } else if (automation.conditions[i-1][3] == 1) {
         canRun &= criteria;
-      } else if (action.conditions[i-1][3] == 2) {
+      } else if (automation.conditions[i-1][3] == 2) {
         canRun |= criteria;
-      } else if (action.conditions[i-1][3] == 3) {
+      } else if (automation.conditions[i-1][3] == 3) {
         canRun ^= criteria;
       }
     } else {
@@ -227,36 +226,46 @@ void runAction(ActionFlash& action) {
   }
   if (canRun) {
     #ifdef __debug
-      Serial.printf("Running with type: %i\n",action.type);
+      Serial.printf("Running automation id: %i\n",automation.id);
     #endif
-    // Run action
-    for (int repeat=0; repeat<action.loopCount; repeat++) {
-      // Type 1: Add a message to the telegram queue. Telegram handle will pick it up and send it.
-      if (action.type == 1 && action.mes) {
-        telegramhandler->queueMessage(action.mes);
-      // Type 2: Display message on the tft screen.
-      } else if (action.type == 2 && action.mes) {
-        tft.setCursor(2, 0);
-        tft.fillScreen(TFT_BLACK);
-        tft.setTextColor(TFT_WHITE);
-        tft.println(action.mes);
-      // Type 3: set pin to value
-      } else if (action.type == 3) {
-        digitalWrite(action.pinC, action.valueC);
-      }
-      if (action.delay) {
-        delay(action.delay);
+    // Run automation
+    for (int repeat=0; repeat<automation.loopCount; repeat++) {
+      for (int i=0;i<MAX_AUTOMATIONS_NUMBER;i++) {
+        if (automation.actions[i][0] && strlen(automation.actions[i][0])!=0) {
+          #ifdef __debug
+            Serial.printf("Running action type: %s\n",automation.actions[i][0]);
+          #endif
+          const int type = atoi(automation.actions[i][0]);
+          // We deal with a gpio action
+          if (type == 1 && automation.actions[i][2] && strlen(automation.actions[i][2])!=0) {
+              digitalWrite(atoi(automation.actions[i][2]), atoi(automation.actions[i][1]));
+          // Send telegram message action
+          } else if (type == 2) {
+            telegramhandler->queueMessage(automation.actions[i][1]);
+          // Display message on screen
+          } else if (type == 3) {
+            tft.setCursor(2, 0);
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextColor(TFT_WHITE);
+            tft.println(automation.actions[i][1]);
+          // Delay
+          } else if (type == 4) {
+            delay(atoi(automation.actions[i][1]));
+          }
+        } else {
+          break;
+        }
       }
     }
   }
-  // Run next action if we are not trying to do a nauty infinite loop
-  if (action.nextActionId && action.nextActionId != action.id) {
-    for (ActionFlash& nAction: preferencehandler->actions) {
-      if (nAction.id == action.nextActionId) {
+  // Run next automation if we are not trying to do a nauty infinite loop
+  if (automation.nextAutomationId && automation.nextAutomationId != automation.id) {
+    for (AutomationFlash& nAutomation: preferencehandler->automations) {
+      if (nAutomation.id == automation.nextAutomationId) {
         #ifdef __debug
-          Serial.printf("Going to next action: %s\n",nAction.label);
+          Serial.printf("Going to next automation: %s\n",nAutomation.label);
         #endif
-        runAction(nAction);
+        runAutomation(nAutomation);
         break;
       }
     }
@@ -271,8 +280,7 @@ void setup(void)
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   wm.setConnectTimeout(10);
-  bool res;
-  res = wm.autoConnect(APName,APPassword);
+  bool res = wm.autoConnect(APName,APPassword);
   if(!res) {
         Serial.println("Failed to connect");
   } else {
@@ -323,7 +331,7 @@ void input_loop(void *pvParameters)
   while(1) {
     if (WiFi.status() ==  WL_CONNECTED) {
       readInputPins();
-      pickUpQueuedActions();
+      pickUpQueuedAutomations();
       vTaskDelay(10);
     }
   }

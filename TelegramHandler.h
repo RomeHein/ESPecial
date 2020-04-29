@@ -13,22 +13,22 @@ class TelegramHandler
 {
 private:
     bool isInit = false;
-    char messagesQueue [MAX_QUEUED_MESSAGE_NUMBER][150] = {};
+    char messagesQueue [MAX_QUEUED_MESSAGE_NUMBER][100] = {};
     int lastMessageQueuedPosition = 0;
     UniversalTelegramBot* bot;
     PreferenceHandler &preference;
     WiFiClientSecure &client;
     void handleNewMessages(int numNewMessages);
     String generateButtonFormat(GpioFlash& gpio);
-    String generateButtonFormat(ActionFlash& action);
+    String generateButtonFormat(AutomationFlash& a);
     String generateInlineKeyboardsForGpios();
-    String generateInlineKeyboardsForActions();
+    String generateInlineKeyboardsForAutomations();
 public:
     TelegramHandler(PreferenceHandler& preference, WiFiClientSecure &client) : preference(preference), client(client) {};
     void handle();
     void begin();
     void queueMessage(const char* message);
-    int actionsQueued[MAX_ACTIONS_NUMBER] = {};
+    int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     ~TelegramHandler() { delete bot; }
 };
 #endif
