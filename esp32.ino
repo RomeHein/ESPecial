@@ -50,7 +50,7 @@ long screenRefreshLastTime;
 
 // Debounce delay
 long lastDebounceTime = 0;
-int debounceDelay = 50;
+int debounceDelay = 100;
 
 int freeMemory;
 
