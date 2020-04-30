@@ -688,6 +688,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             ];
         })
         req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
+        req.settings.debounceDelay = +document.getElementById(`setAutomationDebounceDelay-${automationId}`).value;
         req.settings.loopCount = +document.getElementById(`setAutomationLoopCount-${automationId}`).value;
         req.settings.nextAutomationId = +document.getElementById(`setNextAutomation-${automationId}`).value;
         try {
@@ -947,6 +948,10 @@ const char MAIN_page[] PROGMEM = R"=====(
                 <div class='row'>
                     <label for='setAutomationAutoRun-${automation.id}'>Auto run:</label>
                     <input type='checkbox' name='autorun' id='setAutomationAutoRun-${automation.id}' value='${automation.autoRun}'>
+                </div>
+                <div class='row'>
+                    <label for='setAutomationDebounceDelay-${automation.id}'>Debounce delay (ms):</label>
+                    <input id='setAutomationDebounceDelay-${automation.id}' type='number' name='debounceDelay' value='${automation.debounceDelay||''}' placeholder='Minimum time between each run'>
                 </div>
                 <div class='row'>
                     <label for='setAutomationLoopCount-${automation.id}'>Repeat automation:</label>

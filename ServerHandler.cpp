@@ -344,7 +344,7 @@ void ServerHandler::handleAutomationEdit()
                 memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
                 l++;
             }
-            server.send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(), doc["settings"]["nextAutomationId"].as<int>()));
+            server.send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(),doc["settings"]["debounceDelay"].as<int>(), doc["settings"]["nextAutomationId"].as<int>()));
             return;
         }
     }
@@ -385,9 +385,10 @@ void ServerHandler::handleAutomationNew()
     }
     const int autoRun = doc["settings"]["autoRun"].as<int>();
     const int loopCount = doc["settings"]["loopCount"].as<int>();
+    const int debounceDelay = doc["settings"]["debounceDelay"].as<int>();
     const int nextAutomationId = doc["settings"]["nextAutomationId"].as<int>();
     if (label) {
-        server.send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount, nextAutomationId));
+        server.send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount,debounceDelay, nextAutomationId));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");

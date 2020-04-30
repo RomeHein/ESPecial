@@ -18,7 +18,7 @@
 
 #define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(5) + 80 + 150
 #define GPIOS_JSON_CAPACITY JSON_ARRAY_SIZE(GPIO_PIN_COUNT) + GPIO_PIN_COUNT*(GPIO_JSON_CAPACITY)
-#define AUTOMATION_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_CONDITIONS_NUMBER+MAX_AUTOMATION_ACTION_NUMBER)+ MAX_AUTOMATIONS_CONDITIONS_NUMBER*JSON_ARRAY_SIZE(4) + MAX_AUTOMATION_ACTION_NUMBER*JSON_ARRAY_SIZE(3) + MAX_AUTOMATION_ACTION_NUMBER*300 + JSON_OBJECT_SIZE(11) + 260 + 400
+#define AUTOMATION_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_CONDITIONS_NUMBER+MAX_AUTOMATION_ACTION_NUMBER)+ MAX_AUTOMATIONS_CONDITIONS_NUMBER*JSON_ARRAY_SIZE(4) + MAX_AUTOMATION_ACTION_NUMBER*JSON_ARRAY_SIZE(3) + MAX_AUTOMATION_ACTION_NUMBER*300 + JSON_OBJECT_SIZE(8) + 150
 #define AUTOMATIONS_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_NUMBER) + MAX_AUTOMATIONS_NUMBER*(AUTOMATION_JSON_CAPACITY)
 
 // 0 for inactive, 1 for all good, -1 for error
@@ -49,6 +49,7 @@ typedef struct
     char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100];
     int8_t autoRun; // Automatically play the automation if all conditions are true
     int8_t loopCount; // Number of time to execute the automation before next
+    int32_t debounceDelay; // Time before the same automation can be run again
     uint8_t nextAutomationId; // next Automation id
  }  AutomationFlash;
 
@@ -107,8 +108,8 @@ public:
     AutomationFlash automations[MAX_AUTOMATIONS_NUMBER];
     String getAutomationsJson();
     bool removeAutomation(int id);
-    String addAutomation(const char* label, int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100],int loopCount = 0, int nextAutomationId = 0);
-    String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][3][100], int newLoopCount, int newNextAutomationId);
+    String addAutomation(const char* label, int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100],int loopCount = 0, int32_t debounceDelay = 0, int nextAutomationId = 0);
+    String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][3][100], int newLoopCount, int32_t newDebounceDelay, int newNextAutomationId);
     // Mqtt
     MqttFlash mqtt;
     bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);

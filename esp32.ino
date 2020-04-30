@@ -48,9 +48,11 @@ const char *APPassword = "p@ssword2000";
 int delayBetweenScreenUpdate = 3000;
 long screenRefreshLastTime;
 
-// Debounce delay
-long lastDebounceTime = 0;
-int debounceDelay = 100;
+// Debounce inputs delay
+long lastDebounceInputTime = 0;
+int debounceInputDelay = 50;
+// Keep tracks of last time for each automation run 
+long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
 
 int freeMemory;
 
@@ -127,7 +129,7 @@ void displayServicesInfo ()
 }
 
 void readInputPins() {
-  if (millis() > debounceDelay + lastDebounceTime) {
+  if (millis() > debounceInputDelay + lastDebounceInputTime) {
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
         int newState = digitalRead(gpio.pin);
@@ -142,14 +144,19 @@ void readInputPins() {
         }
       }
     }
-    lastDebounceTime = millis();
+    lastDebounceInputTime = millis();
   }
 }
 
 void runAllRunnableAutomations() {
+  int i = 0;
   for (AutomationFlash& automation: preferencehandler->automations) {
-    if (automation.autoRun) {
+    i++;
+    // Check if the automation has passed the debounceDelay set by user.
+    bool isDebounced = (automation.debounceDelay && (millis() > lastDebounceTimes[i] + automation.debounceDelay)) || !automation.debounceDelay;
+    if (automation.autoRun && isDebounced) {
       runAutomation(automation);
+      lastDebounceTimes[i] = millis();
     }
   }
 }
@@ -183,9 +190,14 @@ void pickUpQueuedAutomations() {
 }
 
 void runAutomation(int id) {
+  int i = 0;
   for (AutomationFlash& automation: preferencehandler->automations) {
-    if (automation.id == id) {
+    i++;
+    // Check if the automation has passed the debounceDelay set by user.
+    bool isDebounced = (automation.debounceDelay && (millis() > lastDebounceTimes[i] + automation.debounceDelay)) || !automation.debounceDelay;
+    if (automation.id == id && isDebounced) {
       runAutomation(automation);
+      lastDebounceTimes[i] = millis();
       break;
     }
   }
