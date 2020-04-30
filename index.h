@@ -148,6 +148,14 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     .btn-container {
         display: flex;
+        justify-content: flex-end;
+    }
+    .btn-container input {
+        width: 15%;
+        border: 1px solid lightgrey;
+        border-radius: 5px;
+        padding: 15px 32px;
+        margin: 10px 5px;
     }
 
     .btn {
@@ -516,11 +524,16 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     const switchGpioState = async (element) => {
         try {
-            const isOn = element.classList.value.includes('on');
-            await fetch(`${window.location.href}digital/${element.id.split('-')[1]}/${isOn ? 0 : 1}`);
-            element.classList.remove(isOn ? 'on' : 'off');
-            element.classList.add(isOn ? 'off' : 'on');
-            element.innerText = (isOn ? 'off' : 'on');
+            const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1])
+            if (gpio.mode>0) {
+                const isOn = element.classList.value.includes('on');
+                await fetch(`${window.location.href}gpio/${gpio.pin}/value/${isOn ? 0 : 1}`);
+                element.classList.remove(isOn ? 'on' : 'off');
+                element.classList.add(isOn ? 'off' : 'on');
+                element.innerText = (isOn ? 'off' : 'on');
+            } else if (gpio.mode===-1) {
+                await fetch(`${window.location.href}gpio/${gpio.pin}/value/${element.value}`);
+            }
         } catch (err) {
             console.error(`Error: ${err}`);
         }
@@ -783,11 +796,13 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     const createGpioControlRow = (gpio) => {
         let child = document.createElement('div');
+        const stateController = gpio.mode>0 ?
+        `<a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>`:
+        `<input type='number' onchange='switchGpioState(this)' id='stateGpio-${gpio.pin}' value='${gpio.state}'>`;
         child.innerHTML = `<div class='row' id='rowGpio-${gpio.pin}'>
             <div class='label'> ${gpio.label}</div>
             <div class='btn-container'>
-                <a onclick='openGpioSetting(this)' id='editGpio-${gpio.pin}' class='btn edit'>edit</a>
-                <a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>
+                <a onclick='openGpioSetting(this)' id='editGpio-${gpio.pin}' class='btn edit'>edit</a>${stateController}
             </div>
         </div>`;
         return child.firstChild;
@@ -818,6 +833,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                 // Complete the mode select input while we are here...
                 if (availableGpio.pin == gpio.pin && !availableGpio.inputOnly) {
                     modeOptions += `<option ${gpio.mode == 2 ? 'selected' : ''} value=2>OUTPUT</option>`;
+                    modeOptions += `<option ${gpio.mode == -1 ? 'selected' : ''} value=-1>DIGITAL</option>`;
                 }
                 prev += `<option ${availableGpio.pin == gpio.pin ? 'selected' : ''} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
             }
@@ -997,12 +1013,16 @@ const char MAIN_page[] PROGMEM = R"=====(
         const selectMode = document.getElementById(`setGpioMode-${pin || 'new'}`);
 
         const availableGpioInfos = availableGpios.find(gpio => gpio.pin == selectPin.value);
-        if (availableGpioInfos.inputOnly && selectMode.childElementCount === 3) {
+        if (availableGpioInfos.inputOnly && selectMode.childElementCount === 4) {
+            selectMode.removeChild(selectMode.lastChild);
             selectMode.removeChild(selectMode.lastChild);
         } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 2) {
-            let option = document.createElement('div');
-            option.innerHTML = `<option value=2>OUTPUT</option>`;
-            selectMode.appendChild(option.firstChild);
+            let outputOption = document.createElement('div');
+            outputOption.innerHTML = `<option value=2>OUTPUT</option>`;
+            let digitaloption = document.createElement('div');
+            digitaloption.innerHTML = `<option value=-1>DIGITAL</option>`;
+            selectMode.appendChild(outputOption.firstChild);
+            selectMode.appendChild(digitaloption.firstChild);
         }
     };
 

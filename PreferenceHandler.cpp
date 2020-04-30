@@ -103,10 +103,48 @@ void  PreferenceHandler::initGpios()
             #ifdef __debug  
                 Serial.printf("Preferences: init pin %i on mode %i\n", gpio.pin, gpio.mode);
             #endif
-            pinMode(gpio.pin, gpio.mode);
-            digitalWrite(gpio.pin, gpio.state);
+            if (gpio.mode>0) {
+                pinMode(gpio.pin, gpio.mode);
+                digitalWrite(gpio.pin, gpio.state);
+            } else {
+                attach(gpio);
+                ledcWrite(gpio.channel, gpio.state);
+            }
         }
     }
+}
+
+bool PreferenceHandler::attach(GpioFlash& gpio) {
+    if(gpio.channel == CHANNEL_NOT_ATTACHED) {
+        if(_nextFreeChannel == MAX_DIGITALS_CHANNEL) {
+            return false;
+        }
+        gpio.channel = _nextFreeChannel;
+        _nextFreeChannel++;
+    }
+    int frequency = 50;
+    if (gpio.frequency) {
+        frequency = gpio.frequency;
+    }
+    int resolution = 16;
+    if (gpio.resolution) {
+        frequency = gpio.resolution;
+    }
+
+    ledcSetup(gpio.channel, frequency, resolution); // channel X, 50 Hz, 16-bit depth
+    ledcAttachPin(gpio.pin, gpio.channel);
+    _digitalsAttached[gpio.pin] = true;
+    return true;
+}
+
+bool PreferenceHandler::detach(GpioFlash& gpio) {
+    if (!_digitalsAttached[gpio.pin]) {
+        return false;
+    }
+    if(gpio.channel == (_nextFreeChannel - 1)) _nextFreeChannel--;
+    ledcDetachPin(gpio.pin);
+    _digitalsAttached[gpio.pin] = false;
+    return true;
 }
 
 int PreferenceHandler::firstEmptyGpioSlot() {
@@ -120,15 +158,12 @@ int PreferenceHandler::firstEmptyGpioSlot() {
 }
 
 bool PreferenceHandler::removeGpio(int pin) {
-    const int count = sizeof(gpios)/sizeof(*gpios);
-    for (int i=0;i<count;i++) {
-        if (gpios[i].pin == pin) {
-            gpios[i] = {};
-            save(PREFERENCES_GPIOS);
-            return true;
-        }
-    }
-    return false;
+    gpios[pin] = {};
+    if (gpios[pin].mode<0) {
+        detach(gpios[pin]);
+    } 
+    save(PREFERENCES_GPIOS);
+    return true;
 }
 String PreferenceHandler::addGpio(int pin,const char* label, int mode, int saveState) {
     GpioFlash newGpio = {};
@@ -136,15 +171,38 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode, int saveS
     strcpy(newGpio.label, label);
     newGpio.mode = mode;
     newGpio.save = saveState;
-    gpios[firstEmptyGpioSlot()] = newGpio;
-    pinMode(pin, mode);
+    gpios[pin] = newGpio;
+    // Dealing with classic pin
+    if (mode>0) {
+        pinMode(pin, mode);
+        newGpio.state = saveState ? digitalRead(pin) : 0;
+    // Dealing with servo
+    } else {
+        attach(newGpio);
+        newGpio.state = ledcRead(newGpio.channel);
+    }
     // If we don't save state, default state to 0
-    newGpio.state = saveState ? digitalRead(pin) : 0;
     save(PREFERENCES_GPIOS);
     return gpioToJson(newGpio);
 }
 String PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode, int newSave) {
     bool hasChanged = false;
+    if (newMode && gpio.mode != newMode) {
+        // Detach servo if we are swtiching to a classic mode
+        if (gpio.mode<0 && newMode>0) {
+            detach(gpio);
+        }
+        // Set new mode
+        if (gpio.mode>0) {
+            pinMode(gpio.pin, gpio.mode);
+            gpio.state = gpio.save ? digitalRead(gpio.pin) : 0;
+        } else {
+            attach(gpio);
+            gpio.state = ledcRead(gpio.channel);
+        }
+        gpio.mode = newMode;
+        hasChanged = true;
+    }
     if (newPin && gpio.pin != newPin) {
         gpio.pin = newPin;
         hasChanged = true;
@@ -153,39 +211,41 @@ String PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLa
         strcpy(gpio.label, newLabel);
         hasChanged = true;
     }
-    if (newMode && gpio.mode != newMode) {
-        gpio.mode = newMode;
-        hasChanged = true;
-    }
     if (gpio.save != newSave) {
         gpio.save = newSave;
         hasChanged = true;
     }
     if (hasChanged) {
-        pinMode(gpio.pin, gpio.mode);
-        gpio.state = gpio.save ? digitalRead(gpio.pin) : 0;
         save(PREFERENCES_GPIOS);
-        gpio.state = digitalRead(gpio.pin);
+        // In case we don't want to save state, we still want to get the right value.
+        if (gpio.mode>0) {
+            gpio.state = digitalRead(gpio.pin);
+        } else {
+            gpio.state = ledcRead(gpio.channel);
+        }
     }
     return gpioToJson(gpio);
 }
 
 void PreferenceHandler::setGpioState(int pin, int value) {
-    for (GpioFlash& gpio : gpios)
-    {
-        if (gpio.pin == pin && value != gpio.state)
-        {
+    GpioFlash gpio = gpios[pin];
+    if (gpio.pin == pin && value != gpio.state) {
+        if (gpio.mode>0) {
             if (value == -1) {
-                gpio.state = !gpio.state;
+            gpio.state = !gpio.state;
             } else {
                 gpio.state = value;
             }
             digitalWrite(pin, value);
-            if (gpio.save) {
-                save(PREFERENCES_GPIOS);
-            }
-            return;
+        } else if (gpio.mode==-1 && _digitalsAttached[pin]) {
+            gpio.state = value;
+            ledcWrite(gpio.channel, value);
         }
+        
+        if (gpio.save) {
+            save(PREFERENCES_GPIOS);
+        }
+        return;
     }
 }
 

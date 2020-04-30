@@ -24,7 +24,7 @@ Features:
 
 ## Work in progress:
 - Time based events: trigger actions based on time.
-- Web Interface: fix some issues, particulary on mqtt connection
+- Web Interface: Give it some love, fix some issues, particulary on mqtt connection
 - Servo handler: Add the hability to control servo motors
 - Add default and on/off values for pins.
 ## Wish list
@@ -34,7 +34,7 @@ Features:
 - Make this library compatible with other boards. For now it will only work with dual core boards, as the event listener for pin values is attached to the core 0. With some work, everything could be handle on one core. The main bottle neck is the UniversalTelegramBot library that seems to make long poll to Telegram api and therefor blocks the core process.
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
-- reduce library dependencies: UniversalTelegramBot and WifiManager could be avoided. 
+- reduce library dependencies: UniversalTelegramBot and WifiManager could be avoided. We might need to get rid of the tft library, as this code is too specific. 
 ## Getting Started
 
 This code works well with [this](https://www.aliexpress.com/item/33048962331.html?spm=a2g0o.productlist.0.0.71ee316cmQo1JA&algo_pvid=6aadca0f-7463-41bf-8277-010dbd421b34&algo_expid=6aadca0f-7463-41bf-8277-010dbd421b34-6&btsid=0b0a0ae215834054133566008e89a2&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_) type of chip from TTGO, but can work on any esp32. 
@@ -115,15 +115,15 @@ You can also specify the next action. This is very handy to easily program compl
 Once controls and actions added to your panel, you'll be able to trigger them by hitting the rest API: 
 
 ```
-http://your.ip.local.ip/digital/pinNumber
+http://your.ip.local.ip/gpio/pinNumber/value
 ```
 And set its state `on` with:
 ```
-http://your.ip.local.ip/digital/pinNumber/1
+http://your.ip.local.ip/gpio/pinNumber/value/1
 ```
 or `off`
 ```
-http://your.ip.local.ip/digital/pinNumber/0
+http://your.ip.local.ip/gpio/pinNumber/value/0
 ```
 
 And simply send:

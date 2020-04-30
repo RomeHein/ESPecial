@@ -10,13 +10,15 @@
 #define PREFERENCES_MQTT "mqtt"
 #define PREFERENCES_TELEGRAM "telegram"
 
+#define CHANNEL_NOT_ATTACHED -1
 // Yes only 20 to limit memeory usage
+#define MAX_DIGITALS_CHANNEL 16 // Maximum channel number for digital pins
 #define MAX_AUTOMATIONS_NUMBER 10 // Maximum automations number that can be set in the system
 #define MAX_AUTOMATIONS_CONDITIONS_NUMBER 5 // Maximum number of conditions in a given automation
 #define MAX_AUTOMATION_ACTION_NUMBER 5 // Maximum number of actions in a given automation
 #define MAX_TELEGRAM_USERS_NUMBER 10 // Maximum user number that can user telegram bot
 
-#define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(5) + 80 + 150
+#define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(8) + 100 + 150
 #define GPIOS_JSON_CAPACITY JSON_ARRAY_SIZE(GPIO_PIN_COUNT) + GPIO_PIN_COUNT*(GPIO_JSON_CAPACITY)
 #define AUTOMATION_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_CONDITIONS_NUMBER+MAX_AUTOMATION_ACTION_NUMBER)+ MAX_AUTOMATIONS_CONDITIONS_NUMBER*JSON_ARRAY_SIZE(4) + MAX_AUTOMATION_ACTION_NUMBER*JSON_ARRAY_SIZE(3) + MAX_AUTOMATION_ACTION_NUMBER*300 + JSON_OBJECT_SIZE(8) + 150
 #define AUTOMATIONS_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_NUMBER) + MAX_AUTOMATIONS_NUMBER*(AUTOMATION_JSON_CAPACITY)
@@ -57,8 +59,11 @@ typedef struct
 {
     uint8_t pin;
     char label[50];
-    int8_t mode;
-    int8_t state;
+    int8_t mode; // 1 is INPUT, 2 is OUTPUL, 5 is INPUT_PULLUP, -1 is DIGITAL
+    uint16_t frequency;
+    uint8_t resolution;
+    uint8_t channel;
+    int16_t state;
     int8_t save;
  }  GpioFlash;
 
@@ -92,11 +97,16 @@ private:
     String gpioToJson(GpioFlash& gpio);
     void setAutomationsFromJson(const char* j);
     String automationToJson(AutomationFlash& a);
+    bool _digitalsAttached[GPIO_PIN_COUNT] = {};
+    int _nextFreeChannel = 0;
 public:
     void begin();
     void clear();
     void save(char* preference);
     HealthCode health;
+    // Digitals
+    bool attach(GpioFlash& gpio);
+    bool detach(GpioFlash& gpio);
     // Gpio
     GpioFlash gpios[GPIO_PIN_COUNT];
     bool removeGpio(int pin);

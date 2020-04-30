@@ -23,8 +23,8 @@ void ServerHandler::begin()
     server.on("/telegram", HTTP_POST, [this]() { handleTelegramEdit(); });
 
     // Gpio related endpoints
-    server.on("/digital/{}/{}", [this]() { handleSetGpioState(); });
-    server.on("/digital/{}", [this]() { handleGetGpioState(); });
+    server.on("/gpio/{}/value/{}", [this]() { handleSetGpioState(); });
+    server.on("/gpio/{}/value", [this]() { handleGetGpioState(); });
     server.on("/gpios/available", [this]() { handleAvailableGpios(); });
     server.on("/gpios", [this]() { getGpios(); });
     server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
@@ -211,14 +211,10 @@ void ServerHandler::handleGpioEdit()
         #endif
         return;
     }
-
-    for (GpioFlash& gpio : preference.gpios)
-    {
-        if (gpio.pin == doc["pin"].as<int>())
-        {
-            server.send(200, "text/json", preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(), doc["settings"]["save"].as<int>()));
-            return;
-        }
+    GpioFlash gpio = preference.gpios[doc["pin"].as<int>()];
+    if (gpio.pin) {
+        server.send(200, "text/json", preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(), doc["settings"]["save"].as<int>()));
+        return;
     }
     server.send(404, "text/plain", "Not found");
 }
@@ -272,7 +268,15 @@ void ServerHandler::handleAvailableGpios() {
 void ServerHandler::handleGetGpioState()
 {
     const int pin = atoi(server.pathArg(0).c_str());
-    const int state = digitalRead(pin);
+    int state;
+    GpioFlash gpio = preference.gpios[pin];
+    if (gpio.pin == pin) {
+        if (gpio.mode>0) {
+            state = digitalRead(pin);
+        } else {
+            state = ledcRead(gpio.channel);
+        }
+    }
     char json[50];
     snprintf(json, sizeof(json), "{\"pin\":%i,\"state\":%i}", pin, state);
     server.send(200, "text/json", json);

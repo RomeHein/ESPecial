@@ -12,23 +12,14 @@
 //unmark following line to enable debug mode
 #define __debug
 
+// Set TFT display PINS
 #ifndef TFT_DISPOFF
 #define TFT_DISPOFF 0x28
 #endif
-
 #ifndef TFT_SLPIN
 #define TFT_SLPIN 0x10
 #endif
-
-#define TFT_MOSI 19
-#define TFT_SCLK 18
-#define TFT_CS 5
-#define TFT_DC 16
-#define TFT_RST 23
-
 #define TFT_BL 4 // Display backlight control pin
-#define ADC_EN 14
-#define ADC_PIN 34
 
 #define MAX_QUEUED_AUTOMATIONS 10
 
@@ -132,7 +123,13 @@ void readInputPins() {
   if (millis() > debounceInputDelay + lastDebounceInputTime) {
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
-        int newState = digitalRead(gpio.pin);
+        int newState;
+        if (gpio.mode>0) {
+          newState = digitalRead(gpio.pin);
+        } else if (gpio.mode == -1) {
+          newState = ledcRead(gpio.channel);
+        }
+        
         if (gpio.state != newState) {
           #ifdef __debug
             Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
@@ -209,10 +206,11 @@ void runAutomation(AutomationFlash& automation) {
   #endif
   // Check if all conditions are fullfilled
   bool canRun = true;
-  for (int i=0; i<MAX_AUTOMATIONS_NUMBER;i++) {
+  for (int i=0; i<MAX_AUTOMATIONS_CONDITIONS_NUMBER;i++) {
     // Ignore condition if we don't have a valid math operator, and if the previous condition had a logic operator at the end.
     if (automation.conditions[i][1] && ((i>0 && automation.conditions[i-1][3])||i==0)) {
-      const long value = digitalRead(automation.conditions[i][0]);
+      GpioFlash gpio = preferencehandler->gpios[automation.conditions[i][0]];
+      const int16_t value =  gpio.mode>0 ? digitalRead(gpio.pin) : ledcRead(gpio.channel);
       bool criteria;
       if (automation.conditions[i][1] == 1) {
         criteria = (value == automation.conditions[i][2]);
@@ -250,7 +248,14 @@ void runAutomation(AutomationFlash& automation) {
           const int type = atoi(automation.actions[i][0]);
           // We deal with a gpio action
           if (type == 1 && automation.actions[i][2] && strlen(automation.actions[i][2])!=0) {
-              digitalWrite(atoi(automation.actions[i][2]), atoi(automation.actions[i][1]));
+            int pin = atoi(automation.actions[i][2]);
+            int16_t value = atoi(automation.actions[i][1]);
+            GpioFlash gpio = preferencehandler->gpios[pin];
+            if (gpio.mode>0) {
+              digitalWrite(pin, atoi(automation.actions[i][1]));
+            } else {
+              ledcWrite(gpio.channel, value);
+            }
           // Send telegram message action
           } else if (type == 2) {
             telegramhandler->queueMessage(automation.actions[i][1]);
