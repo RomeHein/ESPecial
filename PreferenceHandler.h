@@ -11,8 +11,8 @@
 #define PREFERENCES_TELEGRAM "telegram"
 
 #define CHANNEL_NOT_ATTACHED -1
+#define MAX_DIGITALS_CHANNEL 16 // Maximum channel number for analog pins
 // Yes only 20 to limit memeory usage
-#define MAX_DIGITALS_CHANNEL 16 // Maximum channel number for digital pins
 #define MAX_AUTOMATIONS_NUMBER 10 // Maximum automations number that can be set in the system
 #define MAX_AUTOMATIONS_CONDITIONS_NUMBER 5 // Maximum number of conditions in a given automation
 #define MAX_AUTOMATION_ACTION_NUMBER 5 // Maximum number of actions in a given automation
@@ -62,7 +62,7 @@ typedef struct
     int8_t mode; // 1 is INPUT, 2 is OUTPUL, 5 is INPUT_PULLUP, -1 is DIGITAL
     uint16_t frequency;
     uint8_t resolution;
-    uint8_t channel;
+    int8_t channel;
     int16_t state;
     int8_t save;
  }  GpioFlash;
@@ -97,7 +97,6 @@ private:
     String gpioToJson(GpioFlash& gpio);
     void setAutomationsFromJson(const char* j);
     String automationToJson(AutomationFlash& a);
-    int _nextFreeChannel = 0;
 public:
     void begin();
     void clear();

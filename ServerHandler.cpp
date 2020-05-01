@@ -104,6 +104,7 @@ void ServerHandler::getSettings() {
     general["maxAutomations"] = MAX_AUTOMATIONS_NUMBER;
     general["maxConditions"] = MAX_AUTOMATIONS_CONDITIONS_NUMBER;
     general["maxActions"] = MAX_AUTOMATION_ACTION_NUMBER;
+    general["maxChannels"] = MAX_DIGITALS_CHANNEL;
     String output;
     serializeJson(doc, output);
     server.send(200, "text/json", output);

@@ -115,32 +115,27 @@ void  PreferenceHandler::initGpios()
 }
 
 bool PreferenceHandler::attach(GpioFlash& gpio) {
-    if(gpio.channel == CHANNEL_NOT_ATTACHED) {
-        if(_nextFreeChannel == MAX_DIGITALS_CHANNEL) {
-            return false;
+    if(gpio.channel != CHANNEL_NOT_ATTACHED && gpio.channel<MAX_DIGITALS_CHANNEL) {
+        int frequency = 50;
+        if (gpio.frequency) {
+            frequency = gpio.frequency;
         }
-        gpio.channel = _nextFreeChannel;
-        _nextFreeChannel++;
+        int resolution = 16;
+        if (gpio.resolution) {
+            frequency = gpio.resolution;
+        }
+        Serial.printf("Preferences: attaching to channel %i\n", gpio.channel);
+        ledcSetup(gpio.channel, frequency, resolution); // channel X, 50 Hz, 16-bit depth
+        ledcAttachPin(gpio.pin, gpio.channel);
+        return true;
     }
-    int frequency = 50;
-    if (gpio.frequency) {
-        frequency = gpio.frequency;
-    }
-    int resolution = 16;
-    if (gpio.resolution) {
-        frequency = gpio.resolution;
-    }
-
-    ledcSetup(gpio.channel, frequency, resolution); // channel X, 50 Hz, 16-bit depth
-    ledcAttachPin(gpio.pin, gpio.channel);
-    return true;
+    return false;
 }
 
 bool PreferenceHandler::detach(GpioFlash& gpio) {
     if (gpio.channel == CHANNEL_NOT_ATTACHED) {
         return false;
     }
-    if(gpio.channel == (_nextFreeChannel - 1)) _nextFreeChannel--;
     ledcDetachPin(gpio.pin);
     return true;
 }
@@ -205,8 +200,16 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         gpio.mode = newMode;
         hasChanged = true;
     }
+    if (newChannel && gpio.channel != newChannel) {
+        if (gpio.mode==-1) detach(gpio);
+        gpio.channel = newChannel;
+        if (gpio.mode==-1) attach(gpio);
+        hasChanged = true;
+    }
     if (newPin && gpio.pin != newPin) {
+        if (gpio.mode==-1) detach(gpio);
         gpio.pin = newPin;
+        if (gpio.mode==-1) attach(gpio);
         hasChanged = true;
     }
     if (newResolution && gpio.resolution != newResolution) {
@@ -215,10 +218,6 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
     }
     if (newFrequency && gpio.frequency != newFrequency) {
         gpio.frequency = newFrequency;
-        hasChanged = true;
-    }
-    if (newChannel && gpio.channel != newChannel) {
-        gpio.channel = newChannel;
         hasChanged = true;
     }
     if (newLabel && strcmp(gpio.label, newLabel) != 0) {

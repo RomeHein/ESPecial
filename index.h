@@ -650,6 +650,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         req.settings.mode = document.getElementById(`setGpioMode-${gpioPin}`).value;
         req.settings.frequency  = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
         req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
+        const channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
         req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
         req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
         if (newPin && newPin != gpioPin) {
@@ -850,6 +851,10 @@ const char MAIN_page[] PROGMEM = R"=====(
             }
             return prev;
         },[]);
+        const channelOptions = [...Array(settings.general.maxChannels).keys()]
+        .reduce((prev,channelNumber) => {
+            return prev +=`<option ${gpio.channel == channelNumber ? 'selected' : ''} value=${channelNumber}>${channelNumber}</option>`}
+            ,`<option ${gpio.channel == -1 ? 'selected' : ''} value=-1>-1</option>`);
         let child = document.createElement('div');
         child.classList.add('set');
         child.innerHTML = `<div class='set-inputs'>
@@ -876,7 +881,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                     </div>
                     <div class='row'>
                         <label for='setGpioChannel-${gpio.pin}'>Channel:</label>
-                        <input id='setGpioChannel-${gpio.pin}' type='number' name='channel' value='${gpio.channel || ''}' placeholder="Leave empty to autoset">
+                        <select id='setGpioChannel-${gpio.pin}' name='channel' value='${gpio.channel}' placeholder="Default to 0">${channelOptions}</select>
                     </div>
                 </div>
                 <div class='row'>
