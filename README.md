@@ -4,7 +4,7 @@ This project aim to provide an easy way to control your esp32. You no longer nee
 
 
 Features:
-- Automation: program actions that can be trigger via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages etc. No need to update the firmware, everything is dynamic.
+- Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages etc. No need to update the firmware, everything is dynamic.
 - Exposes gpio and actions to a REST API: Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations.
 - Provide web interface full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface.
 <div>
@@ -139,7 +139,7 @@ http://your.ip.local.ip/automationtion/automationId
 ```
 to run a specific action. Note that all conditions you have specified for than action must be fullfilled in order to execute it.
 
-5. Set your Telegram Bot</br>
+### Telegram Bot
 All this is cool, but what if you want to access/control your esp32 from outside your local network?
 The easiest/safest way is [Telegram Bot](https://core.telegram.org/bots). You'll find on that [page](https://core.telegram.org/bots#6-botfather) how to create a Telegram Bot in 5 minutes.
 Once created, and your bot token in good hands, just go back to your esp32 page and click the setting button. At the bottom of the page you should find the Telegram section, simply past your bot token here, and tick the active box.
@@ -152,7 +152,7 @@ It's important to note that if you leave the authorised user list empty, your bo
 
 Now you're be able to control all pins in output mode by sending a `/out` or the automations you have set with `/auto`. The bot will answer a list of buttons corresponding to the list you've set on the web interface of the ESP32, sweet!
 
-6. Set your MQTT client (advance)</br>
+### MQTT client (advance)
 MQTT is a really nice pubsub protocol. I really encourage you to integrate this feature in your home automation. This allows a two ways communication between your home bridge and your iot device (here the esp32) in a very lightweight way.
 To configure it, you'll need to enter the address of your MQTT broker aswell as your username and password for this broker.
 You can then set the topic in which the pin states will be published.
