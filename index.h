@@ -44,7 +44,6 @@ const char MAIN_page[] PROGMEM = R"=====(
     .column {
         display: flex;
         flex-direction: column;
-        width: 100%;
     }
 
     .setting-container {
@@ -130,6 +129,13 @@ const char MAIN_page[] PROGMEM = R"=====(
         padding-left: 10px;
         margin-top: 5px;
         margin-bottom: 5px;
+    }
+    .set>.set-inputs>.column {
+        background: darkgrey;
+        border-radius: 5px;
+        padding: 10px;
+        color: white;
+        margin-top: 5px;
     }
 
     select {
@@ -230,12 +236,14 @@ const char MAIN_page[] PROGMEM = R"=====(
     #condition-editor select,
     #condition-editor input, 
     #condition-editor-result>.row select, 
-    #condition-editor-result>.row input,
+    #condition-editor-result>.row input {
+        width: 15%;
+    }
     #action-editor select,
     #action-editor input, 
     #action-editor-result>.row select, 
     #action-editor-result>.row input{
-        width: 15%;
+        width: 20%;
     }
     #blocker {
         display: flex;
@@ -638,8 +646,11 @@ const char MAIN_page[] PROGMEM = R"=====(
         const isNew = (gpioPin === 'new');
         let req = { settings: {} };
         const newPin = document.getElementById(`setGpioPin-${gpioPin}`).value;
-        req.settings.label = newLabel = document.getElementById(`setGpioLabel-${gpioPin}`).value;
-        req.settings.mode = newMode = document.getElementById(`setGpioMode-${gpioPin}`).value;
+        req.settings.label = document.getElementById(`setGpioLabel-${gpioPin}`).value;
+        req.settings.mode = document.getElementById(`setGpioMode-${gpioPin}`).value;
+        req.settings.frequency  = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
+        req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
+        req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
         req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
         if (newPin && newPin != gpioPin) {
             req.settings.pin = +newPin;
@@ -648,7 +659,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             req.pin = gpioPin;
         }
         try {
-            if (!newMode || !newLabel) {
+            if (!req.settings.mode || !req.settings.label) {
                 throw new Error('Parameters missing, please fill all the inputs');
             }
             const resp = await fetch(`${window.location.href}gpio`, {
@@ -843,16 +854,30 @@ const char MAIN_page[] PROGMEM = R"=====(
         child.classList.add('set');
         child.innerHTML = `<div class='set-inputs'>
                 <div class='row'>
-                    <label for='setGpioPin-${gpio.pin}'>pin:</label>
+                    <label for='setGpioPin-${gpio.pin}'>Pin:</label>
                     <select id='setGpioPin-${gpio.pin}' name='pin' onchange='updateModeOptions("${gpio.pin}")'>${pinOptions}</select>
                 </div>
                 <div class='row'>
-                    <label for='setGpioLabel-${gpio.pin}'>label:</label>
+                    <label for='setGpioLabel-${gpio.pin}'>Label:</label>
                     <input id='setGpioLabel-${gpio.pin}' type='text' name='label' value='${gpio.label || ''}' placeholder="Controller's title">
                 </div>
                 <div class='row'>
-                    <label for='setGpioMode-${gpio.pin}'>input mode:</label>
-                    <select id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
+                    <label for='setGpioMode-${gpio.pin}'>Input mode:</label>
+                    <select onchange='updateAnalogueOptions(this)' id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
+                </div>
+                <div id='analogue-options' class='${gpio.mode != -1 ? 'hidden' : ''}'>
+                    <div class='row'>
+                        <label for='setGpioFrequency-${gpio.pin}'>Frequency:</label>
+                        <input id='setGpioFrequency-${gpio.pin}' type='text' name='frequency' value='${gpio.frequency || ''}' placeholder="Default to 50Hz if empty">
+                    </div>
+                    <div class='row'>
+                        <label for='setGpioResolution-${gpio.pin}'>Resolution:</label>
+                        <input id='setGpioResolution-${gpio.pin}' type='text' name='resolution' value='${gpio.resolution || ''}' placeholder="Default to 16bits if empty">
+                    </div>
+                    <div class='row'>
+                        <label for='setGpioChannel-${gpio.pin}'>Channel:</label>
+                        <input id='setGpioChannel-${gpio.pin}' type='number' name='channel' value='${gpio.channel || ''}' placeholder="Leave empty to autoset">
+                    </div>
                 </div>
                 <div class='row'>
                     <label for='setGpioSave-${gpio.pin}'>Save state:</label>
@@ -908,8 +933,10 @@ const char MAIN_page[] PROGMEM = R"=====(
                             <option value=2 ${selectedNextSign == 2 ? 'selected':''}>OR</option>
                             <option value=3 ${selectedNextSign == 3 ? 'selected':''}>XOR</option>
                         </select>
-                        <a onclick='deleteRowEditor(this)' id='deleteCondition${conditionNumber}' class='btn delete'>delete</a>`
+                        <a onclick='deleteRowEditor(this)' id='deleteCondition${conditionNumber}' class='btn delete'>x</a>`
         conditionEditorElement.appendChild(rowElement);
+        // Update conditions left number
+        document.getElementById(`condition-editor-title`).innerText = `Condition editor (${settings.general.maxConditions-conditionEditorElement.childElementCount})`;
     };
 
     const addActionEditor = (action) => {
@@ -937,8 +964,10 @@ const char MAIN_page[] PROGMEM = R"=====(
                         </select>
                         <select id='addGpioAction${actionNumber}' name='gpioCondition'>${gpioActionOptions}</select>
                         <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' placeholder='value'>
-                        <a onclick='deleteRowEditor(this)' id='deleteAction${actionNumber}' class='btn delete'>delete</a>`
+                        <a onclick='deleteRowEditor(this)' id='deleteAction${actionNumber}' class='btn delete'>x</a>`
         actionEditorElement.appendChild(rowElement);
+        // Update actions left number
+        document.getElementById(`action-editor-title`).innerText = `Action editor (${settings.general.maxActions-actionEditorElement.childElementCount})`;
     };
 
     // The edit panel for setting gpios
@@ -979,15 +1008,15 @@ const char MAIN_page[] PROGMEM = R"=====(
                 </div>
                 <div class='column'>
                     <div id='condition-editor' class='row'>
-                        <div>Condition editor</div>
-                        <a onclick='addConditionEditor()' id='addCondition-${automation.id}' class='btn save'>new</a>
+                        <div id='condition-editor-title'>Condition editor (${settings.general.maxConditions})</div>
+                        <a onclick='addConditionEditor()' id='addCondition-${automation.id}' class='btn save'>+</a>
                     </div>
                     <div id='condition-editor-result' class="column"></div>
                 </div>
                 <div class='column'>
                     <div id='action-editor' class='row'>
-                        <div>Action editor</div>
-                        <a onclick='addActionEditor()' id='addAction-${automation.id}' class='btn save'>new</a>
+                        <div id='action-editor-title'>Action editor (${settings.general.maxActions})</div>
+                        <a onclick='addActionEditor()' id='addAction-${automation.id}' class='btn save'>+</a>
                     </div>
                     <div id='action-editor-result' class="column"></div>
                 </div>
@@ -1016,6 +1045,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         if (availableGpioInfos.inputOnly && selectMode.childElementCount === 4) {
             selectMode.removeChild(selectMode.lastChild);
             selectMode.removeChild(selectMode.lastChild);
+            document.getElementById(`analogue-options`).classList.add('hidden');
         } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 2) {
             let outputOption = document.createElement('div');
             outputOption.innerHTML = `<option value=2>OUTPUT</option>`;
@@ -1026,6 +1056,15 @@ const char MAIN_page[] PROGMEM = R"=====(
         }
     };
 
+    const updateAnalogueOptions = (element) => {
+        const pin = +element.id.split('-')[1] || 'new';
+        const option = document.getElementById(`setGpioMode-${pin}`).value;
+        if (option != -1) {
+            document.getElementById(`analogue-options`).classList.add('hidden');
+        } else {
+            document.getElementById(`analogue-options`).classList.remove('hidden');
+        }
+    }
     const updateAutomationTypes = (id) => {
         const selectType = document.getElementById(`setAutomationType-${id || 'new'}`);
         if (+selectType.value !== 3) {

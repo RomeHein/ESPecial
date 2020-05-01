@@ -71,19 +71,19 @@ String TelegramHandler::generateButtonFormat(AutomationFlash& a) {
   return output;
 }
 
-String TelegramHandler::generateInlineKeyboardsForGpios() {
+String TelegramHandler::generateInlineKeyboardsForGpios(bool inputMode) {
   const size_t capacity = JSON_ARRAY_SIZE(1+(GPIO_PIN_COUNT/2)) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(2)+100);
   DynamicJsonDocument doc(capacity);
   for (int i = 0; i<GPIO_PIN_COUNT; i++) {
     JsonArray subArray = doc.createNestedArray();
-    if (preference.gpios[i].pin && preference.gpios[i].mode == OUTPUT) {
+    if (preference.gpios[i].pin && ((preference.gpios[i].mode == OUTPUT && !inputMode)|| (preference.gpios[i].mode == INPUT && inputMode))) {
         subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
     }
     do
     {
       i++;
-    } while (i<GPIO_PIN_COUNT && !preference.gpios[i].pin && preference.gpios[i].mode != OUTPUT);
-    if (preference.gpios[i].pin && preference.gpios[i].mode == OUTPUT) {
+    } while (i<GPIO_PIN_COUNT && ((preference.gpios[i].mode == OUTPUT && !inputMode)|| (preference.gpios[i].mode == INPUT && inputMode)));
+    if (preference.gpios[i].pin && ((preference.gpios[i].mode == OUTPUT && !inputMode)|| (preference.gpios[i].mode == INPUT && inputMode))) {
         subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
     }
   }
@@ -152,13 +152,15 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
       String from_name = bot->messages[i].from_name;
       if (from_name == "") from_name = "Guest";
 
-      if (authorised && text == "/gpios") {
+      if (authorised && text == "/out") {
         bot->sendMessageWithInlineKeyboard(chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios());
+      } else if (authorised && text == "/in") {
+        bot->sendMessageWithInlineKeyboard(chat_id, "Gpios available in input mode", "", generateInlineKeyboardsForGpios());
       } else if (authorised && text == "/auto") {
         bot->sendMessageWithInlineKeyboard(chat_id, "Automations list", "", generateInlineKeyboardsForAutomations());
       }else if (text == "/start") {
         char welcome[512];
-        snprintf(welcome,512,"Welcome to your ESP32 telegram bot, %s.\nHere you'll be able to control your ESP32.\nFirst, add your telegram id to the authorised list (in settings panel) to restrict your bot access:\n %s.\n\n/gpios : returns an inline keyboard to control gpios set in output mode\n/state : returns gpios' state in input mode\n/auto : returns an inline keyboard to trigger automations\n",from_name,bot->messages[i].from_id);
+        snprintf(welcome,512,"Welcome to your ESP32 telegram bot, %s.\nHere you'll be able to control your ESP32.\nFirst, add your telegram id to the authorised list (in settings panel) to restrict your bot access:\n %s.\n\n/out : returns an inline keyboard to control gpios set in output mode\n/in : returns gpios' state in input mode\n/analog : returns gpios' attached to channels (in analogue mode)\n/auto : returns an inline keyboard to trigger automations\n",from_name,bot->messages[i].from_id);
         bot->sendMessage(chat_id, welcome, "Markdown");
       } else {
         char mes[256];

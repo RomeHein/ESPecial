@@ -133,17 +133,15 @@ bool PreferenceHandler::attach(GpioFlash& gpio) {
 
     ledcSetup(gpio.channel, frequency, resolution); // channel X, 50 Hz, 16-bit depth
     ledcAttachPin(gpio.pin, gpio.channel);
-    _digitalsAttached[gpio.pin] = true;
     return true;
 }
 
 bool PreferenceHandler::detach(GpioFlash& gpio) {
-    if (!_digitalsAttached[gpio.pin]) {
+    if (gpio.channel == CHANNEL_NOT_ATTACHED) {
         return false;
     }
     if(gpio.channel == (_nextFreeChannel - 1)) _nextFreeChannel--;
     ledcDetachPin(gpio.pin);
-    _digitalsAttached[gpio.pin] = false;
     return true;
 }
 
@@ -165,11 +163,14 @@ bool PreferenceHandler::removeGpio(int pin) {
     save(PREFERENCES_GPIOS);
     return true;
 }
-String PreferenceHandler::addGpio(int pin,const char* label, int mode, int saveState) {
+String PreferenceHandler::addGpio(int pin,const char* label, int mode, int frequency, int resolution, int channel, int saveState) {
     GpioFlash newGpio = {};
     newGpio.pin = pin;
     strcpy(newGpio.label, label);
     newGpio.mode = mode;
+    newGpio.channel = channel;
+    newGpio.frequency = frequency;
+    newGpio.resolution = resolution;
     newGpio.save = saveState;
     gpios[pin] = newGpio;
     // Dealing with classic pin
@@ -185,8 +186,9 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode, int saveS
     save(PREFERENCES_GPIOS);
     return gpioToJson(newGpio);
 }
-String PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode, int newSave) {
+String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, int newMode, int newFrequency, int newResolution, int newChannel, int newSave) {
     bool hasChanged = false;
+    GpioFlash& gpio = gpios[oldPin];
     if (newMode && gpio.mode != newMode) {
         // Detach servo if we are swtiching to a classic mode
         if (gpio.mode<0 && newMode>0) {
@@ -205,6 +207,18 @@ String PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLa
     }
     if (newPin && gpio.pin != newPin) {
         gpio.pin = newPin;
+        hasChanged = true;
+    }
+    if (newResolution && gpio.resolution != newResolution) {
+        gpio.resolution = newResolution;
+        hasChanged = true;
+    }
+    if (newFrequency && gpio.frequency != newFrequency) {
+        gpio.frequency = newFrequency;
+        hasChanged = true;
+    }
+    if (newChannel && gpio.channel != newChannel) {
+        gpio.channel = newChannel;
         hasChanged = true;
     }
     if (newLabel && strcmp(gpio.label, newLabel) != 0) {
@@ -228,16 +242,16 @@ String PreferenceHandler::editGpio(GpioFlash& gpio, int newPin,const char* newLa
 }
 
 void PreferenceHandler::setGpioState(int pin, int value) {
-    GpioFlash gpio = gpios[pin];
+    GpioFlash& gpio = gpios[pin];
     if (gpio.pin == pin && value != gpio.state) {
-        if (gpio.mode>0) {
+        if (gpio.mode==2) {
             if (value == -1) {
             gpio.state = !gpio.state;
             } else {
                 gpio.state = value;
             }
             digitalWrite(pin, value);
-        } else if (gpio.mode==-1 && _digitalsAttached[pin]) {
+        } else if (gpio.mode==-1 && gpio.channel!=CHANNEL_NOT_ATTACHED) {
             gpio.state = value;
             ledcWrite(gpio.channel, value);
         }
@@ -254,6 +268,9 @@ String PreferenceHandler::gpioToJson(GpioFlash& gpio) {
     doc["pin"] = gpio.pin;
     doc["label"] = gpio.label;
     doc["mode"] = gpio.mode;
+    doc["frequency"] = gpio.frequency;
+    doc["resolution"] = gpio.resolution;
+    doc["channel"] = gpio.channel;
     doc["state"] = gpio.state;
     doc["save"] = gpio.save;
     String output;

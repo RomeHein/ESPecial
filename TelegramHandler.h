@@ -21,7 +21,7 @@ private:
     void handleNewMessages(int numNewMessages);
     String generateButtonFormat(GpioFlash& gpio);
     String generateButtonFormat(AutomationFlash& a);
-    String generateInlineKeyboardsForGpios();
+    String generateInlineKeyboardsForGpios(bool inputMode = false);
     String generateInlineKeyboardsForAutomations();
 public:
     TelegramHandler(PreferenceHandler& preference, WiFiClientSecure &client) : preference(preference), client(client) {};

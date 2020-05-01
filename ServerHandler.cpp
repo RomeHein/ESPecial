@@ -100,6 +100,10 @@ void ServerHandler::getSettings() {
     mqtt["user"] = preference.mqtt.user;
     mqtt["password"] = preference.mqtt.password;
     mqtt["topic"] = preference.mqtt.topic;
+    JsonObject general = doc.createNestedObject("general");
+    general["maxAutomations"] = MAX_AUTOMATIONS_NUMBER;
+    general["maxConditions"] = MAX_AUTOMATIONS_CONDITIONS_NUMBER;
+    general["maxActions"] = MAX_AUTOMATION_ACTION_NUMBER;
     String output;
     serializeJson(doc, output);
     server.send(200, "text/json", output);
@@ -211,9 +215,8 @@ void ServerHandler::handleGpioEdit()
         #endif
         return;
     }
-    GpioFlash gpio = preference.gpios[doc["pin"].as<int>()];
-    if (gpio.pin) {
-        server.send(200, "text/json", preference.editGpio(gpio, doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(), doc["settings"]["save"].as<int>()));
+    if (preference.gpios[doc["pin"].as<int>()].pin) {
+        server.send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>()));
         return;
     }
     server.send(404, "text/plain", "Not found");
@@ -234,9 +237,12 @@ void ServerHandler::handleGpioNew()
     const int pin = doc["settings"]["pin"].as<int>();
     const char* label = doc["settings"]["label"].as<char*>();
     const int mode = doc["settings"]["mode"].as<int>();
+    const int frequency = doc["settings"]["frequency"].as<int>();
+    const int resolution = doc["settings"]["resolution"].as<int>();
+    const int channel = doc["settings"]["channel"].as<int>();
     const int save = doc["settings"]["save"].as<int>();
     if (pin && label && mode) {
-        server.send(200, "text/json", preference.addGpio(pin, label, mode, save));
+        server.send(200, "text/json", preference.addGpio(pin,label,mode,frequency,resolution,channel,save));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");

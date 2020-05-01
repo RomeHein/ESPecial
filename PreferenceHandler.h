@@ -97,7 +97,6 @@ private:
     String gpioToJson(GpioFlash& gpio);
     void setAutomationsFromJson(const char* j);
     String automationToJson(AutomationFlash& a);
-    bool _digitalsAttached[GPIO_PIN_COUNT] = {};
     int _nextFreeChannel = 0;
 public:
     void begin();
@@ -110,8 +109,8 @@ public:
     // Gpio
     GpioFlash gpios[GPIO_PIN_COUNT];
     bool removeGpio(int pin);
-    String addGpio(int pin, const char* label, int mode, int save = 0);
-    String editGpio(GpioFlash& gpio, int newPin,const char* newLabel, int newMode = 0, int save = 0);
+    String addGpio(int pin, const char* label, int mode, int frequency = 50, int resolution = 16, int channel = CHANNEL_NOT_ATTACHED, int save = 0);
+    String editGpio(int oldPin, int newPin,const char* newLabel, int newMode = 0, int newFrequency = 50, int newResolution = 16, int newChannel = CHANNEL_NOT_ATTACHED, int save = 0);
     void setGpioState(int pin, int value = -1);
     String getGpiosJson();
     // Automation
