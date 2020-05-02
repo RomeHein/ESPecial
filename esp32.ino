@@ -209,7 +209,7 @@ void runAutomation(AutomationFlash& automation) {
   for (int i=0; i<MAX_AUTOMATIONS_CONDITIONS_NUMBER;i++) {
     // Ignore condition if we don't have a valid math operator, and if the previous condition had a logic operator at the end.
     if (automation.conditions[i][1] && ((i>0 && automation.conditions[i-1][3])||i==0)) {
-      GpioFlash gpio = preferencehandler->gpios[automation.conditions[i][0]];
+      GpioFlash& gpio = preferencehandler->gpios[automation.conditions[i][0]];
       const int16_t value =  gpio.mode>0 ? digitalRead(gpio.pin) : ledcRead(gpio.channel);
       bool criteria;
       if (automation.conditions[i][1] == 1) {
@@ -250,11 +250,21 @@ void runAutomation(AutomationFlash& automation) {
           if (type == 1 && automation.actions[i][2] && strlen(automation.actions[i][2])!=0) {
             int pin = atoi(automation.actions[i][2]);
             int16_t value = atoi(automation.actions[i][1]);
-            GpioFlash gpio = preferencehandler->gpios[pin];
+            int8_t assignmentType = atoi(automation.actions[i][3]);
+            GpioFlash& gpio = preferencehandler->gpios[pin];
+            int16_t newValue = value;
+            // Value assignement depending on the type of operator choosen
+            if (assignmentType == 2) {
+              newValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel)) + value;
+            } else if (assignmentType == 3) {
+              newValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel)) - value;
+            } else if (assignmentType == 4) {
+              newValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel)) * value;
+            }
             if (gpio.mode>0) {
-              digitalWrite(pin, atoi(automation.actions[i][1]));
+              digitalWrite(pin, newValue);
             } else {
-              ledcWrite(gpio.channel, value);
+              ledcWrite(gpio.channel, newValue);
             }
           // Send telegram message action
           } else if (type == 2) {

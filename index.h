@@ -236,14 +236,12 @@ const char MAIN_page[] PROGMEM = R"=====(
     #condition-editor select,
     #condition-editor input, 
     #condition-editor-result>.row select, 
-    #condition-editor-result>.row input {
-        width: 15%;
-    }
+    #condition-editor-result>.row input,
     #action-editor select,
     #action-editor input, 
     #action-editor-result>.row select, 
-    #action-editor-result>.row input{
-        width: 20%;
+    #action-editor-result>.row input {
+        width: 15%;
     }
     #blocker {
         display: flex;
@@ -709,7 +707,8 @@ const char MAIN_page[] PROGMEM = R"=====(
             return [
                 document.getElementById(`addTypeAction-${id}`).value,
                 document.getElementById(`addValueAction-${id}`).value,
-                document.getElementById(`addGpioAction-${id}`).value
+                document.getElementById(`addGpioAction-${id}`).value,
+                document.getElementById(`addSignAction-${id}`).value
             ];
         })
         req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
@@ -945,13 +944,15 @@ const char MAIN_page[] PROGMEM = R"=====(
     };
 
     const addActionEditor = (action) => {
-        let selectedType = 0;
+        let selectedType = 1;
         let selectedValue = 0;
         let selectedPin = 0;
+        let selectedSign = 1;
         if (action) {
             selectedType = action[0];
             selectedValue = action[1];
             selectedPin = action[2];
+            selectedSign = action[3];
         }
 
         let gpioActionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedPin == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
@@ -961,13 +962,19 @@ const char MAIN_page[] PROGMEM = R"=====(
         const rowElement = document.createElement('div');
         rowElement.id = `action${actionNumber}`;
         rowElement.classList.add('row');
-        rowElement.innerHTML = `<select id='addTypeAction${actionNumber}' name='signAction'>
+        rowElement.innerHTML = `<select onchange='updateActionType(this)' id='addTypeAction${actionNumber}' name='signAction'>
                             <option value=1 ${selectedType == 1 ? 'selected':''}>Set Gpio pin</option>
                             <option value=2 ${selectedType == 2 ? 'selected':''}>Send telegram message</option>
                             <option value=3 ${selectedType == 3 ? 'selected':''}>Display text on tft screen</option>
                             <option value=4 ${selectedType == 4 ? 'selected':''}>Delay</option>
                         </select>
-                        <select id='addGpioAction${actionNumber}' name='gpioCondition'>${gpioActionOptions}</select>
+                        <select id='addGpioAction${actionNumber}' name='gpioAction' class='${selectedType != 1 ? 'hidden': ''}'>${gpioActionOptions}</select>
+                        <select id='addSignAction${actionNumber}' name='signAction' class='${selectedType != 1 ? 'hidden': ''}'>
+                            <option value=1 ${selectedSign == 1 ? 'selected':''}>=</option>
+                            <option value=2 ${selectedSign == 2 ? 'selected':''}>+=</option>
+                            <option value=3 ${selectedSign == 3 ? 'selected':''}>-=</option>
+                            <option value=4 ${selectedSign == 4 ? 'selected':''}>*=</option>
+                        </select>
                         <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' placeholder='value'>
                         <a onclick='deleteRowEditor(this)' id='deleteAction${actionNumber}' class='btn delete'>x</a>`
         actionEditorElement.appendChild(rowElement);
@@ -1082,6 +1089,18 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`setAutomationMessage-${id || 'new'}`).parentElement.classList.add('hidden');
         }
     };
+
+    const updateActionType = (element) => {
+        const rowNumber = +element.id.split('-')[1];
+        const isGpioAction = (element.value == 1);
+        if (isGpioAction) {
+            document.getElementById(`addGpioAction-${rowNumber}`).classList.remove('hidden');
+            document.getElementById(`addSignAction-${rowNumber}`).classList.remove('hidden');
+        } else {
+            document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
+        }
+    }
 
     // Events
 

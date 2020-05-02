@@ -48,7 +48,8 @@ typedef struct
     // index 0: action type: 1 is set gpio pin to a value, 2 is sending a message to telegram, 3 is displaying a message on the tft screen, 4 is a delay
     // index 1: action value
     // index 2: pin to control if type is 1
-    char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100];
+    // index 3: assignement operation type on value: 1 is =, 2 is +=, 3 is -=, 4 is *=
+    char actions[MAX_AUTOMATION_ACTION_NUMBER][4][100];
     int8_t autoRun; // Automatically play the automation if all conditions are true
     int8_t loopCount; // Number of time to execute the automation before next
     int32_t debounceDelay; // Time before the same automation can be run again
@@ -116,8 +117,8 @@ public:
     AutomationFlash automations[MAX_AUTOMATIONS_NUMBER];
     String getAutomationsJson();
     bool removeAutomation(int id);
-    String addAutomation(const char* label, int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100],int loopCount = 0, int32_t debounceDelay = 0, int nextAutomationId = 0);
-    String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][3][100], int newLoopCount, int32_t newDebounceDelay, int newNextAutomationId);
+    String addAutomation(const char* label, int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][4][100],int loopCount = 0, int32_t debounceDelay = 0, int nextAutomationId = 0);
+    String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][4][100], int newLoopCount, int32_t newDebounceDelay, int newNextAutomationId);
     // Mqtt
     MqttFlash mqtt;
     bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);

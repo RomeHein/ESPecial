@@ -276,7 +276,7 @@ void ServerHandler::handleGetGpioState()
 {
     const int pin = atoi(server.pathArg(0).c_str());
     int state;
-    GpioFlash gpio = preference.gpios[pin];
+    GpioFlash& gpio = preference.gpios[pin];
     if (gpio.pin == pin) {
         if (gpio.mode>0) {
             state = digitalRead(pin);
@@ -345,11 +345,11 @@ void ServerHandler::handleAutomationEdit()
                 memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
                 j++;
             }
-            char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100] = {};
+            char actions[MAX_AUTOMATION_ACTION_NUMBER][4][100] = {};
             int l = 0;
             for(JsonArray action: doc["settings"]["actions"].as<JsonArray>()) {
-                char actionToFlash[3][100];
-                for (int k = 0; k<3; k++) {
+                char actionToFlash[4][100];
+                for (int k = 0; k<4; k++) {
                     strcpy(actionToFlash[k], action[k].as<char*>());
                 }
                 memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
@@ -384,11 +384,11 @@ void ServerHandler::handleAutomationNew()
         memcpy(conditions[j], conditionToFlash, sizeof(conditionToFlash));
         j++;
     }
-    char actions[MAX_AUTOMATION_ACTION_NUMBER][3][100] = {};
+    char actions[MAX_AUTOMATION_ACTION_NUMBER][4][100] = {};
     int l = 0;
     for(JsonArray action: doc["settings"]["actions"].as<JsonArray>()) {
-        char actionToFlash[3][100];
-        for (int k = 0; k<3; k++) {
+        char actionToFlash[4][100];
+        for (int k = 0; k<4; k++) {
             strcpy(actionToFlash[k], action[k].as<char*>());
         }
         memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
