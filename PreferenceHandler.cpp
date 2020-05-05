@@ -206,12 +206,6 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         if (gpio.mode==-1) attach(gpio);
         hasChanged = true;
     }
-    if (newPin && gpio.pin != newPin) {
-        if (gpio.mode==-1) detach(gpio);
-        gpio.pin = newPin;
-        if (gpio.mode==-1) attach(gpio);
-        hasChanged = true;
-    }
     if (newResolution && gpio.resolution != newResolution) {
         gpio.resolution = newResolution;
         hasChanged = true;
@@ -228,24 +222,37 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         gpio.save = newSave;
         hasChanged = true;
     }
+    if (newPin && gpio.pin != newPin) {
+        // If we are in analog mode, detach before doing anything
+        if (gpio.mode==-1) detach(gpio);
+        memcpy(&gpios[newPin], &gpio, sizeof(gpio));
+        gpios[newPin].pin = newPin;
+        gpio = {};
+        // Reattach now
+        if (gpio.mode==-1) attach(gpio);
+        hasChanged = true;
+    }
     if (hasChanged) {
         save(PREFERENCES_GPIOS);
+        GpioFlash& newGpio = newPin ? gpios[newPin] : gpio;
         // In case we don't want to save state, we still want to get the right value.
-        if (gpio.mode>0) {
-            gpio.state = digitalRead(gpio.pin);
+        if (newGpio.mode>0) {
+            newGpio.state = digitalRead(newGpio.pin);
         } else {
-            gpio.state = ledcRead(gpio.channel);
+            newGpio.state = ledcRead(newGpio.channel);
         }
     }
-    return gpioToJson(gpio);
+    return gpioToJson(newPin ? gpios[newPin] : gpio);
 }
 
 void PreferenceHandler::setGpioState(int pin, int value) {
     GpioFlash& gpio = gpios[pin];
     if (gpio.pin == pin && value != gpio.state) {
+        // If gpio is in output mode
         if (gpio.mode==2) {
+            // Value -1 means reverse the state
             if (value == -1) {
-            gpio.state = !gpio.state;
+                gpio.state = !gpio.state;
             } else {
                 gpio.state = value;
             }

@@ -1,4 +1,4 @@
-# ESPECIAL 
+# ESPecial
 
 This project aim to provide an easy way to control your esp32. You no longer need programming skills to set complex tasks. This can be a very nice approach for small projects and for educational purposes.
 
@@ -25,14 +25,14 @@ Features:
 - Provides info on the tft LCD screen if you have one.
 
 ## Work in progress:
-- Time based events: trigger actions based on time.
+- Add possibility to make http requests as a type of action.
+- I2C integration
 - Web Interface: Give it some love, fix some issues, particulary on mqtt connection
-- Add default and on/off values for pins.
 ## Wish list
 - Unit and integration tests!! I'm really new in arduino and even c++ world, so I might need more time to work on that part.
 - Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2018...
 - Use websockets for the front. So that we don't need to refresh the page to get the updated pin states.
-- Make this library compatible with other boards. For now it will only work with dual core boards, as the event listener for pin values is attached to the core 0. With some work, everything could be handle on one core. The main bottle neck is the UniversalTelegramBot library that seems to make long poll to Telegram api and therefor blocks the core process.
+- Make this library compatible with other boards. For now it will only work with dual core boards, as the event listener for pin values is attached to the core 0. With some work, everything could be handle on one core, for instance by using interupts instead of the loop currenlty checking conditions. Another bottle neck is the UniversalTelegramBot library that seems to make long poll to Telegram api and therefor blocks the core process.
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
 - reduce library dependencies: UniversalTelegramBot and WifiManager could be avoided. We might need to get rid of the tft library, as this code is too specific for this kind of library. 
@@ -102,13 +102,20 @@ Here, you'll be able to set conditions based on gpios value. I'm sure there are 
 Automations are based on conditions. Keep in mind that in order to run, all conditions have to be true.
 You can add up to 5 conditions per automations. This is to limit heap memory consumption.
 Each condition can be linked to the previous one by AND/OR/XOR logic operators. If a condition has "none" operator defined, the next condition will be ignored.
+For now, you have two types of conditions:
+- Gpio value: the main loop will check for gpios change value every 50ms. If a gpio state has changed, the process will check all conditions of all event driven automations. When all conditions are fullfilled for a given automation, it will run it.
+- Time: The main loop will also check all conditions of all event driven automations every minute. You can set time conditions based on hours or weekday.
+
+⚠️ Important note:
+This is important that you set a Gpio value condition to your automatisation, otherwise, the time checking loop will run you automation every minute, or every time a gpio state change.
+Reason: I still can't figure a correct way to handle time events. If you want to participate to the project, that's a point I would need help.
  
 Now we can set our first action. Simply click the add button in the action editor section.
 You can choose between three types of actions:
 - Set gpio value/pulse
 - Send telegram message
 - Display message on screen
-- Delay: note that a long delay will block the process. Yes, automations run sequencially. The process maintain an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option 😉.
+- Delay: note that this delay is an actual 'delay' function. Meaning that you'll block the process. Yes, automations run sequencially. The process maintain an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option 😉.
 
 
 If you select the auto run option, the action will be triggered whenever its conditions become true. This can be very handy if you want to send a Telegram notification when a gpio value changes.

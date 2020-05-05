@@ -3,6 +3,7 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <TFT_eSPI.h>
+#include "time.h"
 
 #include "ServerHandler.h"
 #include "PreferenceHandler.h"
@@ -40,12 +41,58 @@ int delayBetweenScreenUpdate = 3000;
 long screenRefreshLastTime;
 
 // Debounce inputs delay
-long lastDebounceInputTime = 0;
+long lastDebouncedInputTime = 0;
 int debounceInputDelay = 50;
 // Keep tracks of last time for each automation run 
 long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
+// To trigger event based on time, we check all automatisations everyminutes
+int debounceTimeDelay = 60000;
+int lastCheckedTime = 0;
 
 int freeMemory;
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
+
+bool checkAgainstLocalHour(int time, int signType) {
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return false;
+  }
+  int hour = time/100;
+  int minutes = time % 100;
+  Serial.printf("Checking hour %i:%i against local time:",hour,minutes);
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  if (signType == 1) {
+    return timeinfo.tm_hour == hour && minutes == timeinfo.tm_min;
+  } else if (signType == 2) {
+    return timeinfo.tm_hour != hour && minutes != timeinfo.tm_min;
+  } else if (signType == 3) {
+    return timeinfo.tm_hour > hour || (timeinfo.tm_hour == hour && timeinfo.tm_min > minutes);
+  } else if (signType == 4) {
+    return timeinfo.tm_hour < hour || (timeinfo.tm_hour == hour && timeinfo.tm_min < minutes);
+  }
+}
+
+bool checkAgainstLocalWeekDay(int weekday, int signType) {
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return false;
+  }
+  Serial.printf("Checking weekday %i against local weekday: %i\n",weekday,timeinfo.tm_wday);
+  if (signType == 1) {
+    return timeinfo.tm_wday == weekday;
+  } else if (signType == 2) {
+    return timeinfo.tm_wday != weekday;
+  } else if (signType == 3) {
+    return timeinfo.tm_wday > weekday;
+  } else if (signType == 4) {
+    return timeinfo.tm_wday < weekday;
+  }
+}
 
 void tft_init()
 {
@@ -120,7 +167,7 @@ void displayServicesInfo ()
 }
 
 void readInputPins() {
-  if (millis() > debounceInputDelay + lastDebounceInputTime) {
+  if (millis() > debounceInputDelay + lastDebouncedInputTime) {
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
         int newState;
@@ -129,19 +176,17 @@ void readInputPins() {
         } else if (gpio.mode == -1) {
           newState = ledcRead(gpio.channel);
         }
-        
         if (gpio.state != newState) {
           #ifdef __debug
             Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
           #endif
           gpio.state = newState;
           mqtthandler->publish(gpio.pin);
-          // Now check for any runnable automations
           runAllRunnableAutomations();
         }
       }
-    }
-    lastDebounceInputTime = millis();
+    }       
+    lastDebouncedInputTime = millis();
   }
 }
 
@@ -209,18 +254,30 @@ void runAutomation(AutomationFlash& automation) {
   for (int i=0; i<MAX_AUTOMATIONS_CONDITIONS_NUMBER;i++) {
     // Ignore condition if we don't have a valid math operator, and if the previous condition had a logic operator at the end.
     if (automation.conditions[i][1] && ((i>0 && automation.conditions[i-1][3])||i==0)) {
-      GpioFlash& gpio = preferencehandler->gpios[automation.conditions[i][0]];
-      const int16_t value =  gpio.mode>0 ? digitalRead(gpio.pin) : ledcRead(gpio.channel);
       bool criteria;
-      if (automation.conditions[i][1] == 1) {
-        criteria = (value == automation.conditions[i][2]);
-      } else if (automation.conditions[i][1] == 2) {
-        criteria = (value != automation.conditions[i][2]);
-      } else if (automation.conditions[i][1] == 3) {
-        criteria = (value > automation.conditions[i][2]);
-      } else if (automation.conditions[i][1] == 4) {
-        criteria = (value < automation.conditions[i][2]);
+      // Condition base on pin value
+      if (automation.conditions[i][0]>-1) {
+        GpioFlash& gpio = preferencehandler->gpios[automation.conditions[i][0]];
+        const int16_t value =  gpio.mode>0 ? digitalRead(gpio.pin) : ledcRead(gpio.channel);
+        if (automation.conditions[i][1] == 1) {
+          criteria = (value == automation.conditions[i][2]);
+        } else if (automation.conditions[i][1] == 2) {
+          criteria = (value != automation.conditions[i][2]);
+        } else if (automation.conditions[i][1] == 3) {
+          criteria = (value > automation.conditions[i][2]);
+        } else if (automation.conditions[i][1] == 4) {
+          criteria = (value < automation.conditions[i][2]);
+        }
+      // Condition base on hour
+      } else if (automation.conditions[i][0]==-1) {
+        // The time is an int, but represent the hour in 24H format. So 07:32 will be represent by 732. 23:12 by 2312.
+        criteria = checkAgainstLocalHour(automation.conditions[i][2], automation.conditions[i][1]);
+      // Condition base on week day
+      } else if (automation.conditions[i][0]==-2) {
+        // Sunday starts at 0, saturday is 6
+        criteria = checkAgainstLocalWeekDay(automation.conditions[i][2], automation.conditions[i][1]);
       }
+      // Concatanate the previous condition result based on th assignement type operator.
       if (i == 0) {
         canRun = criteria;
       } else if (automation.conditions[i-1][3] == 1) {
@@ -236,7 +293,7 @@ void runAutomation(AutomationFlash& automation) {
   }
   if (canRun) {
     #ifdef __debug
-      Serial.printf("Running automation id: %i\n",automation.id);
+      Serial.printf("Running automation: %s\n",automation.label);
     #endif
     // Run automation
     for (int repeat=0; repeat<automation.loopCount; repeat++) {
@@ -251,15 +308,16 @@ void runAutomation(AutomationFlash& automation) {
             int pin = atoi(automation.actions[i][2]);
             int16_t value = atoi(automation.actions[i][1]);
             int8_t assignmentType = atoi(automation.actions[i][3]);
-            GpioFlash& gpio = preferencehandler->gpios[pin];
             int16_t newValue = value;
+            GpioFlash& gpio = preferencehandler->gpios[pin];
+            int16_t currentValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel));
             // Value assignement depending on the type of operator choosen
             if (assignmentType == 2) {
-              newValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel)) + value;
+              newValue =  currentValue + value;
             } else if (assignmentType == 3) {
-              newValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel)) - value;
+              newValue = currentValue - value;
             } else if (assignmentType == 4) {
-              newValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel)) * value;
+              newValue = currentValue * value;
             }
             if (gpio.mode>0) {
               digitalWrite(pin, newValue);
@@ -275,7 +333,7 @@ void runAutomation(AutomationFlash& automation) {
             tft.fillScreen(TFT_BLACK);
             tft.setTextColor(TFT_WHITE);
             tft.println(automation.actions[i][1]);
-          // Delay
+          // Delay type action
           } else if (type == 4) {
             delay(atoi(automation.actions[i][1]));
           }
@@ -286,7 +344,7 @@ void runAutomation(AutomationFlash& automation) {
     }
   }
   // Run next automation if we are not trying to do a nauty infinite loop
-  if (automation.nextAutomationId && automation.nextAutomationId != automation.id) {
+  if (canRun && automation.nextAutomationId && automation.nextAutomationId != automation.id) {
     for (AutomationFlash& nAutomation: preferencehandler->automations) {
       if (nAutomation.id == automation.nextAutomationId) {
         #ifdef __debug
@@ -318,9 +376,20 @@ void setup(void)
     serverhandler->begin();
     telegramhandler = new TelegramHandler(*preferencehandler, client);
     mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
+     //init and get the time
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     // Set input reading on a different thread
     // Note: could maybe replaced by the telegramHandler
     xTaskCreatePinnedToCore(input_loop, "readInputs", 12288, NULL, 0, NULL, 0);
+
+    struct tm timeinfo;
+    if(!getLocalTime(&timeinfo)){
+      Serial.println("Failed to obtain time");
+    } else {
+      // This avoid having to check getLocalTime in the loop, saving some complexity.
+      debounceTimeDelay -= timeinfo.tm_sec; 
+      lastCheckedTime = millis();
+    }
   }
 }
 
@@ -357,8 +426,17 @@ void input_loop(void *pvParameters)
 {
   while(1) {
     if (WiFi.status() ==  WL_CONNECTED) {
+      // Yes... not using interupts yet
       readInputPins();
       pickUpQueuedAutomations();
+      if (millis() > debounceTimeDelay + lastCheckedTime) {
+        // If this is the first time this run, we are now sure it will run every minutes, so set back debounceTimeDelay to 60s.
+        if (debounceTimeDelay != 60000) {
+          debounceTimeDelay = 60000;
+        }
+        runAllRunnableAutomations();
+        lastCheckedTime = millis();
+      }
       vTaskDelay(10);
     }
   }

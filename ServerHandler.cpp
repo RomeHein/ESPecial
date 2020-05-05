@@ -295,6 +295,9 @@ void ServerHandler::handleSetGpioState()
     if (server.pathArg(1) && server.pathArg(1) != "")
     {
         const int newState = atoi(server.pathArg(1).c_str());
+        #ifdef __debug
+            Serial.printf("Server: handle set gpio %i state %i\n",pin, newState);
+        #endif
         preference.setGpioState(pin, newState);
     }
     handleGetGpioState();

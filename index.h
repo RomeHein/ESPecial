@@ -10,17 +10,14 @@ const char MAIN_page[] PROGMEM = R"=====(
         background-color: lightskyblue;
         margin: 0;
     }
-
     form {
         display: flex;
     }
-
     .spacer {
         display: block;
         width: 100%;
         height: 80px;
     }
-
     .header {
         display: flex;
         position: fixed;
@@ -28,7 +25,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         width: 100%;
         background-color: white;
     }
-
     .container {
         background-color: whitesmoke;
         display: flex;
@@ -40,12 +36,10 @@ const char MAIN_page[] PROGMEM = R"=====(
         margin: auto;
         margin-bottom: 10px;
     }
-
     .column {
         display: flex;
         flex-direction: column;
     }
-
     .setting-container {
         display: flex;
         flex-direction: column;
@@ -87,11 +81,9 @@ const char MAIN_page[] PROGMEM = R"=====(
         justify-content: space-between;
         flex-wrap: wrap;
     }
-
     .hidden {
         display: none !important;
     }
-
     .header-container {
         display: flex;
         flex-direction: row;
@@ -99,15 +91,12 @@ const char MAIN_page[] PROGMEM = R"=====(
         flex-wrap: wrap;
         border-bottom: solid 1px lightgray;
     }
-
     .header-container > h2 {
         padding-left: 10px;
     }
-
     .row>.label {
         margin-left: 10px;
     }
-
     .set {
         display: flex;
         flex-direction: column;
@@ -115,12 +104,10 @@ const char MAIN_page[] PROGMEM = R"=====(
         background-color: lightgray;
         padding: 10px;
     }
-
     .set>.set-inputs {
         display: flex;
         flex-direction: column;
     }
-
     .set>.set-inputs input {
         width: 50%;
         height: 30px;
@@ -137,7 +124,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         color: white;
         margin-top: 5px;
     }
-
     select {
         width: calc(50% + 10px);
         height: 30px;
@@ -145,13 +131,11 @@ const char MAIN_page[] PROGMEM = R"=====(
         margin-top: 5px;
         margin-bottom: 5px;
     }
-
     .set>.set-buttons {
         display: flex;
         flex-direction: row;
         justify-content: flex-end;
     }
-
     .btn-container {
         display: flex;
         justify-content: flex-end;
@@ -163,7 +147,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         padding: 15px 32px;
         margin: 10px 5px;
     }
-
     .btn {
         border-radius: 5px;
         padding: 15px 32px;
@@ -173,63 +156,48 @@ const char MAIN_page[] PROGMEM = R"=====(
         cursor: pointer;
         text-decoration: none;
     }
-
     .edit {
         background-color: dodgerblue;
         border: solid 1px dodgerblue;
         color: white;
     }
-
     .edit:hover {
         color: dodgerblue;
     }
-
-    .on,
-    .save {
+    .on,.save {
         background-color: yellowgreen;
         border: solid 1px yellowgreen;
         color: white;
     }
-
-    .on:hover,
-    .save:hover {
+    .on:hover,.save:hover {
         color: yellowgreen;
     }
-
-    .off,
-    .delete {
+    .off,.delete {
         background-color: tomato;
         border: solid 1px tomato;
         color: white;
     }
-
     .off:hover, .delete:hover {
         color: tomato;
     }
-
     .cancel {
         background-color: lightgray;
         border: solid 1px lightgray;
         color: white;
     }
-
     .cancel:hover {
         color: lightgray;
     }
-
     .btn:hover {
         background-color: white;
     }
-
     .input-mode {
         pointer-events: none;
         background-color: white;
     }
-
     .input-mode.on {
         color: yellowgreen;
     }
-
     .input-mode.off {
         color: tomato;
     }
@@ -393,7 +361,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
     </div>
 </body>
-
 </html>
 <!-- HTML_SCRIPT -->
 <script>
@@ -402,16 +369,12 @@ const char MAIN_page[] PROGMEM = R"=====(
     var availableGpios = [];
     var automations = [];
     var isSettingsMenuActivated = false;
-
     const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
-
     // Update software
-
     const fillUpdateInput = (element) => {
         const fileName = element.value.split('\\\\');
         document.getElementById('file-update-label').innerHTML = fileName[fileName.length-1];
     };
-
     const submitUpdate = async (e) => {
         e.preventDefault();
         const blocker = document.getElementById('blocker');
@@ -432,9 +395,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     // Telegram
-
     const submitTelegram = async (e) => {
         e.preventDefault();
         const active = +document.getElementById(`telegram-active`).checked;
@@ -453,9 +414,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             }
         }
     };
-
     // MQTT
-
     const submitMqtt = async (e) => {
         e.preventDefault();
         const active = document.getElementById(`mqtt-active`).checked;
@@ -478,7 +437,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const mqttConnect = async () => {
         const loader = document.getElementById(`mqtt-retry-loader`);
         const retryButton = document.getElementById(`mqtt-retry`);
@@ -504,9 +462,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         loader.classList.add('hidden');
         retryText.classList.remove('hidden');
     };
-
     // Gpios
-
     const fetchGpios = async () => {
         try {
             const res = await fetch(window.location.href + 'gpios');
@@ -518,7 +474,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const fetchAvailableGpios = async () => {
         try {
             const res = await fetch(window.location.href + 'gpios/available');
@@ -527,7 +482,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const switchGpioState = async (element) => {
         try {
             const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1])
@@ -544,7 +498,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const addGpio = () => {
         closeAnySettings();
         const topBar = document.getElementById('gpio-header-bar');
@@ -553,7 +506,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             topBar.classList.add('open');
         }
     };
-
     const deleteGpio = async (element) => {
         const gpioPin = element.id.split('-')[1];
         try {
@@ -567,7 +519,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(err);
         }
     };
-
     // Automations
     const fetchAutomations = async () => {
         try {
@@ -580,7 +531,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const runAutomation = async (element) => {
         const automationId = element.id.split('-')[1];
         try {
@@ -589,7 +539,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const addAutomation = () => {
         closeAnySettings();
         const topBar = document.getElementById('automation-header-bar');
@@ -598,7 +547,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             topBar.classList.add('open');
         }
     };
-
     const deleteAutomation = async (element) => {
         const automationId = element.id.split('-')[1];
         try {
@@ -612,9 +560,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(err);
         }
     };
-
     // Settings
-
     const fetchSettings = async () => {
         try {
             const res = await fetch(window.location.href + 'settings');
@@ -638,7 +584,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(`Error: ${err}`);
         }
     };
-
     const saveGpioSetting = async (element) => {
         const gpioPin = element.id.split('-')[1];
         const isNew = (gpioPin === 'new');
@@ -684,7 +629,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(err);
         }
     };
-
     const saveAutomationSetting = async (element) => {
         const automationId = element.id.split('-')[1];
         const isNew = (automationId === 'new');
@@ -698,7 +642,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             return [
                 +document.getElementById(`addGpioCondition-${id}`).value,
                 +document.getElementById(`addSignCondition-${id}`).value,
-                +document.getElementById(`addValueCondition-${id}`).value,
+                +document.getElementById(`addValueCondition-${id}`).value.split(':').join(''),
                 +document.getElementById(`addNextSignCondition-${id}`).value,
             ];
         })
@@ -742,7 +686,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(err);
         }
     };
-
     const openGpioSetting = (element) => {
         closeAnySettings();
         const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1]);
@@ -753,7 +696,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`setGpioSave-${gpio.pin}`).checked = gpio.save;
         }
     };
-
     const openAutomationSetting = (element) => {
         closeAnySettings();
         const automation = automations.find(automation => automation.id === +element.id.split('-')[1]);
@@ -778,16 +720,13 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`setAutomationAutoRun-${automation.id}`).checked = automation.autoRun;
         }
     };
-
     const closeAnySettings = () => {
         document.querySelectorAll('.open').forEach(row => {
             row.classList.remove('open');
             row.removeChild(row.lastChild);
         });
     };
-
     // Element creation
-
     const switchPage = () => {
         isSettingsMenuActivated = !isSettingsMenuActivated;
         if (isSettingsMenuActivated) {
@@ -804,7 +743,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById('setting-container').classList.add('hidden');
         }
     };
-
     const createGpioControlRow = (gpio) => {
         let child = document.createElement('div');
         const stateController = gpio.mode>0 ?
@@ -818,7 +756,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         </div>`;
         return child.firstChild;
     };
-
     const createAutomationRow = (automation) => {
         let child = document.createElement('div');
         child.innerHTML = `<div class='row' id='rowAutomation-${automation.id}'>
@@ -830,7 +767,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         </div>`;
         return child.firstChild;
     };
-
     // The edit panel for setting gpios
     const createEditGpioPanel = (gpio) => {
         if (!gpio) {
@@ -895,7 +831,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             </div>`;
         return child;
     };
-
     const deleteRowEditor = (element) => {
         const isCondition = element.id.split('-')[0] === 'deleteCondition';
         const rowNumber = +element.id.split('-')[1] || 0;
@@ -903,7 +838,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         const conditionRowElement = document.getElementById(`${isCondition ? 'condition' : 'action'}-${rowNumber}`);
         conditionEditorResultElement.removeChild(conditionRowElement); 
     };
-
     const addConditionEditor = (condition) => {
         let selectedGpio = 0;
         let selectedSign = 0;
@@ -915,22 +849,27 @@ const char MAIN_page[] PROGMEM = R"=====(
             selectedValue = condition[2];
             selectedNextSign = condition[3];
         }
+        // If time type is selected, put the value in HH:MM format
+        if (selectedGpio == -1) {
+            selectedValue = `${Math.floor(selectedValue/100)}:${selectedValue%100}`;
+        }
 
-        let gpioConditionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedGpio == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
+        let gpioConditionOptions = `<option value=-2 ${selectedGpio == -2 ? 'selected':''}>Weekday</option><option value=-1 ${selectedGpio == -1 ? 'selected':''}>Time</option>`
+        gpioConditionOptions += gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedGpio == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
         
         const conditionEditorElement = document.getElementById(`condition-editor-result`);
         const conditionNumber = '-' + conditionEditorElement.childElementCount;
         const rowElement = document.createElement('div');
         rowElement.id = `condition${conditionNumber}`;
         rowElement.classList.add('row');
-        rowElement.innerHTML = `<select id='addGpioCondition${conditionNumber}' name='gpioCondition'>${gpioConditionOptions}</select>
+        rowElement.innerHTML = `<select onchange='updateConditionValueType(this)' id='addGpioCondition${conditionNumber}' name='gpioCondition'>${gpioConditionOptions}</select>
                         <select id='addSignCondition${conditionNumber}' name='signCondition'>
                             <option value=1 ${selectedSign == 1 ? 'selected':''}>=</option>
                             <option value=2 ${selectedSign == 2 ? 'selected':''}>!=</option>
                             <option value=3 ${selectedSign == 3 ? 'selected':''}>></option>
                             <option value=4 ${selectedSign == 4 ? 'selected':''}><</option>
                         </select>
-                        <input type='number' id='addValueCondition${conditionNumber}' name='valueCondition' value='${selectedValue}' placeholder='value'>
+                        <input type='${selectedGpio==-1?'time':'number'}' id='addValueCondition${conditionNumber}' name='valueCondition' value='${selectedValue}' placeholder='value'>
                         <select id='addNextSignCondition${conditionNumber}' name='nextSignCondition'>
                             <option value=0 ${selectedNextSign == 0? 'selected':''}>none</option>
                             <option value=1 ${selectedNextSign == 1 ? 'selected':''}>AND</option>
@@ -942,7 +881,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         // Update conditions left number
         document.getElementById(`condition-editor-title`).innerText = `Condition editor (${settings.general.maxConditions-conditionEditorElement.childElementCount})`;
     };
-
     const addActionEditor = (action) => {
         let selectedType = 1;
         let selectedValue = 0;
@@ -954,7 +892,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             selectedPin = action[2];
             selectedSign = action[3];
         }
-
         let gpioActionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedPin == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
         
         const actionEditorElement = document.getElementById(`action-editor-result`);
@@ -981,7 +918,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         // Update actions left number
         document.getElementById(`action-editor-title`).innerText = `Action editor (${settings.general.maxActions-actionEditorElement.childElementCount})`;
     };
-
     // The edit panel for setting gpios
     const createEditAutomationPanel = (automation) => {
         if (!automation) {
@@ -1003,7 +939,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                     <input id='setAutomationLabel-${automation.id}' type='text' name='label' value='${automation.label||''}' placeholder='Describe your automation'>
                 </div>
                 <div class='row'>
-                    <label for='setAutomationAutoRun-${automation.id}'>Auto run:</label>
+                    <label for='setAutomationAutoRun-${automation.id}'>Event triggered:</label>
                     <input type='checkbox' name='autorun' id='setAutomationAutoRun-${automation.id}' value='${automation.autoRun}'>
                 </div>
                 <div class='row'>
@@ -1040,14 +976,12 @@ const char MAIN_page[] PROGMEM = R"=====(
             </div>`;
         return child;
     };
-
     const createSpinner = () => {
         let spinner = document.createElement('div');
         spinner.classList.add('spinner');
         spinner.innerHTML = '<div class="lds-ring"><div></div><div></div><div></div><div></div></div>';
         return spinner;
     };
-
      // Change the input of available mode for a given pin
      const updateModeOptions = (pin) => {
         const selectPin = document.getElementById(`setGpioPin-${pin || 'new'}`);
@@ -1067,7 +1001,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             selectMode.appendChild(digitaloption.firstChild);
         }
     };
-
     const updateAnalogueOptions = (element) => {
         const pin = +element.id.split('-')[1] || 'new';
         const option = document.getElementById(`setGpioMode-${pin}`).value;
@@ -1089,7 +1022,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`setAutomationMessage-${id || 'new'}`).parentElement.classList.add('hidden');
         }
     };
-
     const updateActionType = (element) => {
         const rowNumber = +element.id.split('-')[1];
         const isGpioAction = (element.value == 1);
@@ -1100,10 +1032,17 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
         }
-    }
-
+    };
+    const updateConditionValueType = (element) => {
+        const rowNumber = +element.id.split('-')[1];
+        const isHourCondition = (element.value==-1);
+        if (isHourCondition) {
+            document.getElementById(`addValueCondition-${rowNumber}`).type='time';
+        } else {
+            document.getElementById(`addValueCondition-${rowNumber}`).type='number';
+        }
+    };
     // Events
-
     window.onload = async () => {
         await fetchGpios();
         const containerG = document.getElementById('gpios');
