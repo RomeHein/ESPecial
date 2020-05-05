@@ -83,7 +83,7 @@ typedef struct
 {
     char token[200];
     int8_t active;
-    char currentChatId[50];
+    int32_t chatIds[MAX_TELEGRAM_USERS_NUMBER]; // Keep in memory the chatId of each users.
     int32_t users[MAX_TELEGRAM_USERS_NUMBER];
 }  TelegramFlash;
  
@@ -124,6 +124,6 @@ public:
     bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);
     // Telegram
     TelegramFlash telegram;
-    bool editTelegram(const char* token,const char* newChatId,const int* newUsers,int active);
+    bool editTelegram(const char* token,const int* newUsers,int active);
 };
 #endif

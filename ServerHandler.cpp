@@ -181,7 +181,6 @@ void ServerHandler::handleTelegramEdit () {
         return;
     }
     const char* token = doc["token"].as<char*>();
-    const char* chatId = doc["chatId"].as<char*>();
     const int active = doc["active"].as<int>();
     int users[MAX_TELEGRAM_USERS_NUMBER] = {};
     int i = 0;
@@ -190,7 +189,7 @@ void ServerHandler::handleTelegramEdit () {
         i++;
     }
     if (token) {
-        preference.editTelegram(token,chatId,users,active);
+        preference.editTelegram(token,users,active);
         server.send(200, "text/json", server.arg(0));
         return;
     }

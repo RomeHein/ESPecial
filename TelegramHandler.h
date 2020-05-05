@@ -28,6 +28,7 @@ public:
     void handle();
     void begin();
     void queueMessage(const char* message);
+    void sendQueuedMessages();
     int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     ~TelegramHandler() { delete bot; }
 };
