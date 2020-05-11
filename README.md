@@ -25,8 +25,8 @@ Features:
 - Provides info on the tft LCD screen if you have one.
 
 ## Work in progress:
-- Add possibility to make http requests as a type of action.
 - I2C integration
+- Add possibility to make http requests as a type of action.
 - Web Interface: Give it some love, fix some issues, particulary on mqtt connection
 ## Wish list
 - Unit and integration tests!! I'm really new in arduino and even c++ world, so I might need more time to work on that part.
@@ -35,7 +35,8 @@ Features:
 - Make this library compatible with other boards. For now it will only work with dual core boards, as the event listener for pin values is attached to the core 0. With some work, everything could be handle on one core, for instance by using interupts instead of the loop currenlty checking conditions. Another bottle neck is the UniversalTelegramBot library that seems to make long poll to Telegram api and therefor blocks the core process.
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
-- reduce library dependencies: UniversalTelegramBot and WifiManager could be avoided. We might need to get rid of the tft library, as this code is too specific for this kind of library. 
+- reduce library dependencies: UniversalTelegramBot, WifiManager and ArduinoJson could be avoided. Leaving only PubSubClient. This would decrease drastically the size of the project on the esp32.
+- Using light weight front library like Preact. This would enhancy greatly the coding experience...
 ## Getting Started
 
 This code works well with [this](https://www.aliexpress.com/item/33048962331.html?spm=a2g0o.productlist.0.0.71ee316cmQo1JA&algo_pvid=6aadca0f-7463-41bf-8277-010dbd421b34&algo_expid=6aadca0f-7463-41bf-8277-010dbd421b34-6&btsid=0b0a0ae215834054133566008e89a2&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_) type of chip from TTGO, but can work on any esp32. 
@@ -53,8 +54,7 @@ If you want to use vscode while coding (I strongly recommand it) follow this nic
 
 ### Installing
 
-This code also has 5 dependencies which need to be added to your libraries:
-- TFT_eSPI: (install via library manager) control your tft screen easily. Don't forget to choose the right setup in the User_setup_select.h of the library folder.
+This code also has 4 dependencies which need to be added to your libraries:
 - ArduinoJSON v6 (install via library manager) Handle json in a very effective way.
 - PubSubClient: (install via library manager)  MQTT handling. It's a very robust pubsub client, perfect for iot projects.
 - WifiManager: https://github.com/tzapu/WiFiManager/tree/development
@@ -103,6 +103,7 @@ Automations are based on conditions. Keep in mind that in order to run, all cond
 You can add up to 5 conditions per automations. This is to limit heap memory consumption.
 Each condition can be linked to the previous one by AND/OR/XOR logic operators. If a condition has "none" operator defined, the next condition will be ignored.
 For now, you have two types of conditions:
+
 - Gpio value: the main loop will check for gpios change value every 50ms. If a gpio state has changed, the process will check all conditions of all event driven automations. When all conditions are fullfilled for a given automation, it will run it.
 - Time: The main loop will also check all conditions of all event driven automations every minute. You can set time conditions based on hours or weekday.
 

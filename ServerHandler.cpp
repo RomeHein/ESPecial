@@ -25,6 +25,7 @@ void ServerHandler::begin()
     // Gpio related endpoints
     server.on("/gpio/{}/value/{}", [this]() { handleSetGpioState(); });
     server.on("/gpio/{}/value", [this]() { handleGetGpioState(); });
+    server.on("/gpio/{}/scan", [this]() { handleScan(); });
     server.on("/gpios/available", [this]() { handleAvailableGpios(); });
     server.on("/gpios", [this]() { getGpios(); });
     server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
@@ -216,10 +217,15 @@ void ServerHandler::handleGpioEdit()
         return;
     }
     if (preference.gpios[doc["pin"].as<int>()].pin) {
-        server.send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>()));
+        server.send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["sclpin"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>()));
         return;
     }
     server.send(404, "text/plain", "Not found");
+}
+
+void ServerHandler::handleScan() {
+    const int pin = atoi(server.pathArg(0).c_str());
+    server.send(200, "text/json", preference.scan(preference.gpios[pin]));
 }
 
 void ServerHandler::handleGpioNew()
@@ -237,12 +243,13 @@ void ServerHandler::handleGpioNew()
     const int pin = doc["settings"]["pin"].as<int>();
     const char* label = doc["settings"]["label"].as<char*>();
     const int mode = doc["settings"]["mode"].as<int>();
+    const int sclpin = doc["settings"]["sclpin"].as<int>();
     const int frequency = doc["settings"]["frequency"].as<int>();
     const int resolution = doc["settings"]["resolution"].as<int>();
     const int channel = doc["settings"]["channel"].as<int>();
     const int save = doc["settings"]["save"].as<int>();
     if (pin && label && mode) {
-        server.send(200, "text/json", preference.addGpio(pin,label,mode,frequency,resolution,channel,save));
+        server.send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");
@@ -297,6 +304,7 @@ void ServerHandler::handleSetGpioState()
         #ifdef __debug
             Serial.printf("Server: handle set gpio %i state %i\n",pin, newState);
         #endif
+        // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
         preference.setGpioState(pin, newState);
     }
     handleGetGpioState();

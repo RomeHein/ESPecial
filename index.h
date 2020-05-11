@@ -136,6 +136,17 @@ const char MAIN_page[] PROGMEM = R"=====(
         flex-direction: row;
         justify-content: flex-end;
     }
+    .scan-results {
+        width: 100%;
+        padding: 10px;
+        background: lightgray;
+    }
+    .slave-settings {
+        width: 100%;
+        padding: 10px;
+        background-color: darkgray;
+        border-radius: 5px;
+    }
     .btn-container {
         display: flex;
         justify-content: flex-end;
@@ -281,7 +292,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             border: none;
             border-radius: 0px;
         }
-        .row {
+        #gpios>.row {
             border-bottom: 1px solid lightgray
         }
     }
@@ -366,6 +377,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <script>
     var settings = {};
     var gpios = [];
+    var slaves = {};
     var availableGpios = [];
     var automations = [];
     var isSettingsMenuActivated = false;
@@ -560,6 +572,24 @@ const char MAIN_page[] PROGMEM = R"=====(
             console.error(err);
         }
     };
+
+    const scan = async (element) => {
+        const gpioPin = element.id.split('-')[1];
+        try {
+            const res = await fetch(`${window.location.href}gpio/${gpioPin}/scan`);
+            const addresses = await res.json();
+            const gpioRow = document.getElementById(`rowGpio-${gpioPin}`);
+            const scanResultNode = createScanResult(gpioPin, addresses);
+            if (gpioRow.children.length===3) {
+                gpioRow.replaceChild(scanResultNode,gpioRow.lastChild);
+            } else {
+                gpioRow.appendChild(scanResultNode);
+            }
+            
+        } catch (err) {
+            console.error(err);
+        }
+    }
     // Settings
     const fetchSettings = async () => {
         try {
@@ -591,7 +621,12 @@ const char MAIN_page[] PROGMEM = R"=====(
         const newPin = document.getElementById(`setGpioPin-${gpioPin}`).value;
         req.settings.label = document.getElementById(`setGpioLabel-${gpioPin}`).value;
         req.settings.mode = document.getElementById(`setGpioMode-${gpioPin}`).value;
-        req.settings.frequency  = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
+        req.settings.sclpin = document.getElementById(`setGpioSclPin-${gpioPin}`).value;
+        if (req.settings.mode == -1) {
+            req.settings.frequency  = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
+        } else if (req.settings.mode == -2) {
+            req.settings.frequency  = document.getElementById(`setI2cFrequency-${gpioPin}`).value;
+        }
         req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
         const channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
         req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
@@ -745,17 +780,109 @@ const char MAIN_page[] PROGMEM = R"=====(
     };
     const createGpioControlRow = (gpio) => {
         let child = document.createElement('div');
-        const stateController = gpio.mode>0 ?
-        `<a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>`:
-        `<input type='number' onchange='switchGpioState(this)' id='stateGpio-${gpio.pin}' value='${gpio.state}'>`;
+        let additionnalButton = `<a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>`;
+        if (gpio.mode == -1) {
+            additionnalButton = `<input type='number' onchange='switchGpioState(this)' id='stateGpio-${gpio.pin}' value='${gpio.state}'>`;
+        } else if (gpio.mode == -2) {
+            additionnalButton = `<a onclick='scan(this)' id='i2cScan-${gpio.pin}' class='btn on'>scan</a>`;
+        }
         child.innerHTML = `<div class='row' id='rowGpio-${gpio.pin}'>
             <div class='label'> ${gpio.label}</div>
             <div class='btn-container'>
-                <a onclick='openGpioSetting(this)' id='editGpio-${gpio.pin}' class='btn edit'>edit</a>${stateController}
+                <a onclick='openGpioSetting(this)' id='editGpio-${gpio.pin}' class='btn edit'>edit</a>${additionnalButton}
             </div>
         </div>`;
         return child.firstChild;
     };
+
+    const openI2cSlaveSettings = (element) => {
+        const gpioPin = element.id.split('-')[1];
+        const address = element.id.split('-')[2];
+        let label = '';
+        let type = 1;
+        let register = 0;
+        let lcdRows = 2;
+        let lcdColumns = 32;
+        let lcdCharSize = 5;
+        if (slaves[gpioPin]) {
+            label = slaves[gpioPin].label;
+            type = slaves[gpioPin].type;
+            register = slaves[gpioPin].register;
+            lcdRows = slaves[gpioPin].lcdRows;
+            lcdColumns = slaves[gpioPin].lcdColumns;
+            lcdCharSize = slaves[gpioPin].lcdCharSize;
+        }
+        const row = document.getElementById(`scanResult-${gpioPin}`);
+        let child = document.createElement('div');
+        child.innerHTML = `<div class='column slave-settings set' id='i2cSlaveSettings-${gpioPin}-${address}'>
+            <div class='set-inputs'>
+                <div class='row'>
+                    <label for='seti2cSlaveLabel-${gpioPin}-${address}'>Slave label:</label>
+                    <input id='seti2cSlaveLabel-${gpioPin}-${address}' type='text' name='label' value='${label}' placeholder="Controller's title">
+                </div>
+                <div class='row'>
+                    <label for='setI2cSlaveType-${gpioPin}-${address}'>Type:</label>
+                    <select onchange='updateI2cSlaveOptions(this)' id='setI2cSlaveType-${gpioPin}-${address}' name='type'>
+                        <option ${type == 1 ? 'selected' : ''} value=1>LCD</option>
+                        <option ${type == 2 ? 'selected' : ''} value=2>Others</option>
+                    </select>
+                </div>
+                <div class='row' id='others-slave-options'>
+                    <label for='seti2cSlaveRegister-${gpioPin}-${address}'>Register:</label>
+                    <input id='seti2cSlaveRegister-${gpioPin}-${address}' type='text' name='register' value='${register || ''}' placeholder="Slave's register">
+                </div>
+                <div id='lcd-slave-options'>
+                    <div class='row'>
+                        <label for='seti2cLcdRows-${gpioPin}-${address}'>Rows number:</label>
+                        <input id='seti2cLcdRows-${gpioPin}-${address}' type='number' name='rows' value='${lcdRows}'>
+                    </div>
+                    <div class='row'>
+                        <label for='seti2cLcdColumns-${gpioPin}-${address}'>Columns number:</label>
+                        <input id='seti2cLcdColumns-${gpioPin}-${address}' type='number' name='columns' value='${lcdColumns}'>
+                    </div>
+                    <div class='row'>
+                        <label for='seti2cLcdCharSize-${gpioPin}-${address}'>Char size:</label>
+                        <input id='seti2cLcdCharSize-${gpioPin}-${address}' type='number' name='charsize' value='${lcdCharSize}'>
+                    </div>
+                </div>
+            </div>
+            <div class='btn-container'>
+                <a onclick='closeI2cSlaveSettings(this)' id='closeI2cSlaveSettings-${gpioPin}-${address}' class='btn cancel'>close</a>
+                <a onclick='saveI2cSlaveSettings(this)' id='saveI2cSlaveSettings-${gpioPin}-${address}' class='btn on'>add</a>
+            </div>
+        </div>`;
+        row.appendChild(child.firstChild);
+    }
+
+    const closeScan = (element) => {
+        const gpioId = element.id.split('-')[1];
+        const row = document.getElementById(`rowGpio-${gpioId}`);
+        row.removeChild(row.lastChild);
+    }
+
+    const closeI2cSlaveSettings = (element) => {
+        const gpioPin = element.id.split('-')[1];
+        const row = document.getElementById(`scanResult-${gpioPin}`);
+        row.removeChild(row.lastChild);
+    }
+
+    const createScanResult = (gpioPin, scanResults) => {
+        let child = document.createElement('div');
+        const headRow = `<div class='row' id='scanResultHead-${gpioPin}'>Adresses:
+                <div class='btn-container'>
+                    <a onclick='closeScan(this)' id='closeScan-${gpioPin}' class='btn delete'>x</a>
+                </div>
+        </div>`
+        const rows = scanResults.reduce((prev, scanResult) => {
+            return prev + `<div class='row' id='scanResult-${gpioPin}'>${scanResult}
+                <div class='btn-container'>
+                        <a onclick='openI2cSlaveSettings(this)' id='editI2c-${gpioPin}-${scanResult}' class='btn edit'>set</a>
+                    </div>
+                </div>`
+        },'')
+        child.innerHTML = `<div class='column scan-results' id='scanResults-${gpioPin}'>${headRow}${rows}</div>`;
+        return child.firstChild;
+    }
     const createAutomationRow = (automation) => {
         let child = document.createElement('div');
         child.innerHTML = `<div class='row' id='rowAutomation-${automation.id}'>
@@ -774,15 +901,22 @@ const char MAIN_page[] PROGMEM = R"=====(
                 pin: 'new'
             };
         }
-        let modeOptions = `<option ${gpio.mode == 1 ? 'selected' : ''} value=1>INPUT</option><option ${gpio.mode == 5 ? 'selected' : ''} value=5>INPUT_PULLUP</option>`;
+        let modeOptions = `<option ${gpio.mode == 1 ? 'selected' : ''} value=1>INPUT</option><option ${gpio.mode == 4 ? 'selected' : ''} value=4>PULLUP</option><option ${gpio.mode == 5 ? 'selected' : ''} value=5>INPUT PULLUP</option><option ${gpio.mode == 8 ? 'selected' : ''} value=8>PULLDOWN</option><option ${gpio.mode == 9 ? 'selected' : ''} value=9>INPUT PULLDOWN</option>`;
         const pinOptions = availableGpios.reduce((prev, availableGpio) => {
             if ((!gpios.find(_gpio => _gpio.pin == availableGpio.pin) && availableGpio.pin != gpio.pin) || availableGpio.pin == gpio.pin) {
                 // Complete the mode select input while we are here...
                 if (availableGpio.pin == gpio.pin && !availableGpio.inputOnly) {
                     modeOptions += `<option ${gpio.mode == 2 ? 'selected' : ''} value=2>OUTPUT</option>`;
-                    modeOptions += `<option ${gpio.mode == -1 ? 'selected' : ''} value=-1>DIGITAL</option>`;
+                    modeOptions += `<option ${gpio.mode == -1 ? 'selected' : ''} value=-1>ANALOG</option>`;
+                    modeOptions += `<option ${gpio.mode == -2 ? 'selected' : ''} value=-2>I2C</option>`;
                 }
                 prev += `<option ${availableGpio.pin == gpio.pin ? 'selected' : ''} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
+            }
+            return prev;
+        },[]);
+        const sclPinOptions = availableGpios.reduce((prev, availableGpio) => {
+            if ((!gpios.find(_gpio => _gpio.pin == availableGpio.pin) && availableGpio.pin != gpio.sclpin) || availableGpio.pin == gpio.sclpin) {
+                prev += `<option ${availableGpio.pin == gpio.sclpin ? 'selected' : ''} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
             }
             return prev;
         },[]);
@@ -803,7 +937,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                 </div>
                 <div class='row'>
                     <label for='setGpioMode-${gpio.pin}'>Input mode:</label>
-                    <select onchange='updateAnalogueOptions(this)' id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
+                    <select onchange='updateGpioOptions(this)' id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
                 </div>
                 <div id='analogue-options' class='${gpio.mode != -1 ? 'hidden' : ''}'>
                     <div class='row'>
@@ -819,7 +953,17 @@ const char MAIN_page[] PROGMEM = R"=====(
                         <select id='setGpioChannel-${gpio.pin}' name='channel' value='${gpio.channel}' placeholder="Default to 0">${channelOptions}</select>
                     </div>
                 </div>
-                <div class='row'>
+                <div id='i2c-options' class='${gpio.mode != -2 ? 'hidden' : ''}'>
+                    <div class='row'>
+                        <label for='setGpioSclPin-${gpio.pin}'>SCL pin:</label>
+                        <select id='setGpioSclPin-${gpio.pin}' type='text' name='sclpin'>${sclPinOptions}</select>
+                    </div>
+                    <div class='row'>
+                        <label for='setI2cFrequency-${gpio.pin}'>Frequency:</label>
+                        <input id='setI2cFrequency-${gpio.pin}' type='text' name='frequency' value='${gpio.frequency || ''}' placeholder="Default to 50Hz if empty">
+                    </div>
+                </div>
+                <div class='row ${gpio.mode != -1 && gpio.mode != 2 ? 'hidden' : ''}' id='setGpioSaveRow'>
                     <label for='setGpioSave-${gpio.pin}'>Save state:</label>
                     <input type='checkbox' name='save' id='setGpioSave-${gpio.pin}' value='${gpio.save}'>
                 </div>
@@ -902,8 +1046,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         rowElement.innerHTML = `<select onchange='updateActionType(this)' id='addTypeAction${actionNumber}' name='signAction'>
                             <option value=1 ${selectedType == 1 ? 'selected':''}>Set Gpio pin</option>
                             <option value=2 ${selectedType == 2 ? 'selected':''}>Send telegram message</option>
-                            <option value=3 ${selectedType == 3 ? 'selected':''}>Display text on tft screen</option>
-                            <option value=4 ${selectedType == 4 ? 'selected':''}>Delay</option>
+                            <option value=3 ${selectedType == 3 ? 'selected':''}>Delay</option>
                         </select>
                         <select id='addGpioAction${actionNumber}' name='gpioAction' class='${selectedType != 1 ? 'hidden': ''}'>${gpioActionOptions}</select>
                         <select id='addSignAction${actionNumber}' name='signAction' class='${selectedType != 1 ? 'hidden': ''}'>
@@ -988,26 +1131,55 @@ const char MAIN_page[] PROGMEM = R"=====(
         const selectMode = document.getElementById(`setGpioMode-${pin || 'new'}`);
 
         const availableGpioInfos = availableGpios.find(gpio => gpio.pin == selectPin.value);
-        if (availableGpioInfos.inputOnly && selectMode.childElementCount === 4) {
+        if (availableGpioInfos.inputOnly && selectMode.childElementCount === 8) {
+            selectMode.removeChild(selectMode.lastChild);
             selectMode.removeChild(selectMode.lastChild);
             selectMode.removeChild(selectMode.lastChild);
             document.getElementById(`analogue-options`).classList.add('hidden');
-        } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 2) {
+            document.getElementById(`setGpioSaveRow`).classList.add('hidden');
+        } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 5) {
             let outputOption = document.createElement('div');
             outputOption.innerHTML = `<option value=2>OUTPUT</option>`;
-            let digitaloption = document.createElement('div');
-            digitaloption.innerHTML = `<option value=-1>DIGITAL</option>`;
+            let analogOption = document.createElement('div');
+            analogOption.innerHTML = `<option value=-1>ANALOG</option>`;
+            let i2coption = document.createElement('div');
+            i2coption.innerHTML = `<option value=-2>I2C</option>`;
+            document.getElementById(`setGpioSaveRow`).classList.remove('hidden');
             selectMode.appendChild(outputOption.firstChild);
-            selectMode.appendChild(digitaloption.firstChild);
+            selectMode.appendChild(analogOption.firstChild);
+            selectMode.appendChild(i2coption.firstChild);
         }
     };
-    const updateAnalogueOptions = (element) => {
+    const updateGpioOptions = (element) => {
         const pin = +element.id.split('-')[1] || 'new';
         const option = document.getElementById(`setGpioMode-${pin}`).value;
-        if (option != -1) {
-            document.getElementById(`analogue-options`).classList.add('hidden');
-        } else {
+        // Analog mode
+        if (option == -1) {
             document.getElementById(`analogue-options`).classList.remove('hidden');
+            document.getElementById(`setGpioSaveRow`).classList.remove('hidden');
+        // I2C mode
+        } else if (option == -2) {
+            document.getElementById(`setGpioSaveRow`).classList.add('hidden');
+            document.getElementById(`analogue-options`).classList.add('hidden');
+            document.getElementById(`i2c-options`).classList.remove('hidden');
+        } else {
+            if (option == 2) {
+                document.getElementById(`setGpioSaveRow`).classList.remove('hidden');
+            } else {
+                document.getElementById(`setGpioSaveRow`).classList.add('hidden');
+            }
+            document.getElementById(`analogue-options`).classList.add('hidden');
+            document.getElementById(`i2c-options`).classList.add('hidden');
+            
+        }
+    }
+
+    const updateI2cSlaveOptions = (element) => {
+        const selectType = element.value;
+        if (selectType == 1) {
+            document.getElementById(`lcd-slave-options`).classList.remove('hidden');
+        } else {
+            document.getElementById(`lcd-slave-options`).classList.add('hidden');
         }
     }
     const updateAutomationTypes = (id) => {

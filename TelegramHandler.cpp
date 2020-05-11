@@ -135,7 +135,8 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
       #endif
       // 'g' is a command for gpios
       if (cmd[0] == 'g') {
-        preference.setGpioState(id);
+        // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
+        preference.setGpioState(id, -1);
         bot->sendMessageWithInlineKeyboard(bot->messages[i].chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios(), bot->messages[i].message_id);
       // 'a' is a command for automations
       } else {

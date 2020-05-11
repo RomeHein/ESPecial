@@ -2,7 +2,6 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
-#include <TFT_eSPI.h>
 #include "time.h"
 
 #include "ServerHandler.h"
@@ -13,18 +12,8 @@
 //unmark following line to enable debug mode
 #define __debug
 
-// Set TFT display PINS
-#ifndef TFT_DISPOFF
-#define TFT_DISPOFF 0x28
-#endif
-#ifndef TFT_SLPIN
-#define TFT_SLPIN 0x10
-#endif
-#define TFT_BL 4 // Display backlight control pin
-
 #define MAX_QUEUED_AUTOMATIONS 10
 
-TFT_eSPI tft(135, 240);
 ServerHandler *serverhandler;
 PreferenceHandler *preferencehandler;
 TelegramHandler *telegramhandler;
@@ -94,80 +83,9 @@ bool checkAgainstLocalWeekDay(int weekday, int signType) {
   }
 }
 
-void tft_init()
-{
-  tft.init();
-  tft.setRotation(3);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(4);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(0, 0);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(2);
-
-  if (TFT_BL > 0){                          // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-    pinMode(TFT_BL, OUTPUT);                // Set backlight pin to output mode
-    digitalWrite(TFT_BL, TFT_BACKLIGHT_ON); // Turn backlight on. TFT_BACKLIGHT_ON has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-  }
-
-  tft.setSwapBytes(true);
-}
-
-void turnOffScreen()
-{
-  tft.writecommand(TFT_DISPOFF);
-  tft.writecommand(TFT_SLPIN);
-}
-
-void displayServicesInfo () 
-{
-  if (millis() > screenRefreshLastTime + delayBetweenScreenUpdate) {
-    tft.setCursor(2, 0);
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_WHITE);
-    tft.println("HTTP server:");
-    if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
-      tft.setTextColor(TFT_BLUE);
-      tft.println("Waiting for MQTT\n");
-    } else {
-      tft.setTextColor(TFT_GREEN);
-      tft.println(WiFi.localIP());
-    }
-    tft.setTextColor(TFT_WHITE);
-    tft.print("MQTT: ");
-    if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 0) {
-      tft.setTextColor(TFT_BLUE);
-      tft.println("conecting...");
-    } else if (preferencehandler->mqtt.active && preferencehandler->health.mqtt == 1) {
-      tft.setTextColor(TFT_GREEN);
-      tft.println("connected");
-    } else {
-      tft.setTextColor(TFT_RED);
-      tft.println("off");
-    }
-    tft.setTextColor(TFT_WHITE);
-    tft.print("Telegram: ");
-    if (preferencehandler->health.telegram == 1) {
-      tft.setTextColor(TFT_GREEN);
-      tft.println("online");
-    } else {
-      tft.setTextColor(TFT_RED);
-      tft.println("offline");
-    }
-    screenRefreshLastTime = millis();
-
-    #ifdef __debug
-      tft.print("\nFree Memory:");
-      tft.println(ESP.getFreeHeap(),DEC);
-      tft.print("Memory loss:");
-      tft.println(freeMemory - ESP.getFreeHeap(),DEC);
-      freeMemory = ESP.getFreeHeap();
-    #endif
-  }
-}
-
 void readInputPins() {
   if (millis() > debounceInputDelay + lastDebouncedInputTime) {
+    bool gpioStateChanged = false;
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
         int newState;
@@ -180,12 +98,15 @@ void readInputPins() {
           #ifdef __debug
             Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
           #endif
-          gpio.state = newState;
+          preferencehandler->setGpioState(gpio.pin, newState, true);
           mqtthandler->publish(gpio.pin);
-          runAllRunnableAutomations();
+          gpioStateChanged = true;
         }
       }
-    }       
+    }
+    if (gpioStateChanged) {
+      runAllRunnableAutomations();
+    }    
     lastDebouncedInputTime = millis();
   }
 }
@@ -327,14 +248,8 @@ void runAutomation(AutomationFlash& automation) {
           // Send telegram message action
           } else if (type == 2) {
             telegramhandler->queueMessage(automation.actions[i][1]);
-          // Display message on screen
-          } else if (type == 3) {
-            tft.setCursor(2, 0);
-            tft.fillScreen(TFT_BLACK);
-            tft.setTextColor(TFT_WHITE);
-            tft.println(automation.actions[i][1]);
           // Delay type action
-          } else if (type == 4) {
+          } else if (type == 3) {
             delay(atoi(automation.actions[i][1]));
           }
         } else {
@@ -360,8 +275,7 @@ void runAutomation(AutomationFlash& automation) {
 void setup(void)
 {
   Serial.begin(115200);
-  tft_init();
-  tft.println("Access point set.\nWifi network: ESP32");
+  Serial.println("Access point set.\nWifi network: ESP32");
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   wm.setConnectTimeout(10);
@@ -393,13 +307,11 @@ void setup(void)
   }
 }
 
-void loop(void)
-{
+void loop(void) {
   if ( WiFi.status() ==  WL_CONNECTED ) {
     serverhandler->server.handleClient();
     mqtthandler->handle();
     telegramhandler->handle();
-    displayServicesInfo();
   } else {
     // wifi down, reconnect here
     WiFi.begin();
@@ -407,9 +319,6 @@ void loop(void)
     while (WiFi.status() != WL_CONNECTED && count < 200 ) 
     {
       delay(500);
-      tft.setCursor(2, 0);
-      tft.fillScreen(TFT_BLACK);
-      tft.printf("Wifi deconnected: attempt %i", count);
       ++count;
       #ifdef __debug
         Serial.printf("Wifi deconnected: attempt %i\n", count);
@@ -422,11 +331,9 @@ void loop(void)
   }
 }
 
-void input_loop(void *pvParameters)
-{
+void input_loop(void *pvParameters) {
   while(1) {
     if (WiFi.status() ==  WL_CONNECTED) {
-      // Yes... not using interupts yet
       readInputPins();
       pickUpQueuedAutomations();
       if (millis() > debounceTimeDelay + lastCheckedTime) {

@@ -23,6 +23,7 @@ private:
     void handleTelegramEdit();
 
     void getGpios();
+    void handleScan();
     void handleAvailableGpios();
     void handleSetGpioState();
     void handleGetGpioState();

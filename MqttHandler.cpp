@@ -133,6 +133,7 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
             Serial.printf("MQTT: message %s for pin %i\n", message, pin);
         #endif
         if (pin && digitalRead(pin) != state) {
+            // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
             preference.setGpioState(pin, state);
         } else {
             #ifdef __debug
