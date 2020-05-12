@@ -4,7 +4,7 @@ This project aim to provide an easy way to control your esp32. You no longer nee
 
 
 Features:
-- Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages etc. No need to update the firmware, everything is dynamic.
+- Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
 - Exposes gpio and actions to a REST API: Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations.
 - Provide web interface full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface.
 <div>
@@ -22,7 +22,6 @@ Features:
 - Mqtt client: publish/subscribe pin state, actions.
 - Wifi manager: gives a way to easily set your esp32 to your network.
 - OTA: Update firmware from the web interface.
-- Provides info on the tft LCD screen if you have one.
 
 ## Work in progress:
 - I2C integration
@@ -39,7 +38,7 @@ Features:
 - Using light weight front library like Preact. This would enhancy greatly the coding experience...
 ## Getting Started
 
-This code works well with [this](https://www.aliexpress.com/item/33048962331.html?spm=a2g0o.productlist.0.0.71ee316cmQo1JA&algo_pvid=6aadca0f-7463-41bf-8277-010dbd421b34&algo_expid=6aadca0f-7463-41bf-8277-010dbd421b34-6&btsid=0b0a0ae215834054133566008e89a2&ws_ab_test=searchweb0_0,searchweb201602_,searchweb201603_) type of chip from TTGO, but can work on any esp32. 
+First, do yourself a nice gift, buy an ESP32 :) Any esp32 will work with this project. 
 
 If your board uses a usb-c type port, you should be able to detect your board by installing this driver:
 https://www.silabs.com/products/development-tools/software/usb-to-uart-bridge-vcp-drivers
@@ -115,11 +114,15 @@ Now we can set our first action. Simply click the add button in the action edito
 You can choose between three types of actions:
 - Set gpio value/pulse
 - Send telegram message
-- Display message on screen
-- Delay: note that this delay is an actual 'delay' function. Meaning that you'll block the process. Yes, automations run sequencially. The process maintain an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option 😉.
+- Send http/https request.
+- Delay: note that this delay is an actual 'delay' function. Meaning that you'll block the process. Yes, automations run sequencially. The process maintains an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option (meaning this should not be used as a timer 😉).
+
+For telegram message and http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text. 
+
+⚠️ Important note: In order to keep the heap memory consumption low, fields are restreigned to 100 characters. This means that any sentence/http address/json longer that 100 char will be ignored. This limit can be increased by changing the variable `MAX_MESSAGE_TEXT_SIZE` in the `PreferenceHandler.h`
 
 
-If you select the auto run option, the action will be triggered whenever its conditions become true. This can be very handy if you want to send a Telegram notification when a gpio value changes.
+If you select the `event triggered` option, the action will be triggered whenever its conditions become true. This can be very handy if you want to send a Telegram notification when a gpio value changes.
 You can simulate a `while` loop by setting the `repeat action` input. This loop apply to the whole actions set into the automation. Just keep in mind that if you leave it empty or set it to 0, the action won't trigger. So set it to `1` at least.
 
 You can also specify the next action. This is very handy to easily program complex behaviours.

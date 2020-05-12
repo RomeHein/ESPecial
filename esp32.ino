@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
+#include <HTTPClient.h>
 #include "time.h"
 
 #include "ServerHandler.h"
@@ -38,11 +39,17 @@ long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
 int debounceTimeDelay = 60000;
 int lastCheckedTime = 0;
 
-int freeMemory;
-
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
+
+String systemInfos() {
+  String infos;
+  infos = String("\nFree memory:") + ESP.getFreeHeap();
+  infos += "\nTelegram bot:" + preferencehandler->health.telegram;
+  infos += "\nMqtt server:" + preferencehandler->health.mqtt;
+  return infos;
+}
 
 bool checkAgainstLocalHour(int time, int signType) {
   struct tm timeinfo;
@@ -83,7 +90,7 @@ bool checkAgainstLocalWeekDay(int weekday, int signType) {
   }
 }
 
-void readInputPins() {
+void readPins() {
   if (millis() > debounceInputDelay + lastDebouncedInputTime) {
     bool gpioStateChanged = false;
     for (GpioFlash& gpio : preferencehandler->gpios) {
@@ -247,10 +254,42 @@ void runAutomation(AutomationFlash& automation) {
             }
           // Send telegram message action
           } else if (type == 2) {
-            telegramhandler->queueMessage(automation.actions[i][1]);
+            String value = String(automation.actions[i][1]);
+            parseActionString(value);
+            telegramhandler->queueMessage(value.c_str());
           // Delay type action
           } else if (type == 3) {
             delay(atoi(automation.actions[i][1]));
+          // Http request
+          } else if (type == 4) {
+            String value = String(automation.actions[i][1]);
+            parseActionString(value);
+            Serial.print(value.c_str());
+          // Http request
+          } else if (type == 5) {
+            HTTPClient http;
+            http.begin(client, automation.actions[i][2]);
+            int httpResponseCode;
+            if (atoi(automation.actions[i][1]) == 1) {
+              httpResponseCode = http.GET();
+            } else if (atoi(automation.actions[i][1]) == 2) {
+              http.addHeader("Content-Type", "application/json");
+              String value = String(automation.actions[i][3]);
+              parseActionString(value);
+              httpResponseCode = http.POST(value);
+            }
+            #ifdef __debug
+              if (httpResponseCode>0) {
+                Serial.print("[Action HTTP] HTTP Response code: ");
+                Serial.println(httpResponseCode);
+                String payload = http.getString();
+                Serial.println(payload);
+              }
+              else {
+                Serial.printf("[ACTION HTTP] GET failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
+              }
+            #endif
+            http.end();
           }
         } else {
           break;
@@ -269,6 +308,46 @@ void runAutomation(AutomationFlash& automation) {
         break;
       }
     }
+  }
+}
+
+// Iterate through a string to find special command like `${pinNumber}` or `${info}` and replace them with the appropriate value
+void parseActionString(String& toParse) {
+  toParse.replace("${info}", systemInfos());
+  addPinValueToActionString(toParse, 0);
+}
+
+void addPinValueToActionString(String& toParse, int fromIndex) {
+  int size = toParse.length();
+  int foundIndex = 0;
+  for (int i=fromIndex; i < size; i++) {
+    // Check if we have a command
+    if (toParse[i] == '$' && i<size-1 && toParse[i+1] == '{') {
+      int pinNumber = -1;
+      if (i<(size-3) && toParse[i+3] == '}') {
+        pinNumber = toParse.substring(i+2).toInt();
+        foundIndex = i+3;
+      } else if (i<(size-4) && toParse[i+4] == '}') {
+        pinNumber = toParse.substring(i+2,i+4).toInt();
+        foundIndex = i+4;
+      }
+      if (pinNumber != -1) {
+        int state;
+        GpioFlash& gpio = preferencehandler->gpios[pinNumber];
+        if (gpio.pin == pinNumber) {
+            if (gpio.mode>0) {
+                state = digitalRead(pinNumber);
+            } else {
+                state = ledcRead(gpio.channel);
+            }
+        }
+        String subStringToReplace = String("${") + pinNumber + '}';
+        toParse.replace(subStringToReplace, String(state));
+      }
+    }
+  }
+  if (foundIndex) {
+    addPinValueToActionString(toParse,foundIndex);
   }
 }
 
@@ -293,8 +372,7 @@ void setup(void)
      //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     // Set input reading on a different thread
-    // Note: could maybe replaced by the telegramHandler
-    xTaskCreatePinnedToCore(input_loop, "readInputs", 12288, NULL, 0, NULL, 0);
+    xTaskCreatePinnedToCore(input_loop, "automation", 12288, NULL, 0, NULL, 0);
 
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
@@ -334,7 +412,7 @@ void loop(void) {
 void input_loop(void *pvParameters) {
   while(1) {
     if (WiFi.status() ==  WL_CONNECTED) {
-      readInputPins();
+      readPins();
       pickUpQueuedAutomations();
       if (millis() > debounceTimeDelay + lastCheckedTime) {
         // If this is the first time this run, we are now sure it will run every minutes, so set back debounceTimeDelay to 60s.

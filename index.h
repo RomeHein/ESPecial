@@ -683,12 +683,22 @@ const char MAIN_page[] PROGMEM = R"=====(
         })
         req.settings.actions = [...document.getElementById(`action-editor-result`).childNodes].map(rowElement => {
             const id = +rowElement.id.split('-')[1];
-            return [
-                document.getElementById(`addTypeAction-${id}`).value,
-                document.getElementById(`addValueAction-${id}`).value,
-                document.getElementById(`addGpioAction-${id}`).value,
-                document.getElementById(`addSignAction-${id}`).value
-            ];
+            const type = document.getElementById(`addTypeAction-${id}`).value;
+            if (type == 5) {
+                return [
+                    document.getElementById(`addTypeAction-${id}`).value,
+                    document.getElementById(`addHTTPMethod-${id}`).value,
+                    document.getElementById(`addHTTPAddress-${id}`).value,
+                    document.getElementById(`addHTTPBody-${id}`).value
+                ];
+            } else {
+                return [
+                    document.getElementById(`addTypeAction-${id}`).value,
+                    document.getElementById(`addValueAction-${id}`).value,
+                    document.getElementById(`addGpioAction-${id}`).value,
+                    document.getElementById(`addSignAction-${id}`).value
+                ];
+            }
         })
         req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
         req.settings.debounceDelay = +document.getElementById(`setAutomationDebounceDelay-${automationId}`).value;
@@ -1030,11 +1040,17 @@ const char MAIN_page[] PROGMEM = R"=====(
         let selectedValue = 0;
         let selectedPin = 0;
         let selectedSign = 1;
+        selectedHttpMethod = 1;
+        selectedHttpAddress = '';
+        selectedHttpContent = '';
         if (action) {
             selectedType = action[0];
             selectedValue = action[1];
             selectedPin = action[2];
             selectedSign = action[3];
+            selectedHttpMethod = action[1];
+            selectedHttpAddress = action[2];
+            selectedHttpContent = action[3];
         }
         let gpioActionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedPin == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
         
@@ -1047,7 +1063,15 @@ const char MAIN_page[] PROGMEM = R"=====(
                             <option value=1 ${selectedType == 1 ? 'selected':''}>Set Gpio pin</option>
                             <option value=2 ${selectedType == 2 ? 'selected':''}>Send telegram message</option>
                             <option value=3 ${selectedType == 3 ? 'selected':''}>Delay</option>
+                            <option value=4 ${selectedType == 4 ? 'selected':''}>Serial print</option>
+                            <option value=5 ${selectedType == 5 ? 'selected':''}>HTTP</option>
                         </select>
+                        <select id='addHTTPMethod${actionNumber}' name='httpType' class='${selectedType == 5 ? '': 'hidden'}'>
+                            <option value=1 ${selectedHttpMethod == 1 ? 'selected':''}>GET</option>
+                            <option value=2 ${selectedHttpMethod == 2 ? 'selected':''}>POST</option>
+                        </select>
+                        <input id='addHTTPAddress${actionNumber}' name='httpAddress' class='${selectedType == 5 ? '': 'hidden'}' placeholder='http://www.placeholder.com/' value='${selectedHttpAddress}'>
+                        <input id='addHTTPBody${actionNumber}' name='httpBody' class='${selectedType == 5 ? '': 'hidden'}' placeholder='Body in json format' value='${selectedHttpContent}'>
                         <select id='addGpioAction${actionNumber}' name='gpioAction' class='${selectedType != 1 ? 'hidden': ''}'>${gpioActionOptions}</select>
                         <select id='addSignAction${actionNumber}' name='signAction' class='${selectedType != 1 ? 'hidden': ''}'>
                             <option value=1 ${selectedSign == 1 ? 'selected':''}>=</option>
@@ -1055,7 +1079,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                             <option value=3 ${selectedSign == 3 ? 'selected':''}>-=</option>
                             <option value=4 ${selectedSign == 4 ? 'selected':''}>*=</option>
                         </select>
-                        <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' placeholder='value'>
+                        <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' class='${selectedType == 5 ? 'hidden': ''}' placeholder='value'>
                         <a onclick='deleteRowEditor(this)' id='deleteAction${actionNumber}' class='btn delete'>x</a>`
         actionEditorElement.appendChild(rowElement);
         // Update actions left number
@@ -1197,12 +1221,27 @@ const char MAIN_page[] PROGMEM = R"=====(
     const updateActionType = (element) => {
         const rowNumber = +element.id.split('-')[1];
         const isGpioAction = (element.value == 1);
-        if (isGpioAction) {
+        if (element.value == 1) {
             document.getElementById(`addGpioAction-${rowNumber}`).classList.remove('hidden');
             document.getElementById(`addSignAction-${rowNumber}`).classList.remove('hidden');
-        } else {
+            document.getElementById(`addValueAction-${rowNumber}`).classList.remove('hidden');
+            document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addHTTPBody-${rowNumber}`).classList.add('hidden');
+        } else if (element.value == 5){
+            document.getElementById(`addHTTPMethod-${rowNumber}`).classList.remove('hidden');
+            document.getElementById(`addHTTPAddress-${rowNumber}`).classList.remove('hidden');
+            document.getElementById(`addHTTPBody-${rowNumber}`).classList.remove('hidden');
             document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addValueAction-${rowNumber}`).classList.add('hidden');
+        } else {
+            document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addHTTPBody-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addValueAction-${rowNumber}`).classList.remove('hidden');
         }
     };
     const updateConditionValueType = (element) => {
