@@ -7,13 +7,13 @@
 #include "PreferenceHandler.h"
 #include <WiFiClientSecure.h>
 
-#define MAX_QUEUED_MESSAGE_NUMBER 10 // Maximum conditions number that can be set in the system
+#define MAX_QUEUED_MESSAGE_NUMBER 5 // Maximum conditions number that can be set in the system
 
 class TelegramHandler
 {
 private:
     bool isInit = false;
-    char messagesQueue [MAX_QUEUED_MESSAGE_NUMBER][100] = {};
+    char messagesQueue [MAX_QUEUED_MESSAGE_NUMBER][200] = {};
     int lastMessageQueuedPosition = 0;
     UniversalTelegramBot* bot;
     PreferenceHandler &preference;
