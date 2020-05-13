@@ -1,11 +1,11 @@
 # ESPecial
 
-This project aim to provide an easy way to control your esp32. You no longer need programming skills to set complex tasks. This can be a very nice approach for small projects and for educational purposes.
+This project aim to provide an easy way to control your esp32. You no longer need programming skills to set complex tasks. This can be a very nice approach for small projects, home automation and/or educational purposes.
 
 
 Features:
 - Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
-- Exposes gpio and actions to a REST API: Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations.
+- Exposes gpio and automations to a REST API: Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations.
 - Provide web interface full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface.
 <div>
     <img src="images/sample-home.png" width="200">
@@ -104,20 +104,17 @@ Each condition can be linked to the previous one by AND/OR/XOR logic operators. 
 For now, you have two types of conditions:
 
 - Gpio value: the main loop will check for gpios change value every 50ms. If a gpio state has changed, the process will check all conditions of all event driven automations. When all conditions are fullfilled for a given automation, it will run it.
-- Time: The main loop will also check all conditions of all event driven automations every minute. You can set time conditions based on hours or weekday.
-
-⚠️ Important note:
-This is important that you set a Gpio value condition to your automatisation, otherwise, the time checking loop will run you automation every minute, or every time a gpio state change.
-Reason: I still can't figure a correct way to handle time events. If you want to participate to the project, that's a point I would need help.
+- Time: The main loop will also check all conditions of all event driven automations every minute. You can set time conditions based on hours or weekday. It's important you set the right time condition.  For instance, if you want to run only once an automation at a certain time, set the time condition to be "equal", otherwise the time checking loop will run your automation every minute.
  
 Now we can set our first action. Simply click the add button in the action editor section.
 You can choose between three types of actions:
 - Set gpio value/pulse
 - Send telegram message
 - Send http/https request.
+- Automation: run another automation you have already set. This means you can nest an infinite number of automations! Each automation will check its conditions before running.
 - Delay: note that this delay is an actual 'delay' function. Meaning that you'll block the process. Yes, automations run sequencially. The process maintains an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option (meaning this should not be used as a timer 😉).
 
-For telegram message and http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text. 
+For telegram message and http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text.
 
 ⚠️ Important note: In order to keep the heap memory consumption low, fields are restreigned to 100 characters. This means that any sentence/http address/json longer that 100 char will be ignored. This limit can be increased by changing the variable `MAX_MESSAGE_TEXT_SIZE` in the `PreferenceHandler.h`
 
@@ -125,9 +122,7 @@ For telegram message and http request type, you can have access to pins value an
 If you select the `event triggered` option, the action will be triggered whenever its conditions become true. This can be very handy if you want to send a Telegram notification when a gpio value changes.
 You can simulate a `while` loop by setting the `repeat action` input. This loop apply to the whole actions set into the automation. Just keep in mind that if you leave it empty or set it to 0, the action won't trigger. So set it to `1` at least.
 
-You can also specify the next action. This is very handy to easily program complex behaviours.
-
-Sometimes complex behaviours can overlaps, that's why the debounce delay option specified the amount an automation has to wait before being played again.
+Sometimes complex behaviours can overlaps, this can be the case when one automation trigger a pin output which is itself part of another automation condition. That's why the debounce delay option specified the amount an automation has to wait before being played again.
 
 ### Use the rest API
 Once controls and actions added to your panel, you'll be able to trigger them by hitting the rest API: 
@@ -146,7 +141,7 @@ http://your.ip.local.ip/gpio/pinNumber/value/0
 
 And simply send:
 ```
-http://your.ip.local.ip/automationtion/automationId
+http://your.ip.local.ip/automationtion/run/automationId
 ```
 to run a specific action. Note that all conditions you have specified for than action must be fullfilled in order to execute it.
 

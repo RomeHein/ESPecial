@@ -112,19 +112,30 @@ void readPins() {
       }
     }
     if (gpioStateChanged) {
-      runAllRunnableAutomations();
+      runTriggeredEventAutomations(false);
     }    
     lastDebouncedInputTime = millis();
   }
 }
 
-void runAllRunnableAutomations() {
+void runTriggeredEventAutomations(bool onlyTimeConditionned) {
   int i = 0;
   for (AutomationFlash& automation: preferencehandler->automations) {
     i++;
     // Check if the automation has passed the debounceDelay set by user.
     bool isDebounced = (automation.debounceDelay && (millis() > lastDebounceTimes[i] + automation.debounceDelay)) || !automation.debounceDelay;
-    if (automation.autoRun && isDebounced) {
+    bool canRun = !onlyTimeConditionned;
+    if (onlyTimeConditionned) {
+      // Look for any time condition, break as soon as we found one
+      for (int i=0; i<MAX_AUTOMATIONS_CONDITIONS_NUMBER; i++) {
+        // Check if the condition is a time event instead of a pin number
+        if (automation.conditions[i][0]<0) {
+          canRun = true;
+          break;
+        }
+      }
+    }
+    if (automation.autoRun && isDebounced && canRun) {
       runAutomation(automation);
       lastDebounceTimes[i] = millis();
     }
@@ -264,7 +275,7 @@ void runAutomation(AutomationFlash& automation) {
           } else if (type == 4) {
             String value = String(automation.actions[i][1]);
             parseActionString(value);
-            Serial.print(value.c_str());
+            Serial.println(value.c_str());
           // Http request
           } else if (type == 5) {
             HTTPClient http;
@@ -290,22 +301,22 @@ void runAutomation(AutomationFlash& automation) {
               }
             #endif
             http.end();
+          // Nested automation
+          } else if (type == 6) {
+            int nestedAutomationId = atoi(automation.actions[i][1]);
+            for (AutomationFlash& nAutomation: preferencehandler->automations) {
+              if (nAutomation.id == nestedAutomationId) {
+                #ifdef __debug
+                  Serial.printf("Going to nested automation: %s\n",nAutomation.label);
+                #endif
+                runAutomation(nAutomation);
+                break;
+              }
+            }
           }
         } else {
           break;
         }
-      }
-    }
-  }
-  // Run next automation if we are not trying to do a nauty infinite loop
-  if (canRun && automation.nextAutomationId && automation.nextAutomationId != automation.id) {
-    for (AutomationFlash& nAutomation: preferencehandler->automations) {
-      if (nAutomation.id == automation.nextAutomationId) {
-        #ifdef __debug
-          Serial.printf("Going to next automation: %s\n",nAutomation.label);
-        #endif
-        runAutomation(nAutomation);
-        break;
       }
     }
   }
@@ -372,7 +383,7 @@ void setup(void)
      //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     // Set input reading on a different thread
-    xTaskCreatePinnedToCore(input_loop, "automation", 12288, NULL, 0, NULL, 0);
+    xTaskCreatePinnedToCore(automation_loop, "automation", 12288, NULL, 0, NULL, 0);
 
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
@@ -409,7 +420,7 @@ void loop(void) {
   }
 }
 
-void input_loop(void *pvParameters) {
+void automation_loop(void *pvParameters) {
   while(1) {
     if (WiFi.status() ==  WL_CONNECTED) {
       readPins();
@@ -419,7 +430,8 @@ void input_loop(void *pvParameters) {
         if (debounceTimeDelay != 60000) {
           debounceTimeDelay = 60000;
         }
-        runAllRunnableAutomations();
+        // Run only time scheduled automations
+        runTriggeredEventAutomations(true);
         lastCheckedTime = millis();
       }
       vTaskDelay(10);

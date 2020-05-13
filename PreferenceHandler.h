@@ -53,15 +53,14 @@ typedef struct
 
     // Array of actions to execute once conditions are fullfilled
     // Each action is represented by an array of char
-    // index 0: action type: 1 is set gpio pin to a value, 2 is sending a message to telegram, 3 is displaying a message on the tft screen, 4 is a delay
-    // index 1: action value
-    // index 2: pin to control if type is 1
-    // index 3: assignement operation type on value: 1 is =, 2 is +=, 3 is -=, 4 is *=
+    // index 0: action type: 1 is set gpio pin to a value, 2 is sending a message to telegram, 3 is displaying a message on serial, 4 is a delay, 5 http request, 6 automation
+    // index 1: action value / http method / automation id
+    // index 2: pin to control if type is 1 / http address
+    // index 3: assignement operation type on value: 1 is =, 2 is +=, 3 is -=, 4 is *= / http body
     char actions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE];
     int8_t autoRun; // Automatically play the automation if all conditions are true
     int8_t loopCount; // Number of time to execute the automation before next
     int32_t debounceDelay; // Time before the same automation can be run again
-    uint8_t nextAutomationId; // next Automation id
  }  AutomationFlash;
 
 typedef struct
@@ -72,7 +71,7 @@ typedef struct
     uint32_t frequency;
     uint8_t resolution;
     int8_t channel;
-    int8_t sclpin; // Only for I2C type  -> need to instantiate another GpioFlash at the same type, with I2C mode too, but no sclpin, so we know it's for the clock. Tout ceux qui n'ont pas de sclpin ne sont pas instantié et ne sont pas montrés dans l'interface 
+    int8_t sclpin; // Only for I2C type
     int16_t state;
     int8_t save;
  }  GpioFlash;
@@ -128,8 +127,8 @@ public:
     AutomationFlash automations[MAX_AUTOMATIONS_NUMBER];
     String getAutomationsJson();
     bool removeAutomation(int id);
-    String addAutomation(const char* label, int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE],int loopCount = 0, int32_t debounceDelay = 0, int nextAutomationId = 0);
-    String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE], int newLoopCount, int32_t newDebounceDelay, int newNextAutomationId);
+    String addAutomation(const char* label, int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE],int loopCount = 0, int32_t debounceDelay = 0);
+    String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE], int newLoopCount, int32_t newDebounceDelay);
     // Mqtt
     MqttFlash mqtt;
     bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);

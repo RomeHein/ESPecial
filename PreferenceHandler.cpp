@@ -467,7 +467,6 @@ void PreferenceHandler::setAutomationsFromJson(const char* json) {
         newAutomation.autoRun = a["autoRun"].as<int>();
         newAutomation.loopCount = a["loopCount"].as<int>();
         newAutomation.debounceDelay = a["debounceDelay"].as<int>();
-        newAutomation.nextAutomationId = a["nextAutomationId"].as<int>();
         int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4] = {};
         int j = 0;
         for(JsonArray condition: a["conditions"].as<JsonArray>()) {
@@ -504,7 +503,6 @@ String PreferenceHandler::automationToJson(AutomationFlash& a) {
     doc["autoRun"] = a.autoRun;
     doc["loopCount"] = a.loopCount;
     doc["debounceDelay"] = a.debounceDelay;
-    doc["nextAutomationId"] = a.nextAutomationId;
     JsonArray conditions = doc.createNestedArray("conditions");
     for (int i = 0; i<MAX_AUTOMATIONS_CONDITIONS_NUMBER; i++) {
         if (a.conditions[i][1]) { // Check if the condition has an operator type, in that case, it's define, so add it
@@ -551,7 +549,7 @@ bool PreferenceHandler::removeAutomation(int id) {
     }
     return false;
 }
-String PreferenceHandler::addAutomation(const char* label,int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][4][100], int loopCount,int debounceDelay, int nextAutomationId) {
+String PreferenceHandler::addAutomation(const char* label,int autoRun,const int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char actions[MAX_AUTOMATION_ACTION_NUMBER][4][100], int loopCount,int debounceDelay) {
     AutomationFlash newAutomation = {};
     newAutomation.id = newId(PREFERENCES_AUTOMATION);
     strcpy(newAutomation.label, label);
@@ -560,12 +558,11 @@ String PreferenceHandler::addAutomation(const char* label,int autoRun,const int1
     newAutomation.autoRun = autoRun;
     newAutomation.loopCount = loopCount;
     newAutomation.debounceDelay = debounceDelay;
-    newAutomation.nextAutomationId = nextAutomationId;
     automations[firstEmptyAutomationSlot()] = newAutomation;
     save(PREFERENCES_AUTOMATION);
     return automationToJson(newAutomation);
 }
-String PreferenceHandler::editAutomation(AutomationFlash& automation, const char* newLabel, int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][4][100], int newLoopCount,int newDebounceDelay, int newNextAutomationId) {
+String PreferenceHandler::editAutomation(AutomationFlash& automation, const char* newLabel, int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][4][100], int newLoopCount,int newDebounceDelay) {
     bool hasChanged = false;
     if (newConditions && memcmp(automation.conditions, newConditions, sizeof(automation.conditions)) != 0) {
         memcpy(automation.conditions, newConditions, sizeof(automation.conditions));
@@ -589,10 +586,6 @@ String PreferenceHandler::editAutomation(AutomationFlash& automation, const char
     }
     if (automation.debounceDelay != newDebounceDelay) {
         automation.debounceDelay = newDebounceDelay;
-        hasChanged = true;
-    }
-    if (automation.nextAutomationId != newNextAutomationId) {
-        automation.nextAutomationId = newNextAutomationId;
         hasChanged = true;
     }
     if (hasChanged) {

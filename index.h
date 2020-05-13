@@ -254,6 +254,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         height: 50px;
         display: inline-block;
         position: relative;
+        margin: 20px;
     }
     .lds-ring div {
         box-sizing: border-box;
@@ -296,6 +297,24 @@ const char MAIN_page[] PROGMEM = R"=====(
             border-bottom: 1px solid lightgray
         }
     }
+    .state-indicator-container {
+        display: flex;
+        align-items: center;
+        margin: 10px;
+    }
+    .state-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: gray;
+        margin-left: 5px;
+    }
+    .ok {
+        background-color: green;
+    }
+    .error {
+        background-color: red;
+    }
 </style>
 <!-- HTML_DOM -->
 <body>
@@ -303,6 +322,15 @@ const char MAIN_page[] PROGMEM = R"=====(
     <div class="header">
         <a id='go-to-settings-button' onclick='switchPage()' class='btn edit'>settings</a>
         <a id='home-button' onclick='switchPage()' class='btn edit hidden'>Home</a>
+        <a id='restart-button' onclick='restart()' class='btn edit'>Restart</a>
+        <div class="state-indicator-container">
+            <span>Telegram</span>
+            <span id="telegram-indicator" class="state-indicator"></span>
+        </div>
+        <div class="state-indicator-container">
+            <span>MQTT</span>
+            <span id="mqtt-indicator" class="state-indicator"></span>
+        </div>
     </div>
     <div class="lds-ring" id='page-loader'><div></div><div></div><div></div><div></div></div>
     <div class='container' id="gpio-container">
@@ -376,12 +404,46 @@ const char MAIN_page[] PROGMEM = R"=====(
 <!-- HTML_SCRIPT -->
 <script>
     var settings = {};
+    var health = {};
     var gpios = [];
     var slaves = {};
     var availableGpios = [];
     var automations = [];
     var isSettingsMenuActivated = false;
     const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
+    // Restart ESP
+    const restart = async () => {
+        try {
+            const res = await fetch(window.location.href + 'restart');
+            blocker.classList.add('hidden');
+            location.reload();
+        } catch (err) {
+            blocker.classList.add('hidden');
+            console.error(`Error: ${err}`);
+        }
+    }
+    const switchIndicatorState = (indicatorId, stateCode) => {
+        if (stateCode == 1) {
+            document.getElementById(indicatorId).classList.add('ok');
+            document.getElementById(indicatorId).classList.remove('error');
+        } else if (stateCode == 0) {
+            document.getElementById(indicatorId).classList.remove('ok');
+            document.getElementById(indicatorId).classList.remove('error');
+        } else {
+            document.getElementById(indicatorId).classList.remove('ok');
+            document.getElementById(indicatorId).classList.add('error');
+        }
+    }
+    const fetchServicesHealth = async () => {
+        try {
+            const res = await fetch(window.location.href + 'health');
+            health = await res.json();
+            switchIndicatorState('telegram-indicator', health.telegram);
+            switchIndicatorState('mqtt-indicator', health.mqtt);
+        } catch (err) {
+            console.error(`Error: ${err}`);
+        }
+    }
     // Update software
     const fillUpdateInput = (element) => {
         const fileName = element.value.split('\\\\');
@@ -457,13 +519,11 @@ const char MAIN_page[] PROGMEM = R"=====(
             retryText.classList.add('hidden');
             loader.classList.remove('hidden');
             await fetch(window.location.href + 'mqtt/retry');
-            let mqttState = 0;
-            while (mqttState === 0) {
-                const res = await fetch(window.location.href + 'health');
-                mqttState = (await res.json()).mqtt;
+            while (health.mqtt === 0) {
+                await fetchServicesHealth();
                 await delay(1000); //avoid spaming esp32
             }
-            if (mqttState == 1) {
+            if (health.mqtt == 1) {
                 retryButton.classList.add('hidden');
             } else {
                 retryButton.classList.remove('hidden');
@@ -685,16 +745,14 @@ const char MAIN_page[] PROGMEM = R"=====(
             const id = +rowElement.id.split('-')[1];
             const type = document.getElementById(`addTypeAction-${id}`).value;
             if (type == 5) {
-                return [
-                    document.getElementById(`addTypeAction-${id}`).value,
-                    document.getElementById(`addHTTPMethod-${id}`).value,
+                return [type, document.getElementById(`addHTTPMethod-${id}`).value,
                     document.getElementById(`addHTTPAddress-${id}`).value,
                     document.getElementById(`addHTTPBody-${id}`).value
                 ];
+            } else if (type == 6) {
+                return [type, document.getElementById(`addAutomation-${id}`).value,'',''];
             } else {
-                return [
-                    document.getElementById(`addTypeAction-${id}`).value,
-                    document.getElementById(`addValueAction-${id}`).value,
+                return [type, document.getElementById(`addValueAction-${id}`).value,
                     document.getElementById(`addGpioAction-${id}`).value,
                     document.getElementById(`addSignAction-${id}`).value
                 ];
@@ -703,7 +761,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
         req.settings.debounceDelay = +document.getElementById(`setAutomationDebounceDelay-${automationId}`).value;
         req.settings.loopCount = +document.getElementById(`setAutomationLoopCount-${automationId}`).value;
-        req.settings.nextAutomationId = +document.getElementById(`setNextAutomation-${automationId}`).value;
         try {
             if (!req.settings.label) {
                 throw new Error('Parameters missing, please fill at least label and type inputs.');
@@ -1053,7 +1110,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             selectedHttpContent = action[3];
         }
         let gpioActionOptions = gpios.reduce((acc,gpio) =>  acc+`<option value=${gpio.pin} ${selectedPin == gpio.pin ? 'selected':''}>${gpio.label}</option>`,``);
-        
+        let automationOptions = automations.reduce((acc,automation) =>  acc+`<option value=${automation.id} ${selectedValue == automation.id ? 'selected':''}>${automation.label}</option>`,``);
         const actionEditorElement = document.getElementById(`action-editor-result`);
         const actionNumber = '-' + actionEditorElement.childElementCount;
         const rowElement = document.createElement('div');
@@ -1065,6 +1122,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                             <option value=3 ${selectedType == 3 ? 'selected':''}>Delay</option>
                             <option value=4 ${selectedType == 4 ? 'selected':''}>Serial print</option>
                             <option value=5 ${selectedType == 5 ? 'selected':''}>HTTP</option>
+                            <option value=6 ${selectedType == 6 ? 'selected':''}>Automation</option>
                         </select>
                         <select id='addHTTPMethod${actionNumber}' name='httpType' class='${selectedType == 5 ? '': 'hidden'}'>
                             <option value=1 ${selectedHttpMethod == 1 ? 'selected':''}>GET</option>
@@ -1072,14 +1130,15 @@ const char MAIN_page[] PROGMEM = R"=====(
                         </select>
                         <input id='addHTTPAddress${actionNumber}' name='httpAddress' class='${selectedType == 5 ? '': 'hidden'}' placeholder='http://www.placeholder.com/' value='${selectedHttpAddress}'>
                         <input id='addHTTPBody${actionNumber}' name='httpBody' class='${selectedType == 5 ? '': 'hidden'}' placeholder='Body in json format' value='${selectedHttpContent}'>
-                        <select id='addGpioAction${actionNumber}' name='gpioAction' class='${selectedType != 1 ? 'hidden': ''}'>${gpioActionOptions}</select>
-                        <select id='addSignAction${actionNumber}' name='signAction' class='${selectedType != 1 ? 'hidden': ''}'>
+                        <select id='addGpioAction${actionNumber}' name='gpioAction' class='${selectedType == 1 ? '' : 'hidden'}'>${gpioActionOptions}</select>
+                        <select id='addSignAction${actionNumber}' name='signAction' class='${selectedType == 1 ? '' : 'hidden'}'>
                             <option value=1 ${selectedSign == 1 ? 'selected':''}>=</option>
                             <option value=2 ${selectedSign == 2 ? 'selected':''}>+=</option>
                             <option value=3 ${selectedSign == 3 ? 'selected':''}>-=</option>
                             <option value=4 ${selectedSign == 4 ? 'selected':''}>*=</option>
                         </select>
-                        <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' class='${selectedType == 5 ? 'hidden': ''}' placeholder='value'>
+                        <select id='addAutomation${actionNumber}' name='automation' class='${selectedType == 6 ? '': 'hidden'}'>${automationOptions}</select>
+                        <input id='addValueAction${actionNumber}' name='valueAction' value='${selectedValue}' class='${selectedType == 5 || selectedType == 6 ? 'hidden': ''}' placeholder='value'>
                         <a onclick='deleteRowEditor(this)' id='deleteAction${actionNumber}' class='btn delete'>x</a>`
         actionEditorElement.appendChild(rowElement);
         // Update actions left number
@@ -1101,6 +1160,9 @@ const char MAIN_page[] PROGMEM = R"=====(
         let child = document.createElement('div');
         child.classList.add('set');
         child.innerHTML = `<div class='set-inputs'>
+                <div class='row ${automation.id === 'new' ? 'hidden' : ''}'>
+                    <label for='setAutomationLabel-${automation.id}'>Id: ${automation.id}</label>
+                </div>
                 <div class='row'>
                     <label for='setAutomationLabel-${automation.id}'>Label:</label>
                     <input id='setAutomationLabel-${automation.id}' type='text' name='label' value='${automation.label||''}' placeholder='Describe your automation'>
@@ -1116,10 +1178,6 @@ const char MAIN_page[] PROGMEM = R"=====(
                 <div class='row'>
                     <label for='setAutomationLoopCount-${automation.id}'>Repeat automation:</label>
                     <input id='setAutomationLoopCount-${automation.id}' type='number' name='loopCount' value='${automation.loopCount||''}' placeholder='How many times the automation must be repeat'>
-                </div>
-                <div class='row'>
-                    <label for='setNextAutomation-${automation.id}'>Next automation:</label>
-                    <select id='setNextAutomation-${automation.id}' name='next'><option value=0>None</option>${nextAutomationOptions}</select>
                 </div>
                 <div class='column'>
                     <div id='condition-editor' class='row'>
@@ -1220,7 +1278,6 @@ const char MAIN_page[] PROGMEM = R"=====(
     };
     const updateActionType = (element) => {
         const rowNumber = +element.id.split('-')[1];
-        const isGpioAction = (element.value == 1);
         if (element.value == 1) {
             document.getElementById(`addGpioAction-${rowNumber}`).classList.remove('hidden');
             document.getElementById(`addSignAction-${rowNumber}`).classList.remove('hidden');
@@ -1228,6 +1285,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addHTTPBody-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addAutomation-${rowNumber}`).classList.add('hidden');
         } else if (element.value == 5){
             document.getElementById(`addHTTPMethod-${rowNumber}`).classList.remove('hidden');
             document.getElementById(`addHTTPAddress-${rowNumber}`).classList.remove('hidden');
@@ -1235,6 +1293,15 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addValueAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addAutomation-${rowNumber}`).classList.add('hidden');
+        } else if (element.value == 6){
+            document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addHTTPBody-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addValueAction-${rowNumber}`).classList.add('hidden');
+            document.getElementById(`addAutomation-${rowNumber}`).classList.remove('hidden');
         } else {
             document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add('hidden');
@@ -1242,6 +1309,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             document.getElementById(`addGpioAction-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addSignAction-${rowNumber}`).classList.add('hidden');
             document.getElementById(`addValueAction-${rowNumber}`).classList.remove('hidden');
+            document.getElementById(`addAutomation-${rowNumber}`).classList.add('hidden');
         }
     };
     const updateConditionValueType = (element) => {
@@ -1268,6 +1336,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         await fetchSettings();
         document.getElementById('page-loader').remove();
         await fetchAvailableGpios();
+        await fetchServicesHealth();
     };
 </script>
 <!-- HTML_SCRIPT_END -->

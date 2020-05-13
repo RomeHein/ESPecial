@@ -17,6 +17,7 @@ void ServerHandler::begin()
     server.on("/clear/settings", [this]() { handleClearSettings(); });
     server.on("/health", [this]() { handleSystemHealth(); });
     server.on("/settings", [this]() { getSettings(); });
+    server.on("/setrestarttings", [this]() { handleRestart(); });
     server.on("/install", HTTP_POST, [this]() { handleUpload(); }, [this]() { install(); });
     server.on("/mqtt", HTTP_POST, [this]() { handleMqttEdit(); });
     server.on("/mqtt/retry", [this]() { handleMqttRetry(); });
@@ -80,6 +81,12 @@ void ServerHandler::handleSystemHealth()
     return;
 }
 
+void ServerHandler::handleRestart() {
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/plain", "OK");
+    ESP.restart();
+}
+
 // Settings
 
 void ServerHandler::getSettings() {
@@ -106,6 +113,7 @@ void ServerHandler::getSettings() {
     general["maxConditions"] = MAX_AUTOMATIONS_CONDITIONS_NUMBER;
     general["maxActions"] = MAX_AUTOMATION_ACTION_NUMBER;
     general["maxChannels"] = MAX_DIGITALS_CHANNEL;
+    general["maxTextMessage"] = MAX_MESSAGE_TEXT_SIZE;
     String output;
     serializeJson(doc, output);
     server.send(200, "text/json", output);
@@ -365,7 +373,7 @@ void ServerHandler::handleAutomationEdit()
                 memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
                 l++;
             }
-            server.send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(),doc["settings"]["debounceDelay"].as<int>(), doc["settings"]["nextAutomationId"].as<int>()));
+            server.send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(),doc["settings"]["debounceDelay"].as<int>()));
             return;
         }
     }
@@ -407,9 +415,8 @@ void ServerHandler::handleAutomationNew()
     const int autoRun = doc["settings"]["autoRun"].as<int>();
     const int loopCount = doc["settings"]["loopCount"].as<int>();
     const int debounceDelay = doc["settings"]["debounceDelay"].as<int>();
-    const int nextAutomationId = doc["settings"]["nextAutomationId"].as<int>();
     if (label) {
-        server.send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount,debounceDelay, nextAutomationId));
+        server.send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount,debounceDelay));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");

@@ -15,6 +15,7 @@ private:
     void handleSystemHealth();
     void getSettings();
     void install();
+    void handleRestart();
     void handleUpload();
     void handleUpdate();
 
