@@ -186,7 +186,7 @@ void runAutomation(int id) {
 
 void runAutomation(AutomationFlash& automation) {
   #ifdef __debug
-    Serial.printf("Checking automation: %s\n",automation.label);
+    Serial.printf("[AUTOMATION] Checking automation: %s\n",automation.label);
   #endif
   // Check if all conditions are fullfilled
   bool canRun = true;
@@ -232,14 +232,14 @@ void runAutomation(AutomationFlash& automation) {
   }
   if (canRun) {
     #ifdef __debug
-      Serial.printf("Running automation: %s\n",automation.label);
+      Serial.printf("[AUTOMATION] Running automation: %s\n",automation.label);
     #endif
     // Run automation
     for (int repeat=0; repeat<automation.loopCount; repeat++) {
       for (int i=0;i<MAX_AUTOMATIONS_NUMBER;i++) {
         if (automation.actions[i][0] && strlen(automation.actions[i][0])!=0) {
           #ifdef __debug
-            Serial.printf("Running action type: %s\n",automation.actions[i][0]);
+            Serial.printf("[ACTION] Running action type: %s\n",automation.actions[i][0]);
           #endif
           const int type = atoi(automation.actions[i][0]);
           // We deal with a gpio action
@@ -307,7 +307,7 @@ void runAutomation(AutomationFlash& automation) {
             for (AutomationFlash& nAutomation: preferencehandler->automations) {
               if (nAutomation.id == nestedAutomationId) {
                 #ifdef __debug
-                  Serial.printf("Going to nested automation: %s\n",nAutomation.label);
+                  Serial.printf("[ACTION] Going to nested automation: %s\n",nAutomation.label);
                 #endif
                 runAutomation(nAutomation);
                 break;
@@ -365,13 +365,13 @@ void addPinValueToActionString(String& toParse, int fromIndex) {
 void setup(void)
 {
   Serial.begin(115200);
-  Serial.println("Access point set.\nWifi network: ESP32");
+  Serial.println(F("[SETUP] Access point set.\nWifi network: ESP32"));
   WiFi.mode(WIFI_STA);
   WiFiManager wm;
   wm.setConnectTimeout(10);
   bool res = wm.autoConnect(APName,APPassword);
   if(!res) {
-        Serial.println("Failed to connect");
+        Serial.println(F("[SETUP] Failed to connect"));
   } else {
     // Set all handlers.
     preferencehandler = new PreferenceHandler();
@@ -387,7 +387,7 @@ void setup(void)
 
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
-      Serial.println("Failed to obtain time");
+      Serial.println(F("[SETUP] Failed to obtain time"));
     } else {
       // This avoid having to check getLocalTime in the loop, saving some complexity.
       debounceTimeDelay -= timeinfo.tm_sec; 
@@ -410,10 +410,10 @@ void loop(void) {
       delay(500);
       ++count;
       #ifdef __debug
-        Serial.printf("Wifi deconnected: attempt %i\n", count);
+        Serial.printf("[MAIN_LOOP] Wifi deconnected: attempt %i\n", count);
       #endif
       if (count == 200) {
-        Serial.println("Failed to reconnect, restarting now.");
+        Serial.println(F("[MAIN_LOOP] Failed to reconnect, restarting now."));
         ESP.restart();
       } 
     }
@@ -431,6 +431,9 @@ void automation_loop(void *pvParameters) {
           debounceTimeDelay = 60000;
         }
         // Run only time scheduled automations
+        #ifdef __debug
+          Serial.println(F("[AUTO_LOOP] Checking time scheduled automations"));
+        #endif
         runTriggeredEventAutomations(true);
         lastCheckedTime = millis();
       }

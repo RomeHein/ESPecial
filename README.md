@@ -2,6 +2,8 @@
 
 This project aim to provide an easy way to control your esp32. You no longer need programming skills to set complex tasks. This can be a very nice approach for small projects, home automation and/or educational purposes.
 
+Here is a quick video exemple of what you can do with ESPecial:
+https://www.youtube.com/watch?v=_E-ywkafs94
 
 Features:
 - Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
