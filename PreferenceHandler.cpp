@@ -230,7 +230,7 @@ bool PreferenceHandler::removeGpio(int pin) {
     save(PREFERENCES_GPIOS);
     return true;
 }
-String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin, int frequency, int resolution, int channel, int saveState) {
+String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin, int frequency, int resolution, int channel, int saveState, int invertState) {
     GpioFlash newGpio = {};
     newGpio.pin = pin;
     strcpy(newGpio.label, label);
@@ -240,6 +240,7 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin
     newGpio.frequency = frequency;
     newGpio.resolution = resolution;
     newGpio.save = saveState;
+    newGpio.invert = invertState;
     gpios[pin] = newGpio;
     attach(newGpio);
     if (newGpio.mode > 0) {
@@ -251,7 +252,7 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin
     save(PREFERENCES_GPIOS);
     return gpioToJson(newGpio);
 }
-String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, int newMode, int newSclPin, int newFrequency, int newResolution, int newChannel, int newSave) {
+String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, int newMode, int newSclPin, int newFrequency, int newResolution, int newChannel, int newSave, int newInvert) {
     bool hasChanged = false;
     GpioFlash& gpio = gpios[oldPin];
     if (newMode && gpio.mode != newMode) {
@@ -298,6 +299,10 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
     }
     if (gpio.save != newSave) {
         gpio.save = newSave;
+        hasChanged = true;
+    }
+    if (gpio.invert != newInvert) {
+        gpio.invert = newInvert;
         hasChanged = true;
     }
     if (newPin && gpio.pin != newPin) {
@@ -356,6 +361,7 @@ String PreferenceHandler::gpioToJson(GpioFlash& gpio) {
     doc["resolution"] = gpio.resolution;
     doc["channel"] = gpio.channel;
     doc["state"] = gpio.state;
+    doc["invert"] = gpio.invert;
     doc["save"] = gpio.save;
     String output;
     serializeJson(doc, output);

@@ -27,8 +27,8 @@ Features:
 
 ## Work in progress:
 - I2C integration
-- Add possibility to make http requests as a type of action.
 - Web Interface: Give it some love, fix some issues, particulary on mqtt connection
+
 ## Wish list
 - Unit and integration tests!! I'm really new in arduino and even c++ world, so I might need more time to work on that part.
 - Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2018...
@@ -37,7 +37,7 @@ Features:
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
 - Auto update: from remote server (why not a .ini build on this repo?)
 - reduce library dependencies: UniversalTelegramBot, WifiManager and ArduinoJson could be avoided. Leaving only PubSubClient. This would decrease drastically the size of the project on the esp32.
-- Using light weight front library like Preact. This would enhancy greatly the coding experience...
+- Using light weight front library like Preact. This would enhance greatly the coding experience...
 ## Getting Started
 
 First, do yourself a nice gift, buy an ESP32 :) Any esp32 will work with this project. 
@@ -55,12 +55,15 @@ If you want to use vscode while coding (I strongly recommand it) follow this nic
 
 ### Installing
 
-This code also has 4 dependencies which need to be added to your libraries:
+First copy this repo to your local directory. Use the `download as zip` or `git clone` method.
+Then 4 dependencies need to be added to your Arduino libraries:
 - ArduinoJSON v6 (install via library manager) Handle json in a very effective way.
 - PubSubClient: (install via library manager)  MQTT handling. It's a very robust pubsub client, perfect for iot projects.
 - WifiManager: https://github.com/tzapu/WiFiManager/tree/development
 This library will allow you to easily set your board to your wifi. You'll need to get the development branch to have esp32 support.
 - UniversalTelegramBot: https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/editMessage. Telegram api for arduino. This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
+
+Once all library installed, just upload the scetch to your board, and that should be it.
 
 ## Usage
 

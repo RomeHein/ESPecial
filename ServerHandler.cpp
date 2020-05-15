@@ -207,6 +207,11 @@ void ServerHandler::handleTelegramEdit () {
 
 // Gpio hanlding
 
+void ServerHandler::handleScan() {
+    const int pin = atoi(server.pathArg(0).c_str());
+    server.send(200, "text/json", preference.scan(preference.gpios[pin]));
+}
+
 void ServerHandler::getGpios() 
 {
     server.send(200, "text/json", preference.getGpiosJson());
@@ -225,15 +230,10 @@ void ServerHandler::handleGpioEdit()
         return;
     }
     if (preference.gpios[doc["pin"].as<int>()].pin) {
-        server.send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["sclpin"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>()));
+        server.send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["sclpin"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>(), doc["settings"]["invert"].as<int>()));
         return;
     }
     server.send(404, "text/plain", "Not found");
-}
-
-void ServerHandler::handleScan() {
-    const int pin = atoi(server.pathArg(0).c_str());
-    server.send(200, "text/json", preference.scan(preference.gpios[pin]));
 }
 
 void ServerHandler::handleGpioNew()
@@ -256,8 +256,9 @@ void ServerHandler::handleGpioNew()
     const int resolution = doc["settings"]["resolution"].as<int>();
     const int channel = doc["settings"]["channel"].as<int>();
     const int save = doc["settings"]["save"].as<int>();
+    const int invert = doc["settings"]["invert"].as<int>();
     if (pin && label && mode) {
-        server.send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save));
+        server.send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save, invert));
         return;
     }
     server.send(404, "text/plain", "Missing parameters");

@@ -73,6 +73,7 @@ typedef struct
     int8_t channel;
     int8_t sclpin; // Only for I2C type
     int16_t state;
+    int8_t invert; // Invert status of digital pins only
     int8_t save;
  }  GpioFlash;
 
@@ -119,8 +120,8 @@ public:
     // Gpio
     GpioFlash gpios[GPIO_PIN_COUNT];
     bool removeGpio(int pin);
-    String addGpio(int pin, const char* label, int mode,int sclpin = PIN_NOT_ATTACHED, int frequency = 50, int resolution = 16, int channel = CHANNEL_NOT_ATTACHED, int save = 0);
-    String editGpio(int oldPin, int newPin,const char* newLabel, int newMode = 0,int newSclPin = PIN_NOT_ATTACHED, int newFrequency = 50, int newResolution = 16, int newChannel = CHANNEL_NOT_ATTACHED, int save = 0);
+    String addGpio(int pin, const char* label, int mode,int sclpin = PIN_NOT_ATTACHED, int frequency = 50, int resolution = 16, int channel = CHANNEL_NOT_ATTACHED, int save = 0, int invert = 0);
+    String editGpio(int oldPin, int newPin,const char* newLabel, int newMode = 0,int newSclPin = PIN_NOT_ATTACHED, int newFrequency = 50, int newResolution = 16, int newChannel = CHANNEL_NOT_ATTACHED, int newSave = 0, int newInvert = 0);
     void setGpioState(int pin, int value = -1, bool persist = false);
     String getGpiosJson();
     // Automation

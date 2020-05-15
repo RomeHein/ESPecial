@@ -559,7 +559,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1])
             if (gpio.mode>0) {
                 const isOn = element.classList.value.includes('on');
-                await fetch(`${window.location.href}gpio/${gpio.pin}/value/${isOn ? 0 : 1}`);
+                await fetch(`${window.location.href}gpio/${gpio.pin}/value/${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
                 element.classList.remove(isOn ? 'on' : 'off');
                 element.classList.add(isOn ? 'off' : 'on');
                 element.innerText = (isOn ? 'off' : 'on');
@@ -691,6 +691,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         const channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
         req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
         req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
+        req.settings.invert = document.getElementById(`setGpioInvertState-${gpioPin}`).checked;
         if (newPin && newPin != gpioPin) {
             req.settings.pin = +newPin;
         }
@@ -847,7 +848,8 @@ const char MAIN_page[] PROGMEM = R"=====(
     };
     const createGpioControlRow = (gpio) => {
         let child = document.createElement('div');
-        let additionnalButton = `<a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${gpio.state ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${gpio.state ? 'on' : 'off'}</a>`;
+        const digitalState = (gpio.state && !gpio.invert) || (!gpio.state && gpio.invert);
+        let additionnalButton = `<a onclick='switchGpioState(this)' id='stateGpio-${gpio.pin}' class='btn ${digitalState ? 'on' : 'off'} ${gpio.mode != 2 ? 'input-mode' : ''}'>${digitalState ? 'on' : 'off'}</a>`;
         if (gpio.mode == -1) {
             additionnalButton = `<input type='number' onchange='switchGpioState(this)' id='stateGpio-${gpio.pin}' value='${gpio.state}'>`;
         } else if (gpio.mode == -2) {
@@ -1029,6 +1031,10 @@ const char MAIN_page[] PROGMEM = R"=====(
                         <label for='setI2cFrequency-${gpio.pin}'>Frequency:</label>
                         <input id='setI2cFrequency-${gpio.pin}' type='text' name='frequency' value='${gpio.frequency || ''}' placeholder="Default to 50Hz if empty">
                     </div>
+                </div>
+                <div class='row ${gpio.mode < 0 ? 'hidden' : ''}' id='setGpioInvertStateRow'>
+                    <label for='setGpioInvertState-${gpio.pin}'>Invert state:</label>
+                    <input type='checkbox' name='invert' id='setGpioInvertState-${gpio.pin}' value='${gpio.invert}'>
                 </div>
                 <div class='row ${gpio.mode != -1 && gpio.mode != 2 ? 'hidden' : ''}' id='setGpioSaveRow'>
                     <label for='setGpioSave-${gpio.pin}'>Save state:</label>
@@ -1239,10 +1245,12 @@ const char MAIN_page[] PROGMEM = R"=====(
         if (option == -1) {
             document.getElementById(`analogue-options`).classList.remove('hidden');
             document.getElementById(`setGpioSaveRow`).classList.remove('hidden');
+            document.getElementById(`setGpioInvertStateRow`).classList.add('hidden');
         // I2C mode
         } else if (option == -2) {
             document.getElementById(`setGpioSaveRow`).classList.add('hidden');
             document.getElementById(`analogue-options`).classList.add('hidden');
+            document.getElementById(`setGpioInvertStateRow`).classList.add('hidden');
             document.getElementById(`i2c-options`).classList.remove('hidden');
         } else {
             if (option == 2) {
@@ -1250,6 +1258,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             } else {
                 document.getElementById(`setGpioSaveRow`).classList.add('hidden');
             }
+            document.getElementById(`setGpioInvertStateRow`).classList.remove('hidden');
             document.getElementById(`analogue-options`).classList.add('hidden');
             document.getElementById(`i2c-options`).classList.add('hidden');
             
