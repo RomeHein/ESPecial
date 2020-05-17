@@ -1006,7 +1006,7 @@ const char MAIN_page[] PROGMEM = R"=====(
                     <input id='setGpioLabel-${gpio.pin}' type='text' name='label' value='${gpio.label || ''}' placeholder="Controller's title">
                 </div>
                 <div class='row'>
-                    <label for='setGpioMode-${gpio.pin}'>Input mode:</label>
+                    <label for='setGpioMode-${gpio.pin}'>I/O mode:</label>
                     <select onchange='updateGpioOptions(this)' id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
                 </div>
                 <div id='analogue-options' class='${gpio.mode != -1 ? 'hidden' : ''}'>
