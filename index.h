@@ -582,9 +582,9 @@ const char MAIN_page[] PROGMEM = R"=====(
         const gpioPin = element.id.split('-')[1];
         try {
             await fetch(`${window.location.href}gpio/${gpioPin}`, {method: 'DELETE'});
-            await fetchGpios();
-            let row = document.getElementById('rowGpio-' + gpioPin);
+            gpios = gpios.filter(gpio => gpio.pin != gpioPin)
             closeAnySettings();
+            let row = document.getElementById('rowGpio-' + gpioPin);
             let column = document.getElementById('gpios');
             column.removeChild(row);
         } catch (err) {
@@ -797,6 +797,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             row.appendChild(createEditGpioPanel(gpio));
             row.classList.add('open');
             document.getElementById(`setGpioSave-${gpio.pin}`).checked = gpio.save;
+            document.getElementById(`setGpioInvertState-${gpio.pin}`).checked = gpio.invert;
         }
     };
     const openAutomationSetting = (element) => {

@@ -31,13 +31,18 @@ Features:
 
 ## Wish list
 - Unit and integration tests!! I'm really new in arduino and even c++ world, so I might need more time to work on that part.
+- Auto update: from remote server (why not a .ini build on this repo?)
+- Using light weight front library like Preact. This would enhance greatly the coding experience...
+- Move to ESP-IDF. This would be a big move and would need to be discussed. This would imply a bigger step for beginners when starting with an esp32... which was not the main purpose of this project: giving a tool that allows quick access to esp32 features like manipulating digital/analog/I2C. On the other hand, this project starts to become pretty big, with planty functionnalities. The superloop architecture from arduino is pretty annoying and does not allow full control over the esp32.
+This move would imply a lot of work on dependencies. Mainly taking them out.
+
+OR
 - Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2018...
 - Use websockets for the front. So that we don't need to refresh the page to get the updated pin states.
 - Make this library compatible with other boards. For now it will only work with dual core boards, as the event listener for pin values is attached to the core 0. With some work, everything could be handle on one core, for instance by using interupts instead of the loop currenlty checking conditions. Another bottle neck is the UniversalTelegramBot library that seems to make long poll to Telegram api and therefor blocks the core process.
 - Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
-- Auto update: from remote server (why not a .ini build on this repo?)
 - reduce library dependencies: UniversalTelegramBot, WifiManager and ArduinoJson could be avoided. Leaving only PubSubClient. This would decrease drastically the size of the project on the esp32.
-- Using light weight front library like Preact. This would enhance greatly the coding experience...
+
 ## Getting Started
 
 First, do yourself a nice gift, buy an ESP32 :) Any esp32 will work with this project. 
