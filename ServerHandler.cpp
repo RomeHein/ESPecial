@@ -17,7 +17,7 @@ void ServerHandler::begin()
     server.on("/clear/settings", [this]() { handleClearSettings(); });
     server.on("/health", [this]() { handleSystemHealth(); });
     server.on("/settings", [this]() { getSettings(); });
-    server.on("/setrestarttings", [this]() { handleRestart(); });
+    server.on("/restart", [this]() { handleRestart(); });
     server.on("/install", HTTP_POST, [this]() { handleUpload(); }, [this]() { install(); });
     server.on("/mqtt", HTTP_POST, [this]() { handleMqttEdit(); });
     server.on("/mqtt/retry", [this]() { handleMqttRetry(); });
