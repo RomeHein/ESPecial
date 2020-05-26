@@ -3,6 +3,7 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include "SPIFFS.h"
 #include "time.h"
 
 #include "ServerHandler.h"
@@ -373,11 +374,16 @@ void setup(void)
   if(!res) {
         Serial.println(F("[SETUP] Failed to connect"));
   } else {
+    
     // Set all handlers.
     preferencehandler = new PreferenceHandler();
     preferencehandler->begin();
-    serverhandler = new ServerHandler(*preferencehandler);
-    serverhandler->begin();
+    if(!SPIFFS.begin(true)){
+      Serial.println("An Error has occurred while mounting SPIFFS");
+    } else {
+      serverhandler = new ServerHandler(*preferencehandler);
+      serverhandler->begin();
+    }
     telegramhandler = new TelegramHandler(*preferencehandler, client);
     mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
      //init and get the time

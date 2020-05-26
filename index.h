@@ -406,7 +406,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     var settings = {};
     var health = {};
     var gpios = [];
-    var slaves = {};
+    var slaves = [];
     var availableGpios = [];
     var automations = [];
     var isSettingsMenuActivated = false;
@@ -865,60 +865,104 @@ const char MAIN_page[] PROGMEM = R"=====(
         return child.firstChild;
     };
 
-    const openI2cSlaveSettings = (element) => {
-        const gpioPin = element.id.split('-')[1];
-        const address = element.id.split('-')[2];
-        let label = '';
-        let type = 1;
-        let register = 0;
-        let lcdRows = 2;
-        let lcdColumns = 32;
-        let lcdCharSize = 5;
-        if (slaves[gpioPin]) {
-            label = slaves[gpioPin].label;
-            type = slaves[gpioPin].type;
-            register = slaves[gpioPin].register;
-            lcdRows = slaves[gpioPin].lcdRows;
-            lcdColumns = slaves[gpioPin].lcdColumns;
-            lcdCharSize = slaves[gpioPin].lcdCharSize;
+    const createI2cSlaveControlRow = (slave) => {
+        let child = document.createElement('div');        
+        let actionButton = `<a onclick='setI2cSlaveData(this)' id='setI2cSlaveData-${slave.id}' class='btn on'>set</a>`
+        if (slave.octetRequest) {
+            actionButton = `<a onclick='getI2cSlaveData(this)' id='getI2cSlaveData-${slave.id}' class='btn on'>get</a>`
         }
-        const row = document.getElementById(`scanResult-${gpioPin}`);
+        child.innerHTML = `<div class='row' id='rowSlave-${slave.id}'>
+            <div class='label'> ${slave.label}</div>
+            <div class='btn-container'>
+                <a onclick='openI2cSlaveSettings(this)' id='editI2cSlave-${slave.id}' class='btn edit'>edit</a>${actionButton}
+                <input id='i2cSlaveData-${slave.id}' type='text'>
+            </div>
+        </div>`;
+        return child.firstChild;
+    }
+
+    const saveI2cSlaveSettings = (element) => {
+        const id = element.id.split('-')[1];
+        const isNew = (id === 'new');
+        let req = { settings: {} };
+        if (isNew) {
+            req.settings.address = element.parentElement.firstChild;
+            req.settings.mPin = element.parentElement.id.split('-')[1];
+        } else {
+            req.id = id;
+        }
+        req.settings.label = document.getElementById(`setI2cSlaveLabel-${id}`).value;
+        req.settings.command = +document.getElementById(`setI2cSlaveCommand-${id}`).value;
+        req.settings.octetRequest = +document.getElementById(`setI2cSlaveOctet-${id}`).value;
+        req.settings.save = +document.getElementById(`setI2cSlaveSave-${id}`).checked;
+        try {
+            if (!req.settings.label) {
+                throw new Error('Parameters missing, please fill at least label and type inputs.');
+            }
+            const resp = await fetch(`${window.location.href}slave`, {
+                method: isNew ? 'POST' : 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(req)
+            });
+            const newSetting = await resp.json();
+            let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
+            if (isNew) {
+                slaves.push(newSetting);
+                row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
+                closeI2cSlaveSettings();
+            } else {
+                slaves = slaves.map(oldSlave => (oldSlave.id == +id) ? {...newSetting} : oldSlave);
+                let oldRow = document.getElementById('rowSlave-' + id);
+                row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const openI2cSlaveSettings = (element) => {
+        const infos = element.id.split('-');
+        const gpioPin = infos[1];
+        const id = (infos.length === 3 ? element.id.split('-')[2] : 'new');
+        let label = '';
+        let command = 0;
+        let octetToRequest = 0;
+        let save = 0
+        // Find the right slave attached to gpioPin
+        let slave = slaves.find(s => s.id == id);
+        if (slave) {
+            label = slave.label;
+            command = slave.command;
+            octetToRequest = slave.octetRequest;
+            save = slave.save;
+        }
+        const row = slave ? document.getElementById(`rowSlave-${id}`) : document.getElementById(`scanResult-${gpioPin}`);
         let child = document.createElement('div');
-        child.innerHTML = `<div class='column slave-settings set' id='i2cSlaveSettings-${gpioPin}-${address}'>
+        child.innerHTML = `<div class='column slave-settings set' id='i2cSlaveSettings-${id}'>
             <div class='set-inputs'>
                 <div class='row'>
-                    <label for='seti2cSlaveLabel-${gpioPin}-${address}'>Slave label:</label>
-                    <input id='seti2cSlaveLabel-${gpioPin}-${address}' type='text' name='label' value='${label}' placeholder="Controller's title">
+                    <label for='setI2cSlaveLabel-${id}'>Slave label:</label>
+                    <input id='setI2cSlaveLabel-${id}' type='text' name='label' value='${label}' placeholder="Controller's title">
                 </div>
                 <div class='row'>
-                    <label for='setI2cSlaveType-${gpioPin}-${address}'>Type:</label>
-                    <select onchange='updateI2cSlaveOptions(this)' id='setI2cSlaveType-${gpioPin}-${address}' name='type'>
-                        <option ${type == 1 ? 'selected' : ''} value=1>LCD</option>
-                        <option ${type == 2 ? 'selected' : ''} value=2>Others</option>
-                    </select>
+                    <label for='setI2cSlaveCommand-${id}'>Command:</label>
+                    <input id='setI2cSlaveCommand-${id}' type='text' name='register' value='${command}' placeholder="Slave's command">
                 </div>
-                <div class='row' id='others-slave-options'>
-                    <label for='seti2cSlaveRegister-${gpioPin}-${address}'>Register:</label>
-                    <input id='seti2cSlaveRegister-${gpioPin}-${address}' type='text' name='register' value='${register || ''}' placeholder="Slave's register">
+                <div class='row'>
+                    <label for='setI2cSlaveOctet-${id}'>Request octet number:</label>
+                    <input id='setI2cSlaveOctet-${id}' type='number' name='octet' value='${octetToRequest}' placeholder="Slave's command">
                 </div>
-                <div id='lcd-slave-options'>
-                    <div class='row'>
-                        <label for='seti2cLcdRows-${gpioPin}-${address}'>Rows number:</label>
-                        <input id='seti2cLcdRows-${gpioPin}-${address}' type='number' name='rows' value='${lcdRows}'>
-                    </div>
-                    <div class='row'>
-                        <label for='seti2cLcdColumns-${gpioPin}-${address}'>Columns number:</label>
-                        <input id='seti2cLcdColumns-${gpioPin}-${address}' type='number' name='columns' value='${lcdColumns}'>
-                    </div>
-                    <div class='row'>
-                        <label for='seti2cLcdCharSize-${gpioPin}-${address}'>Char size:</label>
-                        <input id='seti2cLcdCharSize-${gpioPin}-${address}' type='number' name='charsize' value='${lcdCharSize}'>
-                    </div>
+                <div class='row ${octetToRequest ? 'hidden' : ''}'>
+                    <label for='setI2cSlaveSave-${id}'>Save:</label>
+                    <input id='setI2cSlaveSave-${id}' type='checkbox' name='save' value='${save}'>
                 </div>
             </div>
             <div class='btn-container'>
-                <a onclick='closeI2cSlaveSettings(this)' id='closeI2cSlaveSettings-${gpioPin}-${address}' class='btn cancel'>close</a>
-                <a onclick='saveI2cSlaveSettings(this)' id='saveI2cSlaveSettings-${gpioPin}-${address}' class='btn on'>add</a>
+                <a onclick='closeI2cSlaveSettings(this)' id='closeI2cSlaveSettings-${id}' class='btn cancel'>close</a>
+                <a onclick='saveI2cSlaveSettings(this)' id='saveI2cSlaveSettings-${id}' class='btn on'>add</a>
             </div>
         </div>`;
         row.appendChild(child.firstChild);
@@ -931,9 +975,9 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     const closeI2cSlaveSettings = (element) => {
-        const gpioPin = element.id.split('-')[1];
-        const row = document.getElementById(`scanResult-${gpioPin}`);
-        row.removeChild(row.lastChild);
+        const id = element.id.split('-')[1];
+        const row = document.getElementById(`i2cSlaveSettings-${id}`);
+        row.parentElement.removeChild(row);
     }
 
     const createScanResult = (gpioPin, scanResults) => {
@@ -946,7 +990,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         const rows = scanResults.reduce((prev, scanResult) => {
             return prev + `<div class='row' id='scanResult-${gpioPin}'>${scanResult}
                 <div class='btn-container'>
-                        <a onclick='openI2cSlaveSettings(this)' id='editI2c-${gpioPin}-${scanResult}' class='btn edit'>set</a>
+                        <a onclick='openI2cSlaveSettings(this)' id='editI2c-${gpioPin}' class='btn edit'>set</a>
                     </div>
                 </div>`
         },'')

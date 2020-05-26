@@ -13,6 +13,9 @@ void ServerHandler::begin()
         Serial.println("Server: init");
     #endif
     server.on("/", [this]() { handleRoot(); });
+    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/style.css", "text/css");
+    });
     server.onNotFound([this]() {handleNotFound(); });
     server.on("/clear/settings", [this]() { handleClearSettings(); });
     server.on("/health", [this]() { handleSystemHealth(); });
@@ -26,17 +29,19 @@ void ServerHandler::begin()
     // Gpio related endpoints
     server.on("/gpio/{}/value/{}", [this]() { handleSetGpioState(); });
     server.on("/gpio/{}/value", [this]() { handleGetGpioState(); });
-    server.on("/gpio/{}/scan", [this]() { handleScan(); });
     server.on("/gpios/available", [this]() { handleAvailableGpios(); });
     server.on("/gpios", [this]() { getGpios(); });
     server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
     server.on("/gpio", HTTP_PUT, [this]() { handleGpioEdit(); });
     server.on("/gpio", HTTP_POST, [this]() { handleGpioNew(); });
-    server.on("/gpios", [this]() { getGpios(); });
-    server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
-    server.on("/gpio", HTTP_PUT, [this]() { handleGpioEdit(); });
-    server.on("/gpio", HTTP_POST, [this]() { handleGpioNew(); });
 
+    // I2c related endpoints
+    server.on("/gpio/{}/scan", [this]() { handleScan(); });
+    server.on("/slaves",[this]() { getSlaves(); });
+    server.on("/slave/{}", HTTP_DELETE,[this]() { handleSlaveRemove(); });
+    server.on("/slave", HTTP_PUT,[this]() { handleSlaveEdit(); });
+    server.on("/slave", HTTP_POST,[this]() { handleSlaveNew(); });
+    
     // Automation related endpoints
     server.on("/automations", [this]() { getAutomations(); });
     server.on("/automation/{}", HTTP_DELETE,[this]() { handleAutomationRemove(); });
@@ -51,6 +56,13 @@ void ServerHandler::begin()
 
 void ServerHandler::handleRoot()
 {
+    Serial.println("Serving gome page");
+    server.send(200, "text/html", MAIN_page);
+}
+
+void ServerHandler::handleCSS()
+{
+    Serial.println("Serving gome page");
     server.send(200, "text/html", MAIN_page);
 }
 
@@ -207,11 +219,6 @@ void ServerHandler::handleTelegramEdit () {
 
 // Gpio hanlding
 
-void ServerHandler::handleScan() {
-    const int pin = atoi(server.pathArg(0).c_str());
-    server.send(200, "text/json", preference.scan(preference.gpios[pin]));
-}
-
 void ServerHandler::getGpios() 
 {
     server.send(200, "text/json", preference.getGpiosJson());
@@ -319,7 +326,78 @@ void ServerHandler::handleSetGpioState()
     handleGetGpioState();
 }
 
-// automationq
+// I2c
+
+void ServerHandler::handleScan() {
+    const int pin = atoi(server.pathArg(0).c_str());
+    server.send(200, "text/json", preference.scan(preference.gpios[pin]));
+}
+
+void ServerHandler::getSlaves() {
+    server.send(200, "text/json", preference.getI2cSlavesJson());
+    return;
+}
+void ServerHandler::handleSetSlaveData() {
+
+}
+void ServerHandler::handleGetSlaveData() {
+
+}
+void ServerHandler::handleSlaveEdit() {
+    DynamicJsonDocument doc(I2CSLAVE_JSON_CAPACITY);
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        #ifdef __debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
+        return;
+    }
+
+    for (I2cSlaveFlash& s : preference.i2cSlaves)
+    {
+        if (s.id == doc["id"].as<int>())
+        {
+            server.send(200, "text/json", preference.editSlave(s, doc["settings"]["label"].as<char*>(),doc["settings"]["command"].as<int>(),doc["settings"]["data"].as<char*>(),doc["settings"]["octetRequest"].as<int>(),doc["settings"]["save"].as<int>()));
+            return;
+        }
+    }
+    server.send(404, "text/plain", "Not found");
+}
+void ServerHandler::handleSlaveRemove() {
+    bool removed = preference.removeSlave(atoi(server.pathArg(0).c_str()));
+    if (removed){
+        server.send(200, "text/plain", "Done");
+        return;
+    }
+    server.send(404, "text/plain", "Not found");
+
+}
+void ServerHandler::handleSlaveNew() {
+    DynamicJsonDocument doc(I2CSLAVE_JSON_CAPACITY);
+    DeserializationError error = deserializeJson(doc, server.arg(0));
+    if (error) {
+        #ifdef __debug
+            Serial.print(F("Server: deserializeJson() failed: "));
+            Serial.println(error.c_str());
+        #endif
+        return;
+    }
+    const int address = doc["settings"]["address"].as<int>();
+    const int mPin = doc["settings"]["mPin"].as<int>();
+    const char* label = doc["settings"]["label"].as<char*>();
+    const int command = doc["settings"]["command"].as<int>();
+    const char* data = doc["settings"]["data"].as<char*>();
+    const int octetRequest = doc["settings"]["octetRequest"].as<int>();
+    const int save = doc["settings"]["save"].as<int>();
+    if (address && mPin && label) {
+        server.send(200, "text/json", preference.addSlave(address,mPin,label,command,data,octetRequest,save));
+        return;
+    }
+    server.send(404, "text/plain", "Missing parameters");
+}
+
+// automations
 
 void ServerHandler::getAutomations() 
 {

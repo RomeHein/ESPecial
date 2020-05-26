@@ -22,6 +22,14 @@ void PreferenceHandler::begin()
         memcpy(gpios, buffer, schLen);
     }
 
+    // Init I2C slaces preferences
+    {
+        size_t schLen = preferences.getBytes(PREFERENCES_I2C_SLAVE, NULL, NULL);
+        char buffer[schLen];
+        preferences.getBytes(PREFERENCES_I2C_SLAVE, buffer, schLen);
+        memcpy(i2cSlaves, buffer, schLen);
+    }
+
     // Init automation preferences
     {
         setAutomationsFromJson(preferences.getString(PREFERENCES_AUTOMATION, "[]").c_str());
@@ -69,6 +77,8 @@ void PreferenceHandler::save(char* preference) {
     #endif
     if (strcmp(preference, PREFERENCES_GPIOS) == 0) {
         preferences.putBytes(PREFERENCES_GPIOS, &gpios, sizeof(gpios));
+    }else if (strcmp(preference, PREFERENCES_I2C_SLAVE) == 0) {
+        preferences.putBytes(PREFERENCES_I2C_SLAVE, &i2cSlaves, sizeof(i2cSlaves));
     }else if (strcmp(preference, PREFERENCES_AUTOMATION) == 0) {
         // Note: saving a string instead of bytes. 
         // The struct for AutomationFlash does not seem to work properly with the putBytes. 
@@ -82,6 +92,21 @@ void PreferenceHandler::save(char* preference) {
     preferences.end();
 }
 
+// Returns the first empty slot of a given array
+int PreferenceHandler::firstEmptySlot(char* preference) {
+    int i = 0;
+    if (preference == PREFERENCES_AUTOMATION) {
+        while(automations[i].id && i<MAX_AUTOMATIONS_NUMBER) {
+            i++;
+        }
+    } else if (preference == PREFERENCES_I2C_SLAVE) {
+        while(i2cSlaves[i].id && i<MAX_I2C_SLAVES) {
+            i++;
+        }
+    }
+    return i;
+}
+
 // Return the highest id of an array, + 1
 int PreferenceHandler::newId(char *preference) {
     int newId = 1;
@@ -89,6 +114,12 @@ int PreferenceHandler::newId(char *preference) {
         for (AutomationFlash& automation: automations) {
             if (automation.id>=newId) {
                 newId = automation.id + 1;
+            }
+        }
+    } else if (PREFERENCES_I2C_SLAVE) {
+        for (I2cSlaveFlash& slave: i2cSlaves) {
+            if (slave.id>=newId) {
+                newId = slave.id + 1;
             }
         }
     }
@@ -121,7 +152,7 @@ bool PreferenceHandler::attach(GpioFlash& gpio) {
     // Attach digital
     if (gpio.mode >0) {
         pinMode(gpio.pin, gpio.mode);
-    // Attach analog
+    // Attach led control
     } else if (gpio.mode == -1) {
         if(gpio.channel != CHANNEL_NOT_ATTACHED && gpio.channel<MAX_DIGITALS_CHANNEL) {
             int frequency = 50;
@@ -168,8 +199,8 @@ bool PreferenceHandler::detach(GpioFlash& gpio) {
             Serial.printf("Preferences: detaching channel %i from pin %i\n", gpio.channel,gpio.pin);
         #endif
         ledcDetachPin(gpio.pin);
-    // Detach i2c by. Releasing Wire instance should call the destroy from Wire and therfor free the pin
-    } else if (gpio.mode == -1 && gpio.frequency && gpio.sclpin) {
+    // Detach i2c. Releasing Wire instance should call the destroy from Wire and therfor free the pin
+    } else if (gpio.mode == -2 && gpio.frequency && gpio.sclpin) {
         delete i2cHandlers[gpio.pin];
         return true;
     }
@@ -212,15 +243,126 @@ String PreferenceHandler::scan(GpioFlash& gpio){
     return output;
 }
 
-int PreferenceHandler::firstEmptyGpioSlot() {
-    const int count = sizeof(gpios)/sizeof(*gpios);
-    for (int i=0;i<count;i++) {
-        if (!gpios[i].pin) {
-            return i;
+String PreferenceHandler::addSlave(int address, int mPin, const char* label, int command,const char* data, int octetRequest, int s) {
+    I2cSlaveFlash newSlave = {};
+    newSlave.id = newId(PREFERENCES_I2C_SLAVE);
+    newSlave.address = address;
+    newSlave.mPin = mPin;
+    strcpy(newSlave.label, label);
+    newSlave.command = command;
+    strcpy(newSlave.data, data);
+    newSlave.octetRequest = octetRequest;
+    newSlave.save = s;
+    i2cSlaves[firstEmptySlot(PREFERENCES_I2C_SLAVE)] = newSlave;
+    save(PREFERENCES_I2C_SLAVE);
+    return slaveToJson(newSlave);
+}
+
+String PreferenceHandler::editSlave(I2cSlaveFlash& slave, const char* newLabel, int newCommand,const char* newData, int newOctetRequest, int newSave) {
+    bool hasChanged = false;
+    if (newLabel && strcmp(slave.label, newLabel) != 0) {
+        strcpy(slave.label, newLabel);
+        hasChanged = true;
+    }
+    if (newCommand && slave.command != newCommand) {
+        slave.command = newCommand;
+        hasChanged = true;
+    }
+    if (newData && strcmp(slave.data, newData) != 0) {
+        strcpy(slave.data, newData);
+        hasChanged = true;
+    }
+    if (slave.octetRequest != newOctetRequest) {
+        slave.octetRequest = newOctetRequest;
+        hasChanged = true;
+    }
+    if (slave.save != newSave) {
+        slave.save = newSave;
+        hasChanged = true;
+    }
+    if (hasChanged) {
+        save(PREFERENCES_I2C_SLAVE);
+    }
+    return slaveToJson(slave);
+}
+
+bool PreferenceHandler::removeSlave(int id) {
+    for (int i=0; i<MAX_I2C_SLAVES; i++) {
+        if (i2cSlaves[i].id == id) {
+            i2cSlaves[i] = {};
+            save(PREFERENCES_I2C_SLAVE);
+            return true;
         }
     }
-    return count-1;
+    return false;
 }
+
+// Send data to the slave via the saved command. If no data passed, only the command will be executed
+void PreferenceHandler::setSlaveData(int id, char data[MAX_LABEL_TEXT_SIZE]) {
+    for (I2cSlaveFlash& slave: i2cSlaves) {
+        if (slave.id == id) {
+            Wire.beginTransmission(slave.address);
+            Wire.write(slave.command);
+            if (data) {
+                Wire.write(data);
+            }
+            Wire.endTransmission();
+            return;
+        }
+    }
+}
+
+String PreferenceHandler::getSlaveData(int id) {
+    for (I2cSlaveFlash& slave: i2cSlaves) {
+        if (slave.id == id) {
+            // Request read command
+            Wire.beginTransmission(slave.address);
+            Wire.write(slave.command);
+            Wire.endTransmission(false);
+            Wire.requestFrom((int)slave.address, (int)slave.octetRequest);
+            // Check if available octets match user parameters. If not, return empty string
+            if (slave.octetRequest <= Wire.available()) {
+                DynamicJsonDocument doc(JSON_ARRAY_SIZE(slave.octetRequest));
+                for (int j=0; j<slave.octetRequest; j++) {
+                    doc.add(Wire.read());
+                }
+                String output;
+                serializeJson(doc, output);
+                return output;
+            }
+        }
+    }
+    return String();
+}
+
+String PreferenceHandler::slaveToJson(I2cSlaveFlash& slave) {
+    StaticJsonDocument<I2CSLAVE_JSON_CAPACITY> doc;
+    doc["id"] = slave.id;
+    doc["address"] = slave.address;
+    doc["mPin"] = slave.mPin;
+    doc["label"] = slave.label;
+    doc["command"] = slave.command;
+    doc["data"] = slave.data;
+    doc["octetRequest"] = slave.octetRequest;
+    doc["save"] = slave.save;
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
+String PreferenceHandler::getI2cSlavesJson() {
+    DynamicJsonDocument doc(I2CSLAVES_JSON_CAPACITY);
+    for (I2cSlaveFlash& slave : i2cSlaves) {
+        if (slave.id) {
+            doc.add(serialized(slaveToJson(slave)));
+        }
+    }
+    String output;
+    serializeJson(doc, output);
+    return output;
+}
+
+// GPIOS
 
 bool PreferenceHandler::removeGpio(int pin) {
     if (gpios[pin].mode<0) {
@@ -243,12 +385,12 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin
     newGpio.invert = invertState;
     gpios[pin] = newGpio;
     attach(newGpio);
+    // If we don't save state, default state to 0
     if (newGpio.mode > 0) {
         newGpio.state = saveState ? digitalRead(pin) : 0;
     } else if (newGpio.mode == -1) {
         newGpio.state = ledcRead(newGpio.channel);
     }
-    // If we don't save state, default state to 0
     save(PREFERENCES_GPIOS);
     return gpioToJson(newGpio);
 }
@@ -445,15 +587,6 @@ bool PreferenceHandler::editTelegram(const char* newToken,const int* newUsers, i
     return hasChanged;
 }
 // Automation
-int PreferenceHandler::firstEmptyAutomationSlot() {
-    const int count = sizeof(automations)/sizeof(*automations);
-    for (int i=0;i<count;i++) {
-        if (!automations[i].id) {
-            return i;
-        }
-    }
-    return count-1;
-}
 
 void PreferenceHandler::setAutomationsFromJson(const char* json) {
     DynamicJsonDocument doc(AUTOMATIONS_JSON_CAPACITY);
@@ -564,7 +697,7 @@ String PreferenceHandler::addAutomation(const char* label,int autoRun,const int1
     newAutomation.autoRun = autoRun;
     newAutomation.loopCount = loopCount;
     newAutomation.debounceDelay = debounceDelay;
-    automations[firstEmptyAutomationSlot()] = newAutomation;
+    automations[firstEmptySlot(PREFERENCES_AUTOMATION)] = newAutomation;
     save(PREFERENCES_AUTOMATION);
     return automationToJson(newAutomation);
 }

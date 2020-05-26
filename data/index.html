@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Web Server</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script type="text/javascript" src="script.js"></script>
+</head>
+<body>
+    <div class="spacer"></div>
+    <div class="header">
+        <a id='go-to-settings-button' onclick='switchPage()' class='btn edit'>settings</a>
+        <a id='home-button' onclick='switchPage()' class='btn edit hidden'>Home</a>
+        <a id='restart-button' onclick='restart()' class='btn edit'>Restart</a>
+        <div class="state-indicator-container">
+            <span>Telegram</span>
+            <span id="telegram-indicator" class="state-indicator"></span>
+        </div>
+        <div class="state-indicator-container">
+            <span>MQTT</span>
+            <span id="mqtt-indicator" class="state-indicator"></span>
+        </div>
+    </div>
+    <div class="lds-ring" id='page-loader'><div></div><div></div><div></div><div></div></div>
+    <div class='container' id="gpio-container">
+        <div id='gpio-header-bar' class="header-container">
+            <h2>Gpios control</h2>
+            <a id='add-gpio' onclick='addGpio()' class='btn edit'>+</a>
+        </div>
+        <div id='gpios' class='column'></div>
+    </div>
+    <div class="container" id="automation-container">
+        <div id='automation-header-bar' class="header-container">
+            <h2>Automations</h2>
+            <a id='add-automation' onclick='addAutomation()' class='btn edit'>+</a>
+        </div>
+        <div id='automations' class='column'></div>
+    </div>
+    <div class="container hidden" id="setting-container">
+        <div class='column'>
+            <div id='update' class='setting-container'>
+                <p>Software update</p>
+                <form onsubmit='submitUpdate(event)' enctype='multipart/form-data' id='upload-form'>
+                    <label for='file' id='file-update-label'>Choose file</label>
+                    <input type='file' name='update' id='file' onchange='fillUpdateInput(this)' style=display:none>
+                    <input id='submit-update-file' type='submit' class='btn save' value='Update'>
+                </form>
+            </div>
+            <div id='mqtt' class='setting-container'>
+                <p>MQTT</p>
+                <form onsubmit='submitMqtt(event)' id='mqtt-form'>
+                    <label for='mqtt-active'>Active:</label>
+                    <input type='checkbox' name='active' id='mqtt-active'>
+                    <label for='mqtt-fn'>Friendly name:</label>
+                    <input type='text' name='fn' id='mqtt-fn'>
+                    <label for='mqtt-host'>Host:</label>
+                    <input type='text' name='host' id='mqtt-host'>
+                    <label for='mqtt-port'>Port:</label>
+                    <input type='text' name='port' id='mqtt-port'>
+                    <label for='mqtt-user'>User:</label>
+                    <input type='text' name='user' id='mqtt-user'>
+                    <label for='mqtt-password'>Password:</label>
+                    <input type='text' name='password' id='mqtt-password'>
+                    <label for='mqtt-topic'>Topic:</label>
+                    <input type='text' name='topic' id='mqtt-topic'>
+                    <a class='btn edit hidden' id='mqtt-retry' onclick='mqttConnect()'>
+                        <span>Retry</span>
+                        <div class="lds-ring hidden" id='mqtt-retry-loader'><div></div><div></div><div></div><div></div></div>
+                    </a>
+                    <input id='submit-mqtt-pref' type='submit'class='btn save' value='Save'>
+                </form>
+            </div>
+            <div id='telegram' class='setting-container'>
+                <p>Telegram</p>
+                <form onsubmit='submitTelegram(event)' id='telegram-form'>
+                    <label for='telegram-active'>Active:</label>
+                    <input type='checkbox' name='active' id='telegram-active'>
+                    <label for='telegram-token'>Token:</label>
+                    <input type='text' name='token' id='telegram-token'>
+                    <label for='telegram-users'>Authorised users: (empty if public)</label>
+                    <input type='text' name='users' id='telegram-users' placeholder="telegram user ids, separeted by a comma.">
+                    <input id='submit-telegram-pref' type='submit'class='btn save' value='Save'>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div id='blocker' class='hidden'>
+        <h2 id='blocker-title'>Loading</h2>
+        <div class="lds-ring"><div></div><div></div><div></div><div></div></div>
+    </div>
+</body>
+</html>

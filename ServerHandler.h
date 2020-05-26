@@ -24,13 +24,20 @@ private:
     void handleTelegramEdit();
 
     void getGpios();
-    void handleScan();
     void handleAvailableGpios();
     void handleSetGpioState();
     void handleGetGpioState();
     void handleGpioEdit();
     void handleGpioRemove();
     void handleGpioNew();
+
+    void getSlaves();
+    void handleScan();
+    void handleSetSlaveData();
+    void handleGetSlaveData();
+    void handleSlaveEdit();
+    void handleSlaveRemove();
+    void handleSlaveNew();
 
     void getAutomations();
     void handleRunAutomation();

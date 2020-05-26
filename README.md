@@ -33,7 +33,7 @@ Features:
 - Unit and integration tests!! I'm really new in arduino and even c++ world, so I might need more time to work on that part.
 - Auto update: from remote server (why not a .ini build on this repo?)
 - Using light weight front library like Preact. This would enhance greatly the coding experience...
-- Move to ESP-IDF. This would be a big move and would need to be discussed. This would imply a bigger step for beginners when starting with an esp32... which was not the main purpose of this project: giving a tool that allows quick access to esp32 features like manipulating digital/analog/I2C. On the other hand, this project starts to become pretty big, with planty functionnalities. The superloop architecture from arduino is pretty annoying and does not allow full control over the esp32.
+- Move to ESP-IDF. This would be a big move and would need to be discussed. This would imply a bigger step for beginners when starting with an esp32... which was not the main purpose of this project: giving a tool that allows quick access to esp32 features like manipulating digital/LedControl/analog/motor/I2C. On the other hand, this project starts to become pretty big, with planty functionnalities. The superloop architecture from arduino is pretty annoying and does not allow full control over the esp32.
 This move would imply a lot of work on dependencies. Mainly taking them out.
 
 OR
@@ -77,7 +77,7 @@ You should first connect your esp32 to your local network. This is easily done t
 Once connected to the AP, a configuration window should appears. From here you can connect to your local network (the one provided by your rooter, internet box etc).
 
 ### Web interface
-The ESP32 should now display its local IP on the tft screen, you can also find the IP in the serial log of the esp32. Simply enter the address provided on your favorite browser and enter.
+You can now find the IP in the serial log of the esp32. Simply enter the address on your favorite browser and enter.
 You are now on the page directly served by your ESP32! The interface is responsive and should be usable on your smartphone.
 It should look like this:
 <p align="center">
@@ -88,14 +88,15 @@ You now need to add your first pin handler. This is done by simply clicking on t
     <img src="images/add-gpio-panel.png" width="400">
 </p>
 Choose the pin you want to control/listen from the list. This list will only display available pins, so you won't have doublons 👌.
-You can switch from INPUT modes, to OUTPUT and Analog. When analog mode is selected, you can then parameter frequency pulse, resolution and channel.
-The 'save state' checkbox will allow you to save a state in the flash memory of the controller, allowing you to get back your state even after a reboot.
+You can switch from INPUT modes, to OUTPUT, LedControl, Analog and I2C. Depending on which mode you choose, parameters may appears. Like frequencies, resolutions, address etc. 
+When selecting the I2C mode, you be able to scan and detect any slave device.
+The 'save state' checkbox will allow you to save a state in the flash memory of the controller, allowing you to get back your state even after a reboot. This is available for digital output and LedControl mode.
 Once you are done with the settings, press 'save' to add the new GPIO.
 A new line should appear:
 <p align="center">
     <img src="images/gpios-new-line.png" width="400">
 </p>
-You can now control the state of your pin by pressing the 'on/off' button if it's mode is set to OUTPU. If its mode is set to INPUT, it will only display its value. On digital mode, you'll be able to set the pulse value.
+You can now control the state of your pin by pressing the 'on/off' button if it's mode is set to OUTPUT. If its mode is set to INPUT, it will only display its value. On LedControl mode, you'll be able to set/get the pulse value.
 <br>
 
 ### Automation!

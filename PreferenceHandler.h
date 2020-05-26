@@ -9,12 +9,14 @@
 
 #define PREFERENCES_NAME "esp32-api"
 #define PREFERENCES_GPIOS "gpios"
+#define PREFERENCES_I2C_SLAVE "i2c-slaves"
 #define PREFERENCES_AUTOMATION "automation"
 #define PREFERENCES_MQTT "mqtt"
 #define PREFERENCES_TELEGRAM "telegram"
 
 #define CHANNEL_NOT_ATTACHED -1
 #define PIN_NOT_ATTACHED -1
+#define MAX_I2C_SLAVES 10 // Maximum number of I2c slaves in overall
 #define MAX_DIGITALS_CHANNEL 16 // Maximum channel number for analog pins
 // Yes only 20 to limit memeory usage
 #define MAX_AUTOMATIONS_NUMBER 10 // Maximum automations number that can be set in the system
@@ -26,8 +28,10 @@
 #define MAX_LABEL_TEXT_SIZE 50
 #define MAX_MESSAGE_TEXT_SIZE 100 // Usually used when we want to display a text message, or send a text to telegram for instance
 
-#define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(9) + 100 + 150
+#define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(9) + 100 + MAX_LABEL_TEXT_SIZE*2
 #define GPIOS_JSON_CAPACITY JSON_ARRAY_SIZE(GPIO_PIN_COUNT) + GPIO_PIN_COUNT*(GPIO_JSON_CAPACITY)
+#define I2CSLAVE_JSON_CAPACITY JSON_OBJECT_SIZE(8) + 100 + (MAX_LABEL_TEXT_SIZE + MAX_MESSAGE_TEXT_SIZE)*2
+#define I2CSLAVES_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_I2C_SLAVES) + MAX_I2C_SLAVES*(I2CSLAVE_JSON_CAPACITY)
 #define AUTOMATION_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_CONDITIONS_NUMBER+MAX_AUTOMATION_ACTION_NUMBER)+ MAX_AUTOMATIONS_CONDITIONS_NUMBER*JSON_ARRAY_SIZE(4) + MAX_AUTOMATION_ACTION_NUMBER*JSON_ARRAY_SIZE(3) + MAX_AUTOMATION_ACTION_NUMBER*300 + JSON_OBJECT_SIZE(8) + 150
 #define AUTOMATIONS_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_NUMBER) + MAX_AUTOMATIONS_NUMBER*(AUTOMATION_JSON_CAPACITY)
 
@@ -67,7 +71,7 @@ typedef struct
 {
     uint8_t pin;
     char label[MAX_LABEL_TEXT_SIZE];
-    int8_t mode; // 1 is INPUT, 2 is OUTPUL, 5 is INPUT_PULLUP, -1 is DIGITAL, -2 is I2C
+    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is DIGITAL, -2 is I2C
     uint32_t frequency;
     uint8_t resolution;
     int8_t channel;
@@ -76,6 +80,18 @@ typedef struct
     int8_t invert; // Invert status of digital pins only
     int8_t save;
  }  GpioFlash;
+
+ typedef struct
+{
+    uint8_t id;
+    int8_t address; // Slave address
+    uint8_t mPin; // Master pin
+    char label[MAX_LABEL_TEXT_SIZE];
+    int8_t command; // Salve's command
+    char data[MAX_MESSAGE_TEXT_SIZE];
+    uint8_t octetRequest = 0; // Number of octet requested when reading, if empty, only write command will be executed.
+    uint8_t save;
+ }  I2cSlaveFlash;
 
 typedef struct
 {
@@ -100,11 +116,10 @@ class PreferenceHandler
 {
 private:
     void initGpios();
-    int firstEmptyGpioSlot();
-    int firstEmptyAutomationSlot();
-    int firstEmptyConditionSlot();
+    int firstEmptySlot(char *preference);
     int newId(char *preference);
     String gpioToJson(GpioFlash& gpio);
+    String slaveToJson(I2cSlaveFlash& slave);
     void setAutomationsFromJson(const char* j);
     String automationToJson(AutomationFlash& a);
     TwoWire *i2cHandlers[GPIO_PIN_COUNT];
@@ -116,7 +131,14 @@ public:
     void save(char* preference);
     HealthCode health;
     // i2c
+    I2cSlaveFlash i2cSlaves[MAX_I2C_SLAVES];
     String scan(GpioFlash& gpio);
+    bool removeSlave(int id);
+    String addSlave(int address, int mPin, const char* label, int command,const char* data, int octetRequest = 0, int save = 0);
+    String editSlave(I2cSlaveFlash& slave, const char* label, int command,const char* data, int octetRequest, int save);
+    void setSlaveData(int id, char* data);
+    String getSlaveData(int id);
+    String getI2cSlavesJson();
     // Gpio
     GpioFlash gpios[GPIO_PIN_COUNT];
     bool removeGpio(int pin);
