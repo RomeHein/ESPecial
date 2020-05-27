@@ -5,43 +5,34 @@ This project aim to provide an easy way to control your esp32. You no longer nee
 Here is a quick video exemple of what you can do with ESPecial:
 https://www.youtube.com/watch?v=_E-ywkafs94
 
-Features:
-- Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value, send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
-- Exposes gpio and automations to a REST API: Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations.
-- Provide web interface full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface.
+## Features:
+- [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C support), send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
+- [x] REST API: Exposes gpio and automations logic. Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations. Scan I2C addresses, send I2C commands.
+- [x] Web interface: full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface.
 <div>
     <img src="images/sample-home.png" width="200">
     <img src="images/edit-gpio-panel.png" width="200">
     <img src="images/add-automation-panel.png" width="200">
     <img src="images/settings.png" width="200">
 </div>
-
-- Telegram bot: Access and control your esp32 from outside your home. No domotic server required! No port exposed to the outside world (way more secure than exposing your router ports). Restrict the access with a user authorised list.
+- [ ] Web Sockets: No refresh needed to see a pin state change.
+- [x] Telegram bot: Access and control your esp32 from outside your home. No domotic server required! No port exposed to the outside world (way more secure than exposing your router ports). Restrict the access with a user authorised list.
 <div>
     <img src="images/telegram.png" width="200">
 </div>
 
-- Mqtt client: publish/subscribe pin state, actions.
-- Wifi manager: gives a way to easily set your esp32 to your network.
-- OTA: Update firmware from the web interface.
+- [x] Mqtt client: publish/subscribe pin state, actions.
+- [x] Wifi manager: gives a way to easily set your esp32 to your network.
+- [x] OTA: Update firmware from the web interface.
+- [ ] Remote OTA: Update firmware directly when a new version is available on this repo. This would also allow nice things like only installing a light version of ESPecial and then download the full ESPecial from server. No more hassle to download all dependencies and tools.
+- [ ] Unit/integration tests!
+- [ ] Plateform.io/Makefile/bash script: simplify the installation process.
+- [ ] Compatibility with single cored boards
 
 ## Work in progress:
 - I2C integration
-- Web Interface: Give it some love, fix some issues, particulary on mqtt connection
-
-## Wish list
-- Unit and integration tests!! I'm really new in arduino and even c++ world, so I might need more time to work on that part.
-- Auto update: from remote server (why not a .ini build on this repo?)
-- Using light weight front library like Preact. This would enhance greatly the coding experience...
-- Move to ESP-IDF. This would be a big move and would need to be discussed. This would imply a bigger step for beginners when starting with an esp32... which was not the main purpose of this project: giving a tool that allows quick access to esp32 features like manipulating digital/LedControl/analog/motor/I2C. On the other hand, this project starts to become pretty big, with planty functionnalities. The superloop architecture from arduino is pretty annoying and does not allow full control over the esp32.
-This move would imply a lot of work on dependencies. Mainly taking them out.
-
-OR
-- Find a suitable async web server. At the moment, the rest api is syncronous, one call at a time 😓, I'll make a branch with the ESPAsyncWebServer library, but I'm a bit concerned about the heap memory issue they keep having since 2018...
-- Use websockets for the front. So that we don't need to refresh the page to get the updated pin states.
-- Make this library compatible with other boards. For now it will only work with dual core boards, as the event listener for pin values is attached to the core 0. With some work, everything could be handle on one core, for instance by using interupts instead of the loop currenlty checking conditions. Another bottle neck is the UniversalTelegramBot library that seems to make long poll to Telegram api and therefor blocks the core process.
-- Makefile/bash script: It would be great to have all dependencies easily compiled to the project.
-- reduce library dependencies: UniversalTelegramBot, WifiManager and ArduinoJson could be avoided. Leaving only PubSubClient. This would decrease drastically the size of the project on the esp32.
+- Async server
+- Remote OTA
 
 ## Getting Started
 
@@ -61,14 +52,18 @@ If you want to use vscode while coding (I strongly recommand it) follow this nic
 ### Installing
 
 First copy this repo to your local directory. Use the `download as zip` or `git clone` method.
-Then 4 dependencies need to be added to your Arduino libraries:
+Then 6 dependencies need to be added to your Arduino libraries (when you download these dependencies, make sure to remove the '-master' part of the folder name):
 - ArduinoJSON v6 (install via library manager) Handle json in a very effective way.
 - PubSubClient: (install via library manager)  MQTT handling. It's a very robust pubsub client, perfect for iot projects.
 - WifiManager: https://github.com/tzapu/WiFiManager/tree/development
 This library will allow you to easily set your board to your wifi. You'll need to get the development branch to have esp32 support.
 - UniversalTelegramBot: https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/editMessage. Telegram api for arduino. This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
+- ESPAsyncWebServer
+- AsyncTCP
 
-Once all library installed, just upload the scetch to your board, and that should be it.
+Once all library installed, upload the scetch to your board. Make sure to select `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS) in Tools>Partition scheme
+
+We now need to upload webserver files to the SPIFF partition, simply follow [this](https://randomnerdtutorials.com/install-esp32-filesystem-uploader-arduino-ide/) guide and then click on `tools>ESP Scketch data upload`
 
 ## Usage
 

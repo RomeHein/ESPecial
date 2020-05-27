@@ -1,86 +1,108 @@
 #include "ServerHandler.h"
 #include "PreferenceHandler.h"
+#include <AsyncJson.h>
 #include <Update.h>
-#include <ArduinoJson.h>
-#include "index.h"
+#include <SPIFFS.h>
 
 //unmark following line to enable debug mode
 #define __debug
 
+const char *idParamName = "id";
+const char *pinParamName = "pin";
+const char *valueParamName = "value";
+
 void ServerHandler::begin()
 {
+    if(!SPIFFS.begin(true)){
+        Serial.println("Server: An Error has occurred while mounting SPIFFS");
+        return;
+    }
     #ifdef __debug  
         Serial.println("Server: init");
     #endif
-    server.on("/", [this]() { handleRoot(); });
+    server.on("/",HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/index.html", "text/html");
+    });
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/style.css", "text/css");
     });
-    server.onNotFound([this]() {handleNotFound(); });
-    server.on("/clear/settings", [this]() { handleClearSettings(); });
-    server.on("/health", [this]() { handleSystemHealth(); });
-    server.on("/settings", [this]() { getSettings(); });
-    server.on("/restart", [this]() { handleRestart(); });
-    server.on("/install", HTTP_POST, [this]() { handleUpload(); }, [this]() { install(); });
-    server.on("/mqtt", HTTP_POST, [this]() { handleMqttEdit(); });
-    server.on("/mqtt/retry", [this]() { handleMqttRetry(); });
-    server.on("/telegram", HTTP_POST, [this]() { handleTelegramEdit(); });
+    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/script.js", "text/js");
+    });
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        request->send(404, "text/plain", "Not found");
+    });
+    
+    // server.on("/install", HTTP_POST, [this](AsyncWebServerRequest *request) { handleUpload(request); }, [this](AsyncWebServerRequest *request) { install(request); });
+    server.on("/clear/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { handleClearSettings(request); });
+    server.on("/health", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSystemHealth(request); });
+    server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { getSettings(request); });
+    server.on("/restart", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRestart(request); });
+    server.on("/mqtt/retry",HTTP_GET, [this](AsyncWebServerRequest *request) { handleMqttRetry(request); });
+
+    AsyncCallbackJsonWebHandler* editMqttHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleMqttEdit(request,json); });
+    editMqttHandler->setMethod(HTTP_POST);
+    AsyncCallbackJsonWebHandler* editTelegramHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleTelegramEdit(request,json); });
+    editTelegramHandler->setMethod(HTTP_POST);
+    server.addHandler(editMqttHandler);
+    server.addHandler(editTelegramHandler);
 
     // Gpio related endpoints
-    server.on("/gpio/{}/value/{}", [this]() { handleSetGpioState(); });
-    server.on("/gpio/{}/value", [this]() { handleGetGpioState(); });
-    server.on("/gpios/available", [this]() { handleAvailableGpios(); });
-    server.on("/gpios", [this]() { getGpios(); });
-    server.on("/gpio/{}", HTTP_DELETE,[this]() { handleGpioRemove(); });
-    server.on("/gpio", HTTP_PUT, [this]() { handleGpioEdit(); });
-    server.on("/gpio", HTTP_POST, [this]() { handleGpioNew(); });
+    server.on("/gpio/value", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGpioState(request); });
+    server.on("/gpios/available", HTTP_GET, [this](AsyncWebServerRequest *request) { handleAvailableGpios(request); });
+    server.on("/gpios", HTTP_GET, [this](AsyncWebServerRequest *request) { getGpios(request); });
+    server.on("/gpio", HTTP_DELETE,[this](AsyncWebServerRequest *request) { handleGpioRemove(request); });
+
+    AsyncCallbackJsonWebHandler* addGpioHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleGpioNew(request,json); });
+    addGpioHandler->setMethod(HTTP_POST);
+    AsyncCallbackJsonWebHandler* editGpioHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleGpioEdit(request,json); });
+    editGpioHandler->setMethod(HTTP_PUT);
+    server.addHandler(addGpioHandler);
+    server.addHandler(editGpioHandler);
 
     // I2c related endpoints
-    server.on("/gpio/{}/scan", [this]() { handleScan(); });
-    server.on("/slaves",[this]() { getSlaves(); });
-    server.on("/slave/{}", HTTP_DELETE,[this]() { handleSlaveRemove(); });
-    server.on("/slave", HTTP_PUT,[this]() { handleSlaveEdit(); });
-    server.on("/slave", HTTP_POST,[this]() { handleSlaveNew(); });
+    server.on("/gpio/scan", HTTP_GET, [this](AsyncWebServerRequest *request) { handleScan(request); });
+    server.on("/slave", HTTP_DELETE,[this](AsyncWebServerRequest *request) { handleSlaveRemove(request); });
+    server.on("/slaves", HTTP_GET,[this](AsyncWebServerRequest *request) { getSlaves(request); });
+
+    AsyncCallbackJsonWebHandler* addSlaveHandler = new AsyncCallbackJsonWebHandler("/slave",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleSlaveNew(request,json); });
+    addSlaveHandler->setMethod(HTTP_POST);
+    AsyncCallbackJsonWebHandler* editSlaveHandler = new AsyncCallbackJsonWebHandler("/slave",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleSlaveEdit(request,json); });
+    editSlaveHandler->setMethod(HTTP_PUT);
+    server.addHandler(addSlaveHandler);
+    server.addHandler(editSlaveHandler);
     
     // Automation related endpoints
-    server.on("/automations", [this]() { getAutomations(); });
-    server.on("/automation/{}", HTTP_DELETE,[this]() { handleAutomationRemove(); });
-    server.on("/automation/run/{}", [this]() { handleRunAutomation(); });
-    server.on("/automation", HTTP_PUT, [this]() { handleAutomationEdit(); });
-    server.on("/automation", HTTP_POST, [this]() { handleAutomationNew(); });
+    server.on("/automations",HTTP_GET, [this](AsyncWebServerRequest *request) { getAutomations(request); });
+    server.on("/automation", HTTP_DELETE,[this](AsyncWebServerRequest *request) { handleAutomationRemove(request); });
+    server.on("/automation/run",HTTP_GET, [this](AsyncWebServerRequest *request) { handleRunAutomation(request); });
+
+    AsyncCallbackJsonWebHandler* addAutomationHandler = new AsyncCallbackJsonWebHandler("/automation",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleAutomationNew(request,json); });
+    addAutomationHandler->setMethod(HTTP_POST);
+    AsyncCallbackJsonWebHandler* editAutomationHandler = new AsyncCallbackJsonWebHandler("/automation",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleAutomationEdit(request,json); });
+    editAutomationHandler->setMethod(HTTP_PUT);
+    server.addHandler(addAutomationHandler);
+    server.addHandler(editAutomationHandler);
+
+    // TODO: implement rewrite function to get back to restful api
+    // server.addRewrite(new OneParamRewrite("/gpio/{pin}/value/{value}", "/gpio/value/set?p={pin}"));
+    // server.addRewrite(new OneParamRewrite("/gpio/{pin}/value", "/gpio/value/get?p={pin}"));
+    // server.addRewrite(new OneParamRewrite("/gpio/{pin}", "/gpio?p={pin}"));
+    // server.addRewrite(new OneParamRewrite("/gpio/{pin}/scan", "/gpio/scan?p={pin}"));
+    // server.addRewrite(new OneParamRewrite("/automation/{id}", "/automation?id={id}"));
+    // server.addRewrite(new OneParamRewrite("/automation/run/{id}", "/automation/run?id={id}"));
 
     server.begin();
 }
 
 // Main
-
-void ServerHandler::handleRoot()
-{
-    Serial.println("Serving gome page");
-    server.send(200, "text/html", MAIN_page);
-}
-
-void ServerHandler::handleCSS()
-{
-    Serial.println("Serving gome page");
-    server.send(200, "text/html", MAIN_page);
-}
-
-void ServerHandler::handleNotFound()
-{
-    #ifdef __debug  
-        Serial.println("Server: page not found");
-    #endif
-    server.send(404, "text/plain", "Not found");
-}
-
-void ServerHandler::handleClearSettings()
+void ServerHandler::handleClearSettings(AsyncWebServerRequest *request)
 {
     preference.clear();
-    server.send(200, "text/plain", "Settings clear");
+    request->send(200, "text/plain", "Settings clear");
 }
 
-void ServerHandler::handleSystemHealth()
+void ServerHandler::handleSystemHealth(AsyncWebServerRequest *request)
 {
     const size_t capacity = JSON_OBJECT_SIZE(3) + 10;
     StaticJsonDocument<(capacity)> doc;
@@ -89,19 +111,18 @@ void ServerHandler::handleSystemHealth()
     doc["mqtt"] = preference.health.mqtt;
     String output;
     serializeJson(doc, output);
-    server.send(200, "text/json", output);
+    request->send(200, "text/json", output);
     return;
 }
 
-void ServerHandler::handleRestart() {
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/plain", "OK");
+void ServerHandler::handleRestart(AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "OK");
     ESP.restart();
 }
 
 // Settings
 
-void ServerHandler::getSettings() {
+void ServerHandler::getSettings(AsyncWebServerRequest *request) {
     const size_t capacity = JSON_OBJECT_SIZE(8) + JSON_ARRAY_SIZE(MAX_TELEGRAM_USERS_NUMBER) + 300;
     StaticJsonDocument<(capacity)> doc;
     JsonObject telegram = doc.createNestedObject("telegram");
@@ -128,49 +149,41 @@ void ServerHandler::getSettings() {
     general["maxTextMessage"] = MAX_MESSAGE_TEXT_SIZE;
     String output;
     serializeJson(doc, output);
-    server.send(200, "text/json", output);
+    request->send(200, "text/json", output);
     return;
 }
 
-void ServerHandler::handleUpload()
-{
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-    ESP.restart(); 
-}
+// void ServerHandler::handleUpload(AsyncWebServerRequest *request)
+// {
+//     request->sendHeader("Connection", "close");
+//     request->send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
+//     ESP.restart(); 
+// }
 
-void ServerHandler::install()
-{
-    HTTPUpload& upload = server.upload();
-    if (upload.status == UPLOAD_FILE_START) {
-        Serial.printf("Update: %s\n", upload.filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-            Update.printError(Serial);
-        }
-    } else if (upload.status == UPLOAD_FILE_WRITE) {
-        /* flashing firmware to ESP*/
-        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-            Update.printError(Serial);
-        }
-    } else if (upload.status == UPLOAD_FILE_END) {
-        if (Update.end(true)) {
-            Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-        } else {
-            Update.printError(Serial);
-        }
-    } 
-}
+// void ServerHandler::install(AsyncWebServerRequest *request)
+// {
+//     HTTPUpload& upload = request->upload();
+//     if (upload.status == UPLOAD_FILE_START) {
+//         Serial.printf("Update: %s\n", upload.filename.c_str());
+//         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+//             Update.printError(Serial);
+//         }
+//     } else if (upload.status == UPLOAD_FILE_WRITE) {
+//         /* flashing firmware to ESP*/
+//         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+//             Update.printError(Serial);
+//         }
+//     } else if (upload.status == UPLOAD_FILE_END) {
+//         if (Update.end(true)) {
+//             Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
+//         } else {
+//             Update.printError(Serial);
+//         }
+//     } 
+// }
 
-void ServerHandler::handleMqttEdit () {
-    const size_t capacity = JSON_OBJECT_SIZE(6) + 300;
-    DynamicJsonDocument doc(capacity);
-
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
-        return;
-    }
+void ServerHandler::handleMqttEdit (AsyncWebServerRequest *request,JsonVariant &json) {
+    JsonObject doc = json.as<JsonObject>();
     const int active = doc["active"].as<int>();
     const char* fn = doc["fn"].as<char*>();
     const char* host = doc["host"].as<char*>();
@@ -180,27 +193,19 @@ void ServerHandler::handleMqttEdit () {
     const char* topic = doc["topic"].as<char*>();
     if (fn && host && port && user && password && topic) {
         preference.editMqtt(active,fn,host,port,user,password,topic);
-        server.send(200, "text/json", server.arg(0));
+        request->send(200, "text/json", request->pathArg(0));
         return;
     }
-    server.send(404, "text/plain", "Missing parameters");
+    request->send(404, "text/plain", "Missing parameters");
 }
 
-void ServerHandler::handleMqttRetry() {
+void ServerHandler::handleMqttRetry(AsyncWebServerRequest *request) {
     preference.health.mqtt = 0;
-    server.send(200, "text/plain", "Retrying");
+    request->send(200, "text/plain", "Retrying");
 }
 
-void ServerHandler::handleTelegramEdit () {
-    const size_t capacity = JSON_OBJECT_SIZE(2) + 150;
-    DynamicJsonDocument doc(capacity);
-
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
-        return;
-    }
+void ServerHandler::handleTelegramEdit (AsyncWebServerRequest *request,JsonVariant &json) {
+    JsonObject doc = json.as<JsonObject>();
     const char* token = doc["token"].as<char*>();
     const int active = doc["active"].as<int>();
     int users[MAX_TELEGRAM_USERS_NUMBER] = {};
@@ -211,50 +216,33 @@ void ServerHandler::handleTelegramEdit () {
     }
     if (token) {
         preference.editTelegram(token,users,active);
-        server.send(200, "text/json", server.arg(0));
+        request->send(200, "text/json", request->pathArg(0));
         return;
     }
-    server.send(404, "text/plain", "Missing parameters");
+    request->send(404, "text/plain", "Missing parameters");
 }
 
 // Gpio hanlding
 
-void ServerHandler::getGpios() 
+void ServerHandler::getGpios(AsyncWebServerRequest *request) 
 {
-    server.send(200, "text/json", preference.getGpiosJson());
+    request->send(200, "text/json", preference.getGpiosJson());
     return;
 }
 
-void ServerHandler::handleGpioEdit()
+void ServerHandler::handleGpioEdit(AsyncWebServerRequest *request,JsonVariant &json)
 {
-    DynamicJsonDocument doc(GPIO_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
+    JsonObject doc = json.as<JsonObject>();
     if (preference.gpios[doc["pin"].as<int>()].pin) {
-        server.send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["sclpin"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>(), doc["settings"]["invert"].as<int>()));
+        request->send(200, "text/json", preference.editGpio(doc["pin"].as<int>(), doc["settings"]["pin"].as<int>(), doc["settings"]["label"].as<char*>(), doc["settings"]["mode"].as<int>(),doc["settings"]["sclpin"].as<int>(),doc["settings"]["frequency"].as<int>(),doc["settings"]["resolution"].as<int>(),doc["settings"]["channel"].as<int>(), doc["settings"]["save"].as<int>(), doc["settings"]["invert"].as<int>()));
         return;
     }
-    server.send(404, "text/plain", "Not found");
+    request->send(404, "text/plain", "Not found");
 }
 
-void ServerHandler::handleGpioNew()
+void ServerHandler::handleGpioNew(AsyncWebServerRequest *request,JsonVariant &json)
 {
-    DynamicJsonDocument doc(GPIO_JSON_CAPACITY);
-
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
+    JsonObject doc = json.as<JsonObject>();
     const int pin = doc["settings"]["pin"].as<int>();
     const char* label = doc["settings"]["label"].as<char*>();
     const int mode = doc["settings"]["mode"].as<int>();
@@ -265,23 +253,26 @@ void ServerHandler::handleGpioNew()
     const int save = doc["settings"]["save"].as<int>();
     const int invert = doc["settings"]["invert"].as<int>();
     if (pin && label && mode) {
-        server.send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save, invert));
+        request->send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save, invert));
         return;
     }
-    server.send(404, "text/plain", "Missing parameters");
+    request->send(404, "text/plain", "Missing parameters");
 }
 
-void ServerHandler::handleGpioRemove() 
+void ServerHandler::handleGpioRemove(AsyncWebServerRequest *request) 
 {
-    bool removed = preference.removeGpio(atoi(server.pathArg(0).c_str()));
-    if (removed){
-        server.send(200, "text/plain", "Done");
-        return;
+    if (request->hasParam(pinParamName)) {
+        const int pin = request->getParam(pinParamName)->value().toInt();
+        bool removed = preference.removeGpio(pin);
+        if (removed){
+            request->send(200, "text/plain", "Done");
+            return;
+        }
     }
-    server.send(404, "text/plain", "Not found");
+    request->send(404, "text/plain", "Not found");
 }
 
-void ServerHandler::handleAvailableGpios() {
+void ServerHandler::handleAvailableGpios(AsyncWebServerRequest *request) {
     const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(2)+20);
     StaticJsonDocument<capacity> doc;
     for (int i = 0; i<GPIO_PIN_COUNT; i++) {
@@ -291,98 +282,87 @@ void ServerHandler::handleAvailableGpios() {
     }
     String output;
     serializeJson(doc, output);
-    server.send(200, "text/json", output);
+    request->send(200, "text/json", output);
 }
 
-void ServerHandler::handleGetGpioState()
+void ServerHandler::handleGpioState(AsyncWebServerRequest *request)
 {
-    const int pin = atoi(server.pathArg(0).c_str());
-    int state;
-    GpioFlash& gpio = preference.gpios[pin];
-    if (gpio.pin == pin) {
-        if (gpio.mode>0) {
-            state = digitalRead(pin);
-        } else {
-            state = ledcRead(gpio.channel);
+    if (request->hasParam(pinParamName)) {
+        int state;
+        const int pin = request->getParam(pinParamName)->value().toInt();
+        // If we have a value parameter, we want to set the state
+        if (request->hasParam(valueParamName))
+        {
+            state = request->getParam(valueParamName)->value().toInt();
+            #ifdef __debug
+                Serial.printf("Server: handle set gpio %i state %i\n",pin, state);
+            #endif
+            // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
+            preference.setGpioState(pin, state);
         }
+        GpioFlash& gpio = preference.gpios[pin];
+        if (gpio.pin == pin) {
+            if (gpio.mode>0) {
+                state = digitalRead(pin);
+            } else {
+                state = ledcRead(gpio.channel);
+            }
+        }
+        char json[50];
+        snprintf(json, sizeof(json), "{\"pin\":%i,\"state\":%i}", pin, state);
+        request->send(200, "text/json", json);
+    } else {
+        request->send(404, "text/plain", "Not found");
     }
-    char json[50];
-    snprintf(json, sizeof(json), "{\"pin\":%i,\"state\":%i}", pin, state);
-    server.send(200, "text/json", json);
-}
-
-void ServerHandler::handleSetGpioState()
-{
-    const int pin = atoi(server.pathArg(0).c_str());
-    if (server.pathArg(1) && server.pathArg(1) != "")
-    {
-        const int newState = atoi(server.pathArg(1).c_str());
-        #ifdef __debug
-            Serial.printf("Server: handle set gpio %i state %i\n",pin, newState);
-        #endif
-        // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
-        preference.setGpioState(pin, newState);
-    }
-    handleGetGpioState();
 }
 
 // I2c
 
-void ServerHandler::handleScan() {
-    const int pin = atoi(server.pathArg(0).c_str());
-    server.send(200, "text/json", preference.scan(preference.gpios[pin]));
+void ServerHandler::handleScan(AsyncWebServerRequest *request) {
+    if (request->hasParam(pinParamName)) {
+        const int pin = request->getParam(pinParamName)->value().toInt();
+        request->send(200, "text/json", preference.scan(preference.gpios[pin]));
+    } else {
+        request->send(404, "text/plain", "Not found");
+    }
 }
 
-void ServerHandler::getSlaves() {
-    server.send(200, "text/json", preference.getI2cSlavesJson());
+void ServerHandler::getSlaves(AsyncWebServerRequest *request) {
+    request->send(200, "text/json", preference.getI2cSlavesJson());
     return;
 }
-void ServerHandler::handleSetSlaveData() {
+void ServerHandler::handleSetSlaveData(AsyncWebServerRequest *request) {
 
 }
-void ServerHandler::handleGetSlaveData() {
+void ServerHandler::handleGetSlaveData(AsyncWebServerRequest *request) {
 
 }
-void ServerHandler::handleSlaveEdit() {
-    DynamicJsonDocument doc(I2CSLAVE_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
-
+void ServerHandler::handleSlaveEdit(AsyncWebServerRequest *request,JsonVariant &json) {
+    JsonObject doc = json.as<JsonObject>();
     for (I2cSlaveFlash& s : preference.i2cSlaves)
     {
         if (s.id == doc["id"].as<int>())
         {
-            server.send(200, "text/json", preference.editSlave(s, doc["settings"]["label"].as<char*>(),doc["settings"]["command"].as<int>(),doc["settings"]["data"].as<char*>(),doc["settings"]["octetRequest"].as<int>(),doc["settings"]["save"].as<int>()));
+            request->send(200, "text/json", preference.editSlave(s, doc["settings"]["label"].as<char*>(),doc["settings"]["command"].as<int>(),doc["settings"]["data"].as<char*>(),doc["settings"]["octetRequest"].as<int>(),doc["settings"]["save"].as<int>()));
             return;
         }
     }
-    server.send(404, "text/plain", "Not found");
+    request->send(404, "text/plain", "Not found");
 }
-void ServerHandler::handleSlaveRemove() {
-    bool removed = preference.removeSlave(atoi(server.pathArg(0).c_str()));
-    if (removed){
-        server.send(200, "text/plain", "Done");
-        return;
+void ServerHandler::handleSlaveRemove(AsyncWebServerRequest *request) {
+    if (request->hasParam(idParamName)) {
+        const int id = request->getParam(idParamName)->value().toInt();
+        bool removed = preference.removeSlave(id);
+        if (removed){
+            request->send(200, "text/plain", "Done");
+            return;
+        }
     }
-    server.send(404, "text/plain", "Not found");
+    request->send(404, "text/plain", "Not found");
 
 }
-void ServerHandler::handleSlaveNew() {
-    DynamicJsonDocument doc(I2CSLAVE_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
+void ServerHandler::handleSlaveNew(AsyncWebServerRequest *request,JsonVariant &json) {
+    JsonObject doc = json.as<JsonObject>();
     const int address = doc["settings"]["address"].as<int>();
     const int mPin = doc["settings"]["mPin"].as<int>();
     const char* label = doc["settings"]["label"].as<char*>();
@@ -391,43 +371,37 @@ void ServerHandler::handleSlaveNew() {
     const int octetRequest = doc["settings"]["octetRequest"].as<int>();
     const int save = doc["settings"]["save"].as<int>();
     if (address && mPin && label) {
-        server.send(200, "text/json", preference.addSlave(address,mPin,label,command,data,octetRequest,save));
+        request->send(200, "text/json", preference.addSlave(address,mPin,label,command,data,octetRequest,save));
         return;
     }
-    server.send(404, "text/plain", "Missing parameters");
+    request->send(404, "text/plain", "Missing parameters");
 }
 
 // automations
 
-void ServerHandler::getAutomations() 
+void ServerHandler::getAutomations(AsyncWebServerRequest *request) 
 {
-    server.send(200, "text/json", preference.getAutomationsJson());
+    request->send(200, "text/json", preference.getAutomationsJson());
     return;
 }
 
-void ServerHandler::handleRunAutomation() {
-    const int id = atoi(server.pathArg(0).c_str());
-    // queue automation id, to be picked up by esp32.ino script
-    for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
-        if (automationsQueued[i] == 0) {
-            automationsQueued[i] = id;
-            break;
+void ServerHandler::handleRunAutomation(AsyncWebServerRequest *request) {
+    if (request->hasParam(idParamName)) {
+        const int id = request->getParam(idParamName)->value().toInt();
+        // queue automation id, to be picked up by esp32.ino script
+        for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
+            if (automationsQueued[i] == 0) {
+                automationsQueued[i] = id;
+                break;
+            }
         }
+        request->send(200, "text/plain", "Done");
     }
-    server.send(200, "text/plain", "Done");
+    request->send(404, "text/plain", "Not found");
 }
-void ServerHandler::handleAutomationEdit()
+void ServerHandler::handleAutomationEdit(AsyncWebServerRequest *request,JsonVariant &json)
 {
-    DynamicJsonDocument doc(AUTOMATION_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
-
+    JsonObject doc = json.as<JsonObject>();
     for (AutomationFlash& a : preference.automations)
     {
         if (a.id == doc["id"].as<int>())
@@ -452,24 +426,16 @@ void ServerHandler::handleAutomationEdit()
                 memcpy(actions[l], actionToFlash, sizeof(actionToFlash));
                 l++;
             }
-            server.send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(),doc["settings"]["debounceDelay"].as<int>()));
+            request->send(200, "text/json", preference.editAutomation(a, doc["settings"]["label"].as<char*>(),doc["settings"]["autoRun"].as<int>(),conditions,actions,doc["settings"]["loopCount"].as<int>(),doc["settings"]["debounceDelay"].as<int>()));
             return;
         }
     }
-    server.send(404, "text/plain", "Not found");
+    request->send(404, "text/plain", "Not found");
 }
 
-void ServerHandler::handleAutomationNew()
+void ServerHandler::handleAutomationNew(AsyncWebServerRequest *request,JsonVariant &json)
 {
-    DynamicJsonDocument doc(AUTOMATION_JSON_CAPACITY);
-    DeserializationError error = deserializeJson(doc, server.arg(0));
-    if (error) {
-        #ifdef __debug
-            Serial.print(F("Server: deserializeJson() failed: "));
-            Serial.println(error.c_str());
-        #endif
-        return;
-    }
+    JsonObject doc = json.as<JsonObject>();
     const char* label = doc["settings"]["label"].as<char*>();
     int16_t conditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4] = {};
     int j = 0;
@@ -495,18 +461,21 @@ void ServerHandler::handleAutomationNew()
     const int loopCount = doc["settings"]["loopCount"].as<int>();
     const int debounceDelay = doc["settings"]["debounceDelay"].as<int>();
     if (label) {
-        server.send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount,debounceDelay));
+        request->send(200, "text/json", preference.addAutomation(label,autoRun, conditions, actions , loopCount,debounceDelay));
         return;
     }
-    server.send(404, "text/plain", "Missing parameters");
+    request->send(404, "text/plain", "Missing parameters");
 }
 
-void ServerHandler::handleAutomationRemove() 
+void ServerHandler::handleAutomationRemove(AsyncWebServerRequest *request) 
 {
-    bool removed = preference.removeAutomation(atoi(server.pathArg(0).c_str()));
-    if (removed){
-        server.send(200, "text/plain", "Done");
-        return;
+    if (request->hasParam(idParamName)) {
+        const int id = request->getParam(idParamName)->value().toInt();
+        bool removed = preference.removeAutomation(id);
+        if (removed){
+            request->send(200, "text/plain", "Done");
+            return;
+        }
     }
-    server.send(404, "text/plain", "Not found");
+    request->send(404, "text/plain", "Not found");
 }

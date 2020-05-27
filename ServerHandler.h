@@ -3,51 +3,49 @@
 #ifndef ServerHandler_h
 #define ServerHandler_h
 #include <Arduino.h>
-#include <WebServer.h>
+#include <ArduinoJson.h>
+#include "ESPAsyncWebServer.h"
 #include "PreferenceHandler.h"
 
 class ServerHandler {
 private:
     PreferenceHandler &preference;
-    void handleRoot();
-    void handleNotFound();
-    void handleClearSettings();
-    void handleSystemHealth();
-    void getSettings();
-    void install();
-    void handleRestart();
-    void handleUpload();
-    void handleUpdate();
+    void handleClearSettings(AsyncWebServerRequest *request);
+    void handleSystemHealth(AsyncWebServerRequest *request);
+    void getSettings(AsyncWebServerRequest *request);
+    void install(AsyncWebServerRequest *request);
+    void handleRestart(AsyncWebServerRequest *request);
+    void handleUpload(AsyncWebServerRequest *request);
+    void handleUpdate(AsyncWebServerRequest *request);
 
-    void handleMqttEdit();
-    void handleMqttRetry();
-    void handleTelegramEdit();
+    void handleMqttEdit(AsyncWebServerRequest *request,JsonVariant &json);
+    void handleMqttRetry(AsyncWebServerRequest *request);
+    void handleTelegramEdit(AsyncWebServerRequest *request,JsonVariant &json);
 
-    void getGpios();
-    void handleAvailableGpios();
-    void handleSetGpioState();
-    void handleGetGpioState();
-    void handleGpioEdit();
-    void handleGpioRemove();
-    void handleGpioNew();
+    void getGpios(AsyncWebServerRequest *request);
+    void handleAvailableGpios(AsyncWebServerRequest *request);
+    void handleGpioState(AsyncWebServerRequest *request);
+    void handleGpioEdit(AsyncWebServerRequest *request,JsonVariant &json);
+    void handleGpioRemove(AsyncWebServerRequest *request);
+    void handleGpioNew(AsyncWebServerRequest *request,JsonVariant &json);
 
-    void getSlaves();
-    void handleScan();
-    void handleSetSlaveData();
-    void handleGetSlaveData();
-    void handleSlaveEdit();
-    void handleSlaveRemove();
-    void handleSlaveNew();
+    void getSlaves(AsyncWebServerRequest *request);
+    void handleScan(AsyncWebServerRequest *request);
+    void handleSetSlaveData(AsyncWebServerRequest *request);
+    void handleGetSlaveData(AsyncWebServerRequest *request);
+    void handleSlaveEdit(AsyncWebServerRequest *request,JsonVariant &json);
+    void handleSlaveRemove(AsyncWebServerRequest *request);
+    void handleSlaveNew(AsyncWebServerRequest *request,JsonVariant &json);
 
-    void getAutomations();
-    void handleRunAutomation();
-    void handleAutomationEdit();
-    void handleAutomationRemove();
-    void handleAutomationNew();
+    void getAutomations(AsyncWebServerRequest *request);
+    void handleRunAutomation(AsyncWebServerRequest *request);
+    void handleAutomationEdit(AsyncWebServerRequest *request,JsonVariant &json);
+    void handleAutomationRemove(AsyncWebServerRequest *request);
+    void handleAutomationNew(AsyncWebServerRequest *request,JsonVariant &json);
     
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
-    WebServer server = {80};
+    AsyncWebServer server = {80};
     int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     void begin();
 };

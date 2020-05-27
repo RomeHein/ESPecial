@@ -154,12 +154,12 @@ const switchGpioState = async (element) => {
         const gpio = gpios.find(gpio => gpio.pin === +element.id.split('-')[1])
         if (gpio.mode>0) {
             const isOn = element.classList.value.includes('on');
-            await fetch(`${window.location.href}gpio/${gpio.pin}/value/${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
+            await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
             element.classList.remove(isOn ? 'on' : 'off');
             element.classList.add(isOn ? 'off' : 'on');
             element.innerText = (isOn ? 'off' : 'on');
         } else if (gpio.mode===-1) {
-            await fetch(`${window.location.href}gpio/${gpio.pin}/value/${element.value}`);
+            await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${element.value}`);
         }
     } catch (err) {
         console.error(`Error: ${err}`);
@@ -176,7 +176,7 @@ const addGpio = () => {
 const deleteGpio = async (element) => {
     const gpioPin = element.id.split('-')[1];
     try {
-        await fetch(`${window.location.href}gpio/${gpioPin}`, {method: 'DELETE'});
+        await fetch(`${window.location.href}gpio?pin=${gpioPin}`, {method: 'DELETE'});
         gpios = gpios.filter(gpio => gpio.pin != gpioPin)
         closeAnySettings();
         let row = document.getElementById('rowGpio-' + gpioPin);
@@ -201,7 +201,7 @@ const fetchAutomations = async () => {
 const runAutomation = async (element) => {
     const automationId = element.id.split('-')[1];
     try {
-        await fetch(window.location.href + 'automation/run/'+automationId);
+        await fetch(window.location.href + 'automation/run?id='+automationId);
     } catch (err) {
         console.error(`Error: ${err}`);
     }
@@ -217,7 +217,7 @@ const addAutomation = () => {
 const deleteAutomation = async (element) => {
     const automationId = element.id.split('-')[1];
     try {
-        await fetch(`${window.location.href}automation/${automationId}`, {method: 'DELETE'});
+        await fetch(`${window.location.href}automation?id=${automationId}`, {method: 'DELETE'});
         await fetchAutomations();
         let row = document.getElementById('rowAutomation-' + automationId);
         closeAnySettings();
@@ -231,7 +231,7 @@ const deleteAutomation = async (element) => {
 const scan = async (element) => {
     const gpioPin = element.id.split('-')[1];
     try {
-        const res = await fetch(`${window.location.href}gpio/${gpioPin}/scan`);
+        const res = await fetch(`${window.location.href}gpio/scan?pin=${gpioPin}`);
         const addresses = await res.json();
         const gpioRow = document.getElementById(`rowGpio-${gpioPin}`);
         const scanResultNode = createScanResult(gpioPin, addresses);
@@ -476,7 +476,7 @@ const createI2cSlaveControlRow = (slave) => {
     return child.firstChild;
 }
 
-const saveI2cSlaveSettings = (element) => {
+const saveI2cSlaveSettings = async (element) => {
     const id = element.id.split('-')[1];
     const isNew = (id === 'new');
     let req = { settings: {} };
@@ -582,13 +582,16 @@ const createScanResult = (gpioPin, scanResults) => {
                 <a onclick='closeScan(this)' id='closeScan-${gpioPin}' class='btn delete'>x</a>
             </div>
     </div>`
-    const rows = scanResults.reduce((prev, scanResult) => {
-        return prev + `<div class='row' id='scanResult-${gpioPin}'>${scanResult}
-            <div class='btn-container'>
-                    <a onclick='openI2cSlaveSettings(this)' id='editI2c-${gpioPin}' class='btn edit'>set</a>
-                </div>
-            </div>`
-    },'')
+    let rows = `<div class='row' id='scanResult-${gpioPin}'>No device attached</div>`
+    if (scanResults) {
+        rows = scanResults.reduce((prev, scanResult) => {
+            return prev + `<div class='row' id='scanResult-${gpioPin}'>${scanResult}
+                <div class='btn-container'>
+                        <a onclick='openI2cSlaveSettings(this)' id='editI2c-${gpioPin}' class='btn edit'>set</a>
+                    </div>
+                </div>`
+        },'')
+    }
     child.innerHTML = `<div class='column scan-results' id='scanResults-${gpioPin}'>${headRow}${rows}</div>`;
     return child.firstChild;
 }
@@ -616,7 +619,7 @@ const createEditGpioPanel = (gpio) => {
             // Complete the mode select input while we are here...
             if (availableGpio.pin == gpio.pin && !availableGpio.inputOnly) {
                 modeOptions += `<option ${gpio.mode == 2 ? 'selected' : ''} value=2>OUTPUT</option>`;
-                modeOptions += `<option ${gpio.mode == -1 ? 'selected' : ''} value=-1>ANALOG</option>`;
+                modeOptions += `<option ${gpio.mode == -1 ? 'selected' : ''} value=-1>LED CONTROL</option>`;
                 modeOptions += `<option ${gpio.mode == -2 ? 'selected' : ''} value=-2>I2C</option>`;
             }
             prev += `<option ${availableGpio.pin == gpio.pin ? 'selected' : ''} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
@@ -648,7 +651,7 @@ const createEditGpioPanel = (gpio) => {
                 <label for='setGpioMode-${gpio.pin}'>I/O mode:</label>
                 <select onchange='updateGpioOptions(this)' id='setGpioMode-${gpio.pin}' name='mode'>${modeOptions}</select>
             </div>
-            <div id='analogue-options' class='${gpio.mode != -1 ? 'hidden' : ''}'>
+            <div id='led-options' class='${gpio.mode != -1 ? 'hidden' : ''}'>
                 <div class='row'>
                     <label for='setGpioFrequency-${gpio.pin}'>Frequency:</label>
                     <input id='setGpioFrequency-${gpio.pin}' type='text' name='frequency' value='${gpio.frequency || ''}' placeholder="Default to 50Hz if empty">
@@ -863,33 +866,33 @@ const createSpinner = () => {
         selectMode.removeChild(selectMode.lastChild);
         selectMode.removeChild(selectMode.lastChild);
         selectMode.removeChild(selectMode.lastChild);
-        document.getElementById(`analogue-options`).classList.add('hidden');
+        document.getElementById(`led-options`).classList.add('hidden');
         document.getElementById(`setGpioSaveRow`).classList.add('hidden');
     } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 5) {
         let outputOption = document.createElement('div');
         outputOption.innerHTML = `<option value=2>OUTPUT</option>`;
-        let analogOption = document.createElement('div');
-        analogOption.innerHTML = `<option value=-1>ANALOG</option>`;
+        let ledOption = document.createElement('div');
+        ledOption.innerHTML = `<option value=-1>LED CONTROL</option>`;
         let i2coption = document.createElement('div');
         i2coption.innerHTML = `<option value=-2>I2C</option>`;
         document.getElementById(`setGpioSaveRow`).classList.remove('hidden');
         selectMode.appendChild(outputOption.firstChild);
-        selectMode.appendChild(analogOption.firstChild);
+        selectMode.appendChild(ledOption.firstChild);
         selectMode.appendChild(i2coption.firstChild);
     }
 };
 const updateGpioOptions = (element) => {
     const pin = +element.id.split('-')[1] || 'new';
     const option = document.getElementById(`setGpioMode-${pin}`).value;
-    // Analog mode
+    // Led mode
     if (option == -1) {
-        document.getElementById(`analogue-options`).classList.remove('hidden');
+        document.getElementById(`led-options`).classList.remove('hidden');
         document.getElementById(`setGpioSaveRow`).classList.remove('hidden');
         document.getElementById(`setGpioInvertStateRow`).classList.add('hidden');
     // I2C mode
     } else if (option == -2) {
         document.getElementById(`setGpioSaveRow`).classList.add('hidden');
-        document.getElementById(`analogue-options`).classList.add('hidden');
+        document.getElementById(`led-options`).classList.add('hidden');
         document.getElementById(`setGpioInvertStateRow`).classList.add('hidden');
         document.getElementById(`i2c-options`).classList.remove('hidden');
     } else {
@@ -899,7 +902,7 @@ const updateGpioOptions = (element) => {
             document.getElementById(`setGpioSaveRow`).classList.add('hidden');
         }
         document.getElementById(`setGpioInvertStateRow`).classList.remove('hidden');
-        document.getElementById(`analogue-options`).classList.add('hidden');
+        document.getElementById(`led-options`).classList.add('hidden');
         document.getElementById(`i2c-options`).classList.add('hidden');
         
     }
@@ -972,18 +975,17 @@ const updateConditionValueType = (element) => {
 };
 // Events
 window.onload = async () => {
-    await fetchGpios();
+    fetchSettings();
+    fetchAvailableGpios();
+    fetchServicesHealth();
+    await Promise.all([fetchGpios(), fetchAutomations()]);
     const containerG = document.getElementById('gpios');
     gpios.forEach(gpio => {
         containerG.appendChild(createGpioControlRow(gpio));
     });
-    await fetchAutomations();
     const containerA = document.getElementById('automations');
     automations.forEach(automation => {
         containerA.appendChild(createAutomationRow(automation));
     });
-    await fetchSettings();
     document.getElementById('page-loader').remove();
-    await fetchAvailableGpios();
-    await fetchServicesHealth();
 };
