@@ -15,8 +15,10 @@ https://www.youtube.com/watch?v=_E-ywkafs94
     <img src="images/add-automation-panel.png" width="200">
     <img src="images/settings.png" width="200">
 </div>
+
 - [ ] Web Sockets: No refresh needed to see a pin state change.
 - [x] Telegram bot: Access and control your esp32 from outside your home. No domotic server required! No port exposed to the outside world (way more secure than exposing your router ports). Restrict the access with a user authorised list.
+
 <div>
     <img src="images/telegram.png" width="200">
 </div>

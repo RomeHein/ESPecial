@@ -26,6 +26,7 @@
 
 // Max text sizes
 #define MAX_LABEL_TEXT_SIZE 50
+#define MAX_I2C_COMMAND_NUMBER 10 // Maximum number of alphanumeric commands per write session in I2C
 #define MAX_MESSAGE_TEXT_SIZE 100 // Usually used when we want to display a text message, or send a text to telegram for instance
 
 #define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(9) + 100 + MAX_LABEL_TEXT_SIZE*2
@@ -58,9 +59,9 @@ typedef struct
     // Array of actions to execute once conditions are fullfilled
     // Each action is represented by an array of char
     // index 0: action type: 1 is set gpio pin to a value, 2 is sending a message to telegram, 3 is displaying a message on serial, 4 is a delay, 5 http request, 6 automation
-    // index 1: action value / http method / automation id
-    // index 2: pin to control if type is 1 / http address
-    // index 3: assignement operation type on value: 1 is =, 2 is +=, 3 is -=, 4 is *= / http body
+    // index 1: action value OR http method OR automation id
+    // index 2: pin to control if type is 1 OR http address
+    // index 3: assignement operation type on value: 1 is =, 2 is +=, 3 is -=, 4 is *= OR http body
     char actions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE];
     int8_t autoRun; // Automatically play the automation if all conditions are true
     int8_t loopCount; // Number of time to execute the automation before next
@@ -71,7 +72,7 @@ typedef struct
 {
     uint8_t pin;
     char label[MAX_LABEL_TEXT_SIZE];
-    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is DIGITAL, -2 is I2C
+    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C
     uint32_t frequency;
     uint8_t resolution;
     int8_t channel;
@@ -87,8 +88,8 @@ typedef struct
     int8_t address; // Slave address
     uint8_t mPin; // Master pin
     char label[MAX_LABEL_TEXT_SIZE];
-    int8_t command; // Salve's command
-    char data[MAX_MESSAGE_TEXT_SIZE];
+    uint8_t commands[MAX_I2C_COMMAND_NUMBER]; // Salve's commands
+    char data[MAX_MESSAGE_TEXT_SIZE]; // Data to send just after commands
     uint8_t octetRequest = 0; // Number of octet requested when reading, if empty, only write command will be executed.
     uint8_t save;
  }  I2cSlaveFlash;
@@ -130,14 +131,13 @@ public:
     void clear();
     void save(char* preference);
     HealthCode health;
-    // i2c
+    // I2C
     I2cSlaveFlash i2cSlaves[MAX_I2C_SLAVES];
     String scan(GpioFlash& gpio);
     bool removeSlave(int id);
-    String addSlave(int address, int mPin, const char* label, int command,const char* data, int octetRequest = 0, int save = 0);
-    String editSlave(I2cSlaveFlash& slave, const char* label, int command,const char* data, int octetRequest, int save);
-    void setSlaveData(int id, char* data);
-    String getSlaveData(int id);
+    String addSlave(int address, int mPin, const char* label, const uint8_t* commands,const char* newData, int octetRequest = 0, int save = 0);
+    String editSlave(I2cSlaveFlash& slave, const char* label, const uint8_t* commands,const char* newData, int octetRequest, int save);
+    String sendSlaveCommands(int id);
     String getI2cSlavesJson();
     // Gpio
     GpioFlash gpios[GPIO_PIN_COUNT];

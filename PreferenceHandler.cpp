@@ -243,14 +243,16 @@ String PreferenceHandler::scan(GpioFlash& gpio){
     return output;
 }
 
-String PreferenceHandler::addSlave(int address, int mPin, const char* label, int command,const char* data, int octetRequest, int s) {
+String PreferenceHandler::addSlave(int address, int mPin, const char* label,const uint8_t* commands,const char* data, int octetRequest, int s) {
     I2cSlaveFlash newSlave = {};
     newSlave.id = newId(PREFERENCES_I2C_SLAVE);
     newSlave.address = address;
     newSlave.mPin = mPin;
     strcpy(newSlave.label, label);
-    newSlave.command = command;
-    strcpy(newSlave.data, data);
+    memcpy(newSlave.commands, commands, sizeof(newSlave.commands));
+    if (data) {
+        strcpy(newSlave.data, data);
+    }
     newSlave.octetRequest = octetRequest;
     newSlave.save = s;
     i2cSlaves[firstEmptySlot(PREFERENCES_I2C_SLAVE)] = newSlave;
@@ -258,18 +260,22 @@ String PreferenceHandler::addSlave(int address, int mPin, const char* label, int
     return slaveToJson(newSlave);
 }
 
-String PreferenceHandler::editSlave(I2cSlaveFlash& slave, const char* newLabel, int newCommand,const char* newData, int newOctetRequest, int newSave) {
+String PreferenceHandler::editSlave(I2cSlaveFlash& slave, const char* newLabel, const uint8_t* newCommands,const char* newData, int newOctetRequest, int newSave) {
     bool hasChanged = false;
     if (newLabel && strcmp(slave.label, newLabel) != 0) {
         strcpy(slave.label, newLabel);
         hasChanged = true;
     }
-    if (newCommand && slave.command != newCommand) {
-        slave.command = newCommand;
+    if (newCommands && slave.commands != newCommands) {
+        memcpy(slave.commands, newCommands, sizeof(slave.commands));
         hasChanged = true;
     }
-    if (newData && strcmp(slave.data, newData) != 0) {
-        strcpy(slave.data, newData);
+    if (newData && slave.data != newData) {
+        if (newData) {
+            strcpy(slave.data, newData);
+        } else {
+            strcpy(slave.data, "");
+        }
         hasChanged = true;
     }
     if (slave.octetRequest != newOctetRequest) {
@@ -297,38 +303,39 @@ bool PreferenceHandler::removeSlave(int id) {
     return false;
 }
 
-// Send data to the slave via the saved command. If no data passed, only the command will be executed
-void PreferenceHandler::setSlaveData(int id, char data[MAX_LABEL_TEXT_SIZE]) {
-    for (I2cSlaveFlash& slave: i2cSlaves) {
-        if (slave.id == id) {
-            Wire.beginTransmission(slave.address);
-            Wire.write(slave.command);
-            if (data) {
-                Wire.write(data);
-            }
-            Wire.endTransmission();
-            return;
-        }
-    }
-}
-
-String PreferenceHandler::getSlaveData(int id) {
+String PreferenceHandler::sendSlaveCommands(int id) {
     for (I2cSlaveFlash& slave: i2cSlaves) {
         if (slave.id == id) {
             // Request read command
+            bool read = (int)slave.octetRequest>0;
             Wire.beginTransmission(slave.address);
-            Wire.write(slave.command);
-            Wire.endTransmission(false);
-            Wire.requestFrom((int)slave.address, (int)slave.octetRequest);
-            // Check if available octets match user parameters. If not, return empty string
-            if (slave.octetRequest <= Wire.available()) {
-                DynamicJsonDocument doc(JSON_ARRAY_SIZE(slave.octetRequest));
-                for (int j=0; j<slave.octetRequest; j++) {
-                    doc.add(Wire.read());
+            for (uint8_t command: slave.commands) {
+                if (command) {
+                    Serial.printf("Send command %d",command);
+                    Wire.write(command);
                 }
-                String output;
-                serializeJson(doc, output);
-                return output;
+            }
+            if (slave.data) {
+                for (char& buffer: slave.data) {
+                    if (buffer) {
+                        Wire.write(buffer);
+                    }
+                }
+            }
+            Wire.endTransmission(!read);
+            // Request read bytes
+            if (read) {
+                Wire.requestFrom((int)slave.address, (int)slave.octetRequest);
+                // Check if available octets match user parameters. If not, return empty string
+                if (slave.octetRequest <= Wire.available()) {
+                    DynamicJsonDocument doc(JSON_ARRAY_SIZE(slave.octetRequest));
+                    for (int j=0; j<slave.octetRequest; j++) {
+                        doc.add(Wire.read());
+                    }
+                    String output;
+                    serializeJson(doc, output);
+                    return output;
+                }
             }
         }
     }
@@ -341,8 +348,12 @@ String PreferenceHandler::slaveToJson(I2cSlaveFlash& slave) {
     doc["address"] = slave.address;
     doc["mPin"] = slave.mPin;
     doc["label"] = slave.label;
-    doc["command"] = slave.command;
-    doc["data"] = slave.data;
+    JsonArray commands = doc.createNestedArray("commands");
+    for (int i = 0; i<MAX_I2C_COMMAND_NUMBER; i++) {
+        if (slave.commands[i]) {
+            commands.add(slave.commands[i]);
+        }
+    }
     doc["octetRequest"] = slave.octetRequest;
     doc["save"] = slave.save;
     String output;

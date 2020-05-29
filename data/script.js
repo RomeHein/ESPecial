@@ -179,13 +179,51 @@ const deleteGpio = async (element) => {
         await fetch(`${window.location.href}gpio?pin=${gpioPin}`, {method: 'DELETE'});
         gpios = gpios.filter(gpio => gpio.pin != gpioPin)
         closeAnySettings();
-        let row = document.getElementById('rowGpio-' + gpioPin);
-        let column = document.getElementById('gpios');
-        column.removeChild(row);
+        document.getElementById('rowGpio-' + gpioPin).remove();
     } catch (err) {
         console.error(err);
     }
 };
+// I2C
+const fetchI2cSlaves = async () => {
+    try {
+        const res = await fetch(window.location.href + 'slaves');
+        const newSlaves = await res.json();
+        if (newSlaves && newSlaves.length) {
+            slaves = newSlaves;
+        }
+    } catch (err) {
+        console.error(`Error: ${err}`);
+    }
+}
+
+const sendI2cSlaveCommand = async (element, write) => {
+    const id = element.id.split('-')[1];
+    const inputElement = document.getElementById(`i2cSlaveData-${id}`);
+    try {
+        const res = await fetch(window.location.href + `slave/command?id=${id}` + (write && inputElement.value ? `&value=${+inputElement.value}`: ''));
+        if (!write && res) {
+            const data = await res.json();
+            inputElement.value = data;
+        }
+    } catch (err) {
+        console.error(`Error: ${err}`);
+    }
+}
+
+const deleteI2cSlave = async (element) => {
+    const id = element.id.split('-')[1];
+    try {
+        await fetch(`${window.location.href}slave?id=${id}`, {method: 'DELETE'});
+        await fetchAutomations();
+        let row = document.getElementById('rowSlave-' + id);
+        closeI2cSlaveSettings(id);
+        row.remove();
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 // Automations
 const fetchAutomations = async () => {
     try {
@@ -214,6 +252,7 @@ const addAutomation = () => {
         topBar.classList.add('open');
     }
 };
+
 const deleteAutomation = async (element) => {
     const automationId = element.id.split('-')[1];
     try {
@@ -221,8 +260,7 @@ const deleteAutomation = async (element) => {
         await fetchAutomations();
         let row = document.getElementById('rowAutomation-' + automationId);
         closeAnySettings();
-        let column = document.getElementById('automations');
-        column.removeChild(row);
+        row.remove()
     } catch (err) {
         console.error(err);
     }
@@ -234,12 +272,7 @@ const scan = async (element) => {
         const res = await fetch(`${window.location.href}gpio/scan?pin=${gpioPin}`);
         const addresses = await res.json();
         const gpioRow = document.getElementById(`rowGpio-${gpioPin}`);
-        const scanResultNode = createScanResult(gpioPin, addresses);
-        if (gpioRow.children.length===3) {
-            gpioRow.replaceChild(scanResultNode,gpioRow.lastChild);
-        } else {
-            gpioRow.appendChild(scanResultNode);
-        }
+        gpioRow.appendChild(createScanResult(gpioPin, addresses));
         
     } catch (err) {
         console.error(err);
@@ -462,14 +495,14 @@ const createGpioControlRow = (gpio) => {
 
 const createI2cSlaveControlRow = (slave) => {
     let child = document.createElement('div');        
-    let actionButton = `<a onclick='setI2cSlaveData(this)' id='setI2cSlaveData-${slave.id}' class='btn on'>set</a>`
+    let actionButton = `<a onclick='sendI2cSlaveCommand(this,true)' id='setI2cSlaveData-${slave.id}' class='btn on'>set</a>`
     if (slave.octetRequest) {
-        actionButton = `<a onclick='getI2cSlaveData(this)' id='getI2cSlaveData-${slave.id}' class='btn on'>get</a>`
+        actionButton = `<a onclick='sendI2cSlaveCommand(this)' id='getI2cSlaveData-${slave.id}' class='btn on'>get</a>`
     }
-    child.innerHTML = `<div class='row' id='rowSlave-${slave.id}'>
+    child.innerHTML = `<div class='row slave' id='rowSlave-${slave.id}'>
         <div class='label'> ${slave.label}</div>
         <div class='btn-container'>
-            <a onclick='openI2cSlaveSettings(this)' id='editI2cSlave-${slave.id}' class='btn edit'>edit</a>${actionButton}
+            <a onclick='openI2cSlaveSettings(this)' id='editI2cSlave-${slave.mPin}-${slave.id}' class='btn edit'>edit</a>${actionButton}
             <input id='i2cSlaveData-${slave.id}' type='text'>
         </div>
     </div>`;
@@ -481,13 +514,13 @@ const saveI2cSlaveSettings = async (element) => {
     const isNew = (id === 'new');
     let req = { settings: {} };
     if (isNew) {
-        req.settings.address = element.parentElement.firstChild;
-        req.settings.mPin = element.parentElement.id.split('-')[1];
+        req.settings.address = +element.parentElement.parentElement.parentElement.firstChild.textContent;
+        req.settings.mPin = +element.parentElement.parentElement.parentElement.id.split('-')[1];
     } else {
         req.id = id;
     }
     req.settings.label = document.getElementById(`setI2cSlaveLabel-${id}`).value;
-    req.settings.command = +document.getElementById(`setI2cSlaveCommand-${id}`).value;
+    req.settings.commands = document.getElementById(`setI2cSlaveCommands-${id}`).value.split(',');
     req.settings.octetRequest = +document.getElementById(`setI2cSlaveOctet-${id}`).value;
     req.settings.save = +document.getElementById(`setI2cSlaveSave-${id}`).checked;
     try {
@@ -495,7 +528,7 @@ const saveI2cSlaveSettings = async (element) => {
             throw new Error('Parameters missing, please fill at least label and type inputs.');
         }
         const resp = await fetch(`${window.location.href}slave`, {
-            method: isNew ? 'POST' : 'PUT',
+            method: isNew ? 'POST' : 'PUT',                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
@@ -507,7 +540,7 @@ const saveI2cSlaveSettings = async (element) => {
         if (isNew) {
             slaves.push(newSetting);
             row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
-            closeI2cSlaveSettings();
+            closeI2cSlaveSettings(id);
         } else {
             slaves = slaves.map(oldSlave => (oldSlave.id == +id) ? {...newSetting} : oldSlave);
             let oldRow = document.getElementById('rowSlave-' + id);
@@ -523,14 +556,14 @@ const openI2cSlaveSettings = (element) => {
     const gpioPin = infos[1];
     const id = (infos.length === 3 ? element.id.split('-')[2] : 'new');
     let label = '';
-    let command = 0;
+    let commands = "";
     let octetToRequest = 0;
     let save = 0
     // Find the right slave attached to gpioPin
     let slave = slaves.find(s => s.id == id);
     if (slave) {
         label = slave.label;
-        command = slave.command;
+        commands = slave.commands.join(',');
         octetToRequest = slave.octetRequest;
         save = slave.save;
     }
@@ -543,8 +576,8 @@ const openI2cSlaveSettings = (element) => {
                 <input id='setI2cSlaveLabel-${id}' type='text' name='label' value='${label}' placeholder="Controller's title">
             </div>
             <div class='row'>
-                <label for='setI2cSlaveCommand-${id}'>Command:</label>
-                <input id='setI2cSlaveCommand-${id}' type='text' name='register' value='${command}' placeholder="Slave's command">
+                <label for='setI2cSlaveCommands-${id}'>Command:</label>
+                <input id='setI2cSlaveCommands-${id}' type='text' name='register' value='${commands}' placeholder="Slave's command">
             </div>
             <div class='row'>
                 <label for='setI2cSlaveOctet-${id}'>Request octet number:</label>
@@ -556,23 +589,21 @@ const openI2cSlaveSettings = (element) => {
             </div>
         </div>
         <div class='btn-container'>
-            <a onclick='closeI2cSlaveSettings(this)' id='closeI2cSlaveSettings-${id}' class='btn cancel'>close</a>
-            <a onclick='saveI2cSlaveSettings(this)' id='saveI2cSlaveSettings-${id}' class='btn on'>add</a>
+            <a onclick='closeI2cSlaveSettings(${id})' id='closeI2cSlaveSettings-${id}' class='btn cancel'>close</a>
+            <a onclick='deleteI2cSlave(this)' id='deleteI2cSlaveSettings-${id}' class='btn delete ${slave ? '':'hidden'}'>delete</a>
+            <a onclick='saveI2cSlaveSettings(this)' id='saveI2cSlaveSettings-${id}' class='btn on'>${slave ? 'edit':'add'}</a>
         </div>
     </div>`;
     row.appendChild(child.firstChild);
 }
 
 const closeScan = (element) => {
-    const gpioId = element.id.split('-')[1];
-    const row = document.getElementById(`rowGpio-${gpioId}`);
-    row.removeChild(row.lastChild);
+    const gpioPin = element.id.split('-')[1];
+    document.getElementById(`scanResults-${gpioPin}`).remove();
 }
 
-const closeI2cSlaveSettings = (element) => {
-    const id = element.id.split('-')[1];
-    const row = document.getElementById(`i2cSlaveSettings-${id}`);
-    row.parentElement.removeChild(row);
+const closeI2cSlaveSettings = (id) => {
+    document.getElementById(`i2cSlaveSettings-${id}`).remove();
 }
 
 const createScanResult = (gpioPin, scanResults) => {
@@ -694,9 +725,7 @@ const createEditGpioPanel = (gpio) => {
 const deleteRowEditor = (element) => {
     const isCondition = element.id.split('-')[0] === 'deleteCondition';
     const rowNumber = +element.id.split('-')[1] || 0;
-    const conditionEditorResultElement = document.getElementById(`${isCondition ? 'condition' : 'action'}-editor-result`);
-    const conditionRowElement = document.getElementById(`${isCondition ? 'condition' : 'action'}-${rowNumber}`);
-    conditionEditorResultElement.removeChild(conditionRowElement); 
+    document.getElementById(`${isCondition ? 'condition' : 'action'}-${rowNumber}`).remove();
 };
 const addConditionEditor = (condition) => {
     let selectedGpio = 0;
@@ -978,7 +1007,7 @@ window.onload = async () => {
     fetchSettings();
     fetchAvailableGpios();
     fetchServicesHealth();
-    await Promise.all([fetchGpios(), fetchAutomations()]);
+    await Promise.all([fetchGpios(), fetchAutomations(), fetchI2cSlaves()]);
     const containerG = document.getElementById('gpios');
     gpios.forEach(gpio => {
         containerG.appendChild(createGpioControlRow(gpio));
@@ -986,6 +1015,10 @@ window.onload = async () => {
     const containerA = document.getElementById('automations');
     automations.forEach(automation => {
         containerA.appendChild(createAutomationRow(automation));
+    });
+    slaves.forEach(slave => {
+        const gpioRow = document.getElementById(`rowGpio-${slave.mPin}`);
+        gpioRow.appendChild(createI2cSlaveControlRow(slave));
     });
     document.getElementById('page-loader').remove();
 };

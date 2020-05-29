@@ -75,6 +75,10 @@ form {
     justify-content: space-between;
     flex-wrap: wrap;
 }
+.slave {
+    width: 100%;
+    background-color: lightgray;
+}
 .hidden {
     display: none !important;
 }
@@ -138,6 +142,7 @@ select {
 .slave-settings {
     width: 100%;
     padding: 10px;
+    margin: 10px;
     background-color: darkgray;
     border-radius: 5px;
 }

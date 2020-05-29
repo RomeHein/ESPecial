@@ -62,6 +62,7 @@ void ServerHandler::begin()
 
     // I2c related endpoints
     server.on("/gpio/scan", HTTP_GET, [this](AsyncWebServerRequest *request) { handleScan(request); });
+    server.on("/slave/command", HTTP_GET,[this](AsyncWebServerRequest *request) { handleSendSlaveCommands(request); });
     server.on("/slave", HTTP_DELETE,[this](AsyncWebServerRequest *request) { handleSlaveRemove(request); });
     server.on("/slaves", HTTP_GET,[this](AsyncWebServerRequest *request) { getSlaves(request); });
 
@@ -317,13 +318,12 @@ void ServerHandler::handleGpioState(AsyncWebServerRequest *request)
 }
 
 // I2c
-
 void ServerHandler::handleScan(AsyncWebServerRequest *request) {
     if (request->hasParam(pinParamName)) {
         const int pin = request->getParam(pinParamName)->value().toInt();
         request->send(200, "text/json", preference.scan(preference.gpios[pin]));
     } else {
-        request->send(404, "text/plain", "Not found");
+        request->send(404, "text/plain", "No pin provided");
     }
 }
 
@@ -331,11 +331,12 @@ void ServerHandler::getSlaves(AsyncWebServerRequest *request) {
     request->send(200, "text/json", preference.getI2cSlavesJson());
     return;
 }
-void ServerHandler::handleSetSlaveData(AsyncWebServerRequest *request) {
-
-}
-void ServerHandler::handleGetSlaveData(AsyncWebServerRequest *request) {
-
+void ServerHandler::handleSendSlaveCommands(AsyncWebServerRequest *request) {
+    if (request->hasParam(idParamName)) {
+        const int id = request->getParam(idParamName)->value().toInt();
+        request->send(200, "text/json", preference.sendSlaveCommands(id));
+    }
+    request->send(404, "text/plain", "No Id provided");
 }
 void ServerHandler::handleSlaveEdit(AsyncWebServerRequest *request,JsonVariant &json) {
     JsonObject doc = json.as<JsonObject>();
@@ -343,7 +344,15 @@ void ServerHandler::handleSlaveEdit(AsyncWebServerRequest *request,JsonVariant &
     {
         if (s.id == doc["id"].as<int>())
         {
-            request->send(200, "text/json", preference.editSlave(s, doc["settings"]["label"].as<char*>(),doc["settings"]["command"].as<int>(),doc["settings"]["data"].as<char*>(),doc["settings"]["octetRequest"].as<int>(),doc["settings"]["save"].as<int>()));
+            uint8_t commands[MAX_I2C_COMMAND_NUMBER] = {};
+            JsonArray commandsArray = doc["settings"]["commands"].as<JsonArray>();
+            for (int i= 0; i<MAX_I2C_COMMAND_NUMBER; i++) {
+                int command = commandsArray[i].as<int>();
+                if (command) {
+                    commands[i] = commandsArray[i].as<int>();
+                }
+            }
+            request->send(200, "text/json", preference.editSlave(s, doc["settings"]["label"].as<char*>(),commands,doc["settings"]["data"].as<char*>(),doc["settings"]["octetRequest"].as<int>(),doc["settings"]["save"].as<int>()));
             return;
         }
     }
@@ -362,16 +371,24 @@ void ServerHandler::handleSlaveRemove(AsyncWebServerRequest *request) {
 
 }
 void ServerHandler::handleSlaveNew(AsyncWebServerRequest *request,JsonVariant &json) {
+    Serial.println("In slave new");
     JsonObject doc = json.as<JsonObject>();
     const int address = doc["settings"]["address"].as<int>();
     const int mPin = doc["settings"]["mPin"].as<int>();
     const char* label = doc["settings"]["label"].as<char*>();
-    const int command = doc["settings"]["command"].as<int>();
+    uint8_t commands[MAX_I2C_COMMAND_NUMBER] = {};
+    JsonArray commandsArray = doc["settings"]["commands"].as<JsonArray>();
+    for (int i= 0; i<MAX_I2C_COMMAND_NUMBER; i++) {
+        int command = commandsArray[i].as<int>();
+        if (command) {
+            commands[i] = commandsArray[i].as<int>();
+        }
+    }
     const char* data = doc["settings"]["data"].as<char*>();
     const int octetRequest = doc["settings"]["octetRequest"].as<int>();
     const int save = doc["settings"]["save"].as<int>();
     if (address && mPin && label) {
-        request->send(200, "text/json", preference.addSlave(address,mPin,label,command,data,octetRequest,save));
+        request->send(200, "text/json", preference.addSlave(address,mPin,label,commands,data,octetRequest,save));
         return;
     }
     request->send(404, "text/plain", "Missing parameters");

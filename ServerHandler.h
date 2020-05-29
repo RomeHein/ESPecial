@@ -31,8 +31,7 @@ private:
 
     void getSlaves(AsyncWebServerRequest *request);
     void handleScan(AsyncWebServerRequest *request);
-    void handleSetSlaveData(AsyncWebServerRequest *request);
-    void handleGetSlaveData(AsyncWebServerRequest *request);
+    void handleSendSlaveCommands(AsyncWebServerRequest *request);
     void handleSlaveEdit(AsyncWebServerRequest *request,JsonVariant &json);
     void handleSlaveRemove(AsyncWebServerRequest *request);
     void handleSlaveNew(AsyncWebServerRequest *request,JsonVariant &json);
