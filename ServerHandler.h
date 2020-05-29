@@ -7,9 +7,10 @@
 #include "ESPAsyncWebServer.h"
 #include "PreferenceHandler.h"
 
+#define FIRMWARE_VERSION 0.2
+
 class ServerHandler {
 private:
-    size_t content_len;
     PreferenceHandler &preference;
     void handleClearSettings(AsyncWebServerRequest *request);
     void handleSystemHealth(AsyncWebServerRequest *request);
@@ -46,6 +47,7 @@ public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     AsyncWebServer server = {80};
     int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
+    bool shouldRestart; // Set this flag in the callbacks to restart ESP in the main loop
     void begin();
 };
 #endif

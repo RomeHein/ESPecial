@@ -6,16 +6,6 @@ var availableGpios = [];
 var automations = [];
 var isSettingsMenuActivated = false;
 const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
-const displayNotification = async (message, type) => {
-    const notifier = document.getElementById('notifier');
-    const text = document.getElementById('notifier-text');
-    notifier.classList.remove('hidden');
-    notifier.classList.add(type);
-    text.innerText = message;
-    await delay(2000)
-    notifier.classList.add('hidden');
-    notifier.classList.remove(type);
-}
 // Restart ESP
 const restart = async () => {
     try {
@@ -49,18 +39,7 @@ const fetchServicesHealth = async () => {
         console.error(`Error: ${err}`);
     }
 }
-
 // Update software
-const fetchFirmwareUpdated = async () => {
-    try {
-        const res = await fetch(window.location.href + 'health');
-        health = await res.json();
-        switchIndicatorState('telegram-indicator', health.telegram);
-        switchIndicatorState('mqtt-indicator', health.mqtt);
-    } catch (err) {
-        console.error(`Error: ${err}`);
-    }
-}
 const fillUpdateInput = (element) => {
     const fileName = element.value.split('\\');
     document.getElementById('file-update-label').innerHTML = fileName[fileName.length-1];
@@ -100,10 +79,8 @@ const submitTelegram = async (e) => {
                 body: JSON.stringify({token, active, users})
             });
             settings.telegram = {active, token};
-            await displayNotification('Telegram parameters saved','success');
         } catch (err) {
             console.error(`Error: ${err}`);
-            await displayNotification(err,'error');
         }
     }
 };
@@ -124,11 +101,10 @@ const submitMqtt = async (e) => {
             body: JSON.stringify({active, fn, host, port, user, password, topic})
         });
         settings.mqtt = {active, fn, host, port, user, password, topic};
-        await displayNotification('Mqtt parameters saved','success');
         await mqttConnect();
+
     } catch (err) {
         console.error(`Error: ${err}`);
-        await displayNotification(err,'error');
     }
 };
 const mqttConnect = async () => {
@@ -145,14 +121,11 @@ const mqttConnect = async () => {
         }
         if (health.mqtt == 1) {
             retryButton.classList.add('hidden');
-            await displayNotification('Mqtt client connected','success');
         } else {
             retryButton.classList.remove('hidden');
-            await displayNotification('Could not connect Mqtt client','error');
         }
     } catch(err) {
         console.error(`Error: ${err}`);
-        await displayNotification(err,'error');
     }
     loader.classList.add('hidden');
     retryText.classList.remove('hidden');
@@ -208,10 +181,8 @@ const deleteGpio = async (element) => {
         gpios = gpios.filter(gpio => gpio.pin != gpioPin)
         closeAnySettings();
         document.getElementById('rowGpio-' + gpioPin).remove();
-        await displayNotification('Gpio removed','success');
     } catch (err) {
         console.error(err);
-        await displayNotification(err,'error');
     }
 };
 // I2C
@@ -236,56 +207,10 @@ const sendI2cSlaveCommand = async (element, write) => {
             const data = await res.json();
             inputElement.value = data;
         }
-        await displayNotification('Command sent','success');
     } catch (err) {
         console.error(`Error: ${err}`);
-        await displayNotification(err,'error');
     }
 }
-
-const saveI2cSlaveSettings = async (element) => {
-    const id = element.id.split('-')[1];
-    const isNew = (id === 'new');
-    let req = { settings: {} };
-    if (isNew) {
-        req.settings.address = +element.parentElement.parentElement.parentElement.firstChild.textContent;
-        req.settings.mPin = +element.parentElement.parentElement.parentElement.id.split('-')[1];
-    } else {
-        req.id = id;
-    }
-    req.settings.label = document.getElementById(`setI2cSlaveLabel-${id}`).value;
-    req.settings.commands = document.getElementById(`setI2cSlaveCommands-${id}`).value.split(',');
-    req.settings.octetRequest = +document.getElementById(`setI2cSlaveOctet-${id}`).value;
-    req.settings.save = +document.getElementById(`setI2cSlaveSave-${id}`).checked;
-    try {
-        if (!req.settings.label) {
-            throw new Error('Parameters missing, please fill at least label and type inputs.');
-        }
-        const resp = await fetch(`${window.location.href}slave`, {
-            method: isNew ? 'POST' : 'PUT',                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(req)
-        });
-        const newSetting = await resp.json();
-        let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
-        if (isNew) {
-            slaves.push(newSetting);
-            row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
-            closeI2cSlaveSettings(id);
-        } else {
-            slaves = slaves.map(oldSlave => (oldSlave.id == +id) ? {...newSetting} : oldSlave);
-            let oldRow = document.getElementById('rowSlave-' + id);
-            row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
-        }
-        await displayNotification('Slave saved','success');
-    } catch (err) {
-        console.error(err);
-        await displayNotification(err,'error');
-    }
-};
 
 const deleteI2cSlave = async (element) => {
     const id = element.id.split('-')[1];
@@ -295,10 +220,8 @@ const deleteI2cSlave = async (element) => {
         let row = document.getElementById('rowSlave-' + id);
         closeI2cSlaveSettings(id);
         row.remove();
-        await displayNotification('Slave removed','success');
     } catch (err) {
         console.error(err);
-        await displayNotification(err,'error');
     }
 }
 
@@ -318,10 +241,8 @@ const runAutomation = async (element) => {
     const automationId = element.id.split('-')[1];
     try {
         await fetch(window.location.href + 'automation/run?id='+automationId);
-        await displayNotification('Automation run','success');
     } catch (err) {
         console.error(`Error: ${err}`);
-        await displayNotification(err,'error');
     }
 };
 const addAutomation = () => {
@@ -341,10 +262,8 @@ const deleteAutomation = async (element) => {
         let row = document.getElementById('rowAutomation-' + automationId);
         closeAnySettings();
         row.remove()
-        await displayNotification('Automation removed','success');
     } catch (err) {
         console.error(err);
-        await displayNotification(err,'error');
     }
 };
 
@@ -431,10 +350,8 @@ const saveGpioSetting = async (element) => {
             let oldRow = document.getElementById('rowGpio-' + gpioPin);
             column.replaceChild(createGpioControlRow(newSetting), oldRow);
         }
-        await displayNotification('Gpio saved','success');
     } catch (err) {
         console.error(err);
-        await displayNotification(err,'error');
     }
 };
 const saveAutomationSetting = async (element) => {
@@ -497,10 +414,8 @@ const saveAutomationSetting = async (element) => {
             let oldRow = document.getElementById('rowAutomation-' + automationId);
             column.replaceChild(createAutomationRow(newSetting), oldRow);
         }
-        await displayNotification('Automation saved','success');
     } catch (err) {
         console.error(err);
-        await displayNotification(err,'error');
     }
 };
 const openGpioSetting = (element) => {
@@ -594,6 +509,48 @@ const createI2cSlaveControlRow = (slave) => {
     </div>`;
     return child.firstChild;
 }
+
+const saveI2cSlaveSettings = async (element) => {
+    const id = element.id.split('-')[1];
+    const isNew = (id === 'new');
+    let req = { settings: {} };
+    if (isNew) {
+        req.settings.address = +element.parentElement.parentElement.parentElement.firstChild.textContent;
+        req.settings.mPin = +element.parentElement.parentElement.parentElement.id.split('-')[1];
+    } else {
+        req.id = id;
+    }
+    req.settings.label = document.getElementById(`setI2cSlaveLabel-${id}`).value;
+    req.settings.commands = document.getElementById(`setI2cSlaveCommands-${id}`).value.split(',');
+    req.settings.octetRequest = +document.getElementById(`setI2cSlaveOctet-${id}`).value;
+    req.settings.save = +document.getElementById(`setI2cSlaveSave-${id}`).checked;
+    try {
+        if (!req.settings.label) {
+            throw new Error('Parameters missing, please fill at least label and type inputs.');
+        }
+        const resp = await fetch(`${window.location.href}slave`, {
+            method: isNew ? 'POST' : 'PUT',                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(req)
+        });
+        const newSetting = await resp.json();
+        let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
+        if (isNew) {
+            slaves.push(newSetting);
+            row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
+            closeI2cSlaveSettings(id);
+        } else {
+            slaves = slaves.map(oldSlave => (oldSlave.id == +id) ? {...newSetting} : oldSlave);
+            let oldRow = document.getElementById('rowSlave-' + id);
+            row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+};
 
 const openI2cSlaveSettings = (element) => {
     const infos = element.id.split('-');

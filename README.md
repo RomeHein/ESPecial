@@ -30,6 +30,7 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 - [ ] Unit/integration tests!
 - [ ] Plateform.io/Makefile/bash script: simplify the installation process.
 - [ ] Compatibility with single cored boards
+- [ ] Use async MQTT client: https://github.com/marvinroger/async-mqtt-client
 
 ## Work in progress:
 - I2C integration

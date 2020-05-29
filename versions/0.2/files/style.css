@@ -166,13 +166,6 @@ select {
     cursor: pointer;
     text-decoration: none;
 }
-.btn.small {
-    padding: 5px 5px;
-    margin: 5px 5px;
-}
-.btn.round {
-    border-radius: 50%;
-}
 .disable {
     border-color: lightgray !important;
     background-color: lightgray !important;
@@ -248,37 +241,6 @@ select {
     opacity: 0.95;
     color: white;
 }
-#notifier {
-    position: fixed;
-    top: 90px;
-    right: 20px;
-    display: flex !important;
-    justify-content: center;
-    align-items: center;
-    padding-left: 20px;
-    padding-right: 10px;
-    border-radius: 10px;
-    background-color: lightgray;
-    box-shadow: 1px 1px 3px darkgray;
-    transition-duration: 0.4s;
-    opacity: 100%;
-    color: white;
-}
-#notifier.hidden {
-    opacity: 0;
-    right: -100%;
-}
-#notifier.success {
-    background-color: yellowgreen;
-}
-#notifier.error {
-    background-color: tomato;
-}
-#notifier > .btn {
-    width: 20px;
-    height: 20px;
-}
-
 #mqtt-retry-loader {
     height: 100%;
     width: 100%;

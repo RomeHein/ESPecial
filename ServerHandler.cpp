@@ -39,7 +39,12 @@ void ServerHandler::begin()
     server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { getSettings(request); });
     server.on("/restart", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRestart(request); });
     server.on("/mqtt/retry",HTTP_GET, [this](AsyncWebServerRequest *request) { handleMqttRetry(request); });
-    server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {}, [this](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) { handleUpdate(request, filename, index, data, len, final);});
+    server.on("/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        shouldRestart = !Update.hasError();
+        AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldRestart?"OK":"FAIL");
+        response->addHeader("Connection", "close");
+        request->send(response);
+    }, [this](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) { handleUpdate(request, filename, index, data, len, final);});
 
     AsyncCallbackJsonWebHandler* editMqttHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleMqttEdit(request,json); });
     editMqttHandler->setMethod(HTTP_POST);
@@ -97,8 +102,10 @@ void ServerHandler::begin()
     server.begin();
 
     Update.onProgress([this](size_t prg, size_t sz) {
-        Serial.printf("[SERVER] Progress: %d%%\n", (prg*100)/content_len);
+        Serial.printf("[SERVER] Progress: %d\n", prg);
     });
+
+    shouldRestart = false;
 }
 
 // Main
@@ -123,7 +130,7 @@ void ServerHandler::handleSystemHealth(AsyncWebServerRequest *request)
 
 void ServerHandler::handleRestart(AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "OK");
-    ESP.restart();
+    shouldRestart = true;
 }
 
 // Settings
@@ -153,6 +160,7 @@ void ServerHandler::getSettings(AsyncWebServerRequest *request) {
     general["maxActions"] = MAX_AUTOMATION_ACTION_NUMBER;
     general["maxChannels"] = MAX_DIGITALS_CHANNEL;
     general["maxTextMessage"] = MAX_MESSAGE_TEXT_SIZE;
+    general["firmwareVersion"] = FIRMWARE_VERSION;
     String output;
     serializeJson(doc, output);
     request->send(200, "text/json", output);
@@ -160,62 +168,26 @@ void ServerHandler::getSettings(AsyncWebServerRequest *request) {
 }
 
 void ServerHandler::handleUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
-    if (!index){
-        Serial.println("[SERVER] Update");
-        content_len = request->contentLength();
-        // if filename includes spiffs, update the spiffs partition
-        int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
-            Update.printError(Serial);
-        }
-    }
-
-    if (Update.write(data, len) != len) {
+    if(!index){
+      Serial.printf("[SERVER] Update Start: %s\n", filename.c_str());
+      //Update.runAsync(true);
+      if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
         Update.printError(Serial);
+      }
     }
-
-    if (final) {
-        AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots"); 
-        response->addHeader("Connection", "close");
-        request->send(response);
-        if (!Update.end(true)){
-            Update.printError(Serial);
-        } else {
-            Serial.println("Update complete");
-            Serial.flush();
-            ESP.restart();
-        }
+    if(!Update.hasError()){
+      if(Update.write(data, len) != len){
+        Update.printError(Serial);
+      }
+    }
+    if(final){
+      if(Update.end(true)){
+        Serial.printf("Update Success: %uB\n", index+len);
+      } else {
+        Update.printError(Serial);
+      }
     }
 }
-
-// void ServerHandler::handleUpload(AsyncWebServerRequest *request)
-// {
-//     request->sendHeader("Connection", "close");
-//     request->send(200, "text/plain", (Update.hasError()) ? "FAIL" : "OK");
-//     ESP.restart(); 
-// }
-
-// void ServerHandler::install(AsyncWebServerRequest *request)
-// {
-//     HTTPUpload& upload = request->upload();
-//     if (upload.status == UPLOAD_FILE_START) {
-//         Serial.printf("Update: %s\n", upload.filename.c_str());
-//         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
-//             Update.printError(Serial);
-//         }
-//     } else if (upload.status == UPLOAD_FILE_WRITE) {
-//         /* flashing firmware to ESP*/
-//         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
-//             Update.printError(Serial);
-//         }
-//     } else if (upload.status == UPLOAD_FILE_END) {
-//         if (Update.end(true)) {
-//             Serial.printf("Update Success: %u\nRebooting...\n", upload.totalSize);
-//         } else {
-//             Update.printError(Serial);
-//         }
-//     } 
-// }
 
 void ServerHandler::handleMqttEdit (AsyncWebServerRequest *request,JsonVariant &json) {
     JsonObject doc = json.as<JsonObject>();

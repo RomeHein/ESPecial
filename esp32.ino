@@ -12,7 +12,6 @@
 
 //unmark following line to enable debug mode
 #define __debug
-
 #define MAX_QUEUED_AUTOMATIONS 10
 
 ServerHandler *serverhandler;
@@ -78,7 +77,6 @@ bool checkAgainstLocalWeekDay(int weekday, int signType) {
     Serial.println("Failed to obtain time");
     return false;
   }
-  Serial.printf("Checking weekday %i against local weekday: %i\n",weekday,timeinfo.tm_wday);
   if (signType == 1) {
     return timeinfo.tm_wday == weekday;
   } else if (signType == 2) {
@@ -397,6 +395,10 @@ void setup(void)
 }
 
 void loop(void) {
+  if (serverhandler->shouldRestart) {
+    serverhandler->shouldRestart = false;
+    ESP.restart();
+  }
   if ( WiFi.status() ==  WL_CONNECTED ) {
     mqtthandler->handle();
     telegramhandler->handle();

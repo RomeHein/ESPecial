@@ -1,0 +1,11 @@
+[{
+    "version": 0.2,
+    "current": true,
+    "partitionScheme":"min_spiffs",
+    "description": "Major Webserver improvment and I2C integration"
+},{
+    "version": 0.1,
+    "current": false,
+    "partitionScheme":"min_spiffs",
+    "description": "Initial version"
+}]
