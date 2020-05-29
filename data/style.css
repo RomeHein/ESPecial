@@ -166,6 +166,11 @@ select {
     cursor: pointer;
     text-decoration: none;
 }
+.disable {
+    border-color: lightgray !important;
+    background-color: lightgray !important;
+    pointer-events: none;
+}
 .edit {
     background-color: dodgerblue;
     border: solid 1px dodgerblue;

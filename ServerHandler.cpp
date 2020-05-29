@@ -39,6 +39,7 @@ void ServerHandler::begin()
     server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { getSettings(request); });
     server.on("/restart", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRestart(request); });
     server.on("/mqtt/retry",HTTP_GET, [this](AsyncWebServerRequest *request) { handleMqttRetry(request); });
+    server.on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {}, [this](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) { handleUpdate(request, filename, index, data, len, final);});
 
     AsyncCallbackJsonWebHandler* editMqttHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleMqttEdit(request,json); });
     editMqttHandler->setMethod(HTTP_POST);
@@ -94,6 +95,10 @@ void ServerHandler::begin()
     // server.addRewrite(new OneParamRewrite("/automation/run/{id}", "/automation/run?id={id}"));
 
     server.begin();
+
+    Update.onProgress([this](size_t prg, size_t sz) {
+        Serial.printf("[SERVER] Progress: %d%%\n", (prg*100)/content_len);
+    });
 }
 
 // Main
@@ -152,6 +157,35 @@ void ServerHandler::getSettings(AsyncWebServerRequest *request) {
     serializeJson(doc, output);
     request->send(200, "text/json", output);
     return;
+}
+
+void ServerHandler::handleUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+    if (!index){
+        Serial.println("[SERVER] Update");
+        content_len = request->contentLength();
+        // if filename includes spiffs, update the spiffs partition
+        int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+            Update.printError(Serial);
+        }
+    }
+
+    if (Update.write(data, len) != len) {
+        Update.printError(Serial);
+    }
+
+    if (final) {
+        AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots"); 
+        response->addHeader("Connection", "close");
+        request->send(response);
+        if (!Update.end(true)){
+            Update.printError(Serial);
+        } else {
+            Serial.println("Update complete");
+            Serial.flush();
+            ESP.restart();
+        }
+    }
 }
 
 // void ServerHandler::handleUpload(AsyncWebServerRequest *request)

@@ -9,14 +9,14 @@
 
 class ServerHandler {
 private:
+    size_t content_len;
     PreferenceHandler &preference;
     void handleClearSettings(AsyncWebServerRequest *request);
     void handleSystemHealth(AsyncWebServerRequest *request);
     void getSettings(AsyncWebServerRequest *request);
     void install(AsyncWebServerRequest *request);
     void handleRestart(AsyncWebServerRequest *request);
-    void handleUpload(AsyncWebServerRequest *request);
-    void handleUpdate(AsyncWebServerRequest *request);
+    void handleUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final);
 
     void handleMqttEdit(AsyncWebServerRequest *request,JsonVariant &json);
     void handleMqttRetry(AsyncWebServerRequest *request);

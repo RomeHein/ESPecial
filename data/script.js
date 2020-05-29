@@ -41,8 +41,9 @@ const fetchServicesHealth = async () => {
 }
 // Update software
 const fillUpdateInput = (element) => {
-    const fileName = element.value.split('\\\\');
+    const fileName = element.value.split('\\');
     document.getElementById('file-update-label').innerHTML = fileName[fileName.length-1];
+    document.getElementById('submit-update-file').classList.remove('disable');
 };
 const submitUpdate = async (e) => {
     e.preventDefault();
@@ -52,12 +53,12 @@ const submitUpdate = async (e) => {
     const form = document.getElementById('upload-form');
     const data = new FormData(form);
     try {
-        const res = await fetch(window.location.href + 'install', {
+        const res = await fetch(window.location.href + 'update', {
             method: 'POST',
-            headers: { contentType: false, processData:false },
             body: data
         });
-        blocker.classList.add('hidden');
+        document.getElementById('blocker-title').innerText = 'Restarting device, please wait...';
+        await delay(2000);
         location.reload();
     } catch (err) {
         blocker.classList.add('hidden');
