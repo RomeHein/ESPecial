@@ -4,6 +4,7 @@ var gpios = [];
 var slaves = [];
 var availableGpios = [];
 var automations = [];
+var versionsList = [];
 var isSettingsMenuActivated = false;
 const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
 const displayNotification = async (message, type) => {
@@ -51,12 +52,17 @@ const fetchServicesHealth = async () => {
 }
 
 // Update software
-const fetchFirmwareUpdated = async () => {
+const fetchFirmwareVersionsList = async () => {
     try {
-        const res = await fetch(window.location.href + 'health');
-        health = await res.json();
-        switchIndicatorState('telegram-indicator', health.telegram);
-        switchIndicatorState('mqtt-indicator', health.mqtt);
+        const res = await fetch('https://github.com/RomeHein/ESPecial/tree/v0.2/versions/list.json',{
+            mode: 'no-cors'
+          });
+        versionsList = await res.json();
+        for (let info in versionsList) {
+            if (info.version > settings.general.firmwareVersion) {
+                await displayNotification(`'New firmware(${info.version}) available`,'success');
+            }
+        }
     } catch (err) {
         console.error(`Error: ${err}`);
     }
@@ -1065,4 +1071,5 @@ window.onload = async () => {
         gpioRow.appendChild(createI2cSlaveControlRow(slave));
     });
     document.getElementById('page-loader').remove();
+    await fetchFirmwareVersionsList();
 };
