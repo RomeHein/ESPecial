@@ -2,12 +2,6 @@
     "version": 0.2,
     "current": true,
     "partitionScheme":"min_spiffs",
-    "description": "Major Webserver improvment and I2C integration",
-    "compatibility": []
-},{
-    "version": 0.1,
-    "current": false,
-    "partitionScheme":"min_spiffs",
-    "description": "Initial version",
+    "description": "Major Webserver improvment and I2C integration. OTA from Github",
     "compatibility": []
 }]

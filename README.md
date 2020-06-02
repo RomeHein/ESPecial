@@ -26,7 +26,7 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 - [x] Mqtt client: publish/subscribe pin state, actions.
 - [x] Wifi manager: gives a way to easily set your esp32 to your network.
 - [x] OTA: Update firmware from the web interface.
-- [ ] Remote OTA: Update firmware directly when a new version is available on this repo. This would also allow nice things like only installing a light version of ESPecial and then download the full ESPecial from server. No more hassle to download all dependencies and tools.
+- [x] Remote OTA: Update firmware directly when a new version is available on this repo. This would also allow nice things like only installing a light version of ESPecial and then download the full ESPecial from server. No more hassle to download all dependencies and tools.
 - [ ] Unit/integration tests!
 - [ ] Plateform.io/Makefile/bash script: simplify the installation process.
 - [ ] Compatibility with single cored boards
@@ -34,8 +34,7 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 
 ## Work in progress:
 - I2C integration
-- Async server
-- Remote OTA
+- Analog output
 
 ## Getting Started
 
@@ -53,6 +52,13 @@ If you want to use vscode while coding (I strongly recommand it) follow this nic
 
 
 ### Installing
+
+## Esay way (work in progress)
+
+You'll need [this](https://github.com/RomeHein/ESPInstaller.git) project installed on your esp32. This is a very lightweight project that will enable you to install any project from their github repo if the owner has enabled it. The good thing is that you don't need to install any dependencies or anything to get that project on your esp32. Just make sure to select the right partition scheme when installing ESPInstaller: `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS`
+Once ESPInstaller installed, select the ESPecial from the list of available repo and click install. This will install everything automatically 👌
+
+## Manual way
 
 First copy this repo to your local directory. Use the `download as zip` or `git clone` method.
 Then 6 dependencies need to be added to your Arduino libraries (when you download these dependencies, make sure to remove the '-master' part of the folder name):
