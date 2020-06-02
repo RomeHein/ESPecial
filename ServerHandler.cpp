@@ -108,9 +108,6 @@ void ServerHandler::begin()
     Update.onProgress([this](size_t prg, size_t sz) {
         Serial.printf("[SERVER] Progress: %d\n", prg);
     });
-
-    shouldRestart = false;
-    shouldOTAFirmwareVersion = 0;
 }
 
 // Main
@@ -212,7 +209,7 @@ void ServerHandler::handleUpdate(AsyncWebServerRequest *request, const String& f
 
 void ServerHandler::handleUpdateToVersion(AsyncWebServerRequest *request) {
     if (request->hasParam("v")) {
-        shouldOTAFirmwareVersion = request->getParam("v")->value().toDouble();
+        strcpy(shouldOTAFirmwareVersion,request->getParam("v")->value().c_str());
     }
     request->send(200, "text/plain", "Downloading");
 }

@@ -8,6 +8,8 @@ var versionsList = [];
 var isSettingsMenuActivated = false;
 const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
 const displayNotification = async (message, type) => {
+    const blocker = document.getElementById('blocker');
+    blocker.classList.add('hidden');
     const notifier = document.getElementById('notifier');
     const text = document.getElementById('notifier-text');
     notifier.classList.remove('hidden');

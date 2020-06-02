@@ -3,7 +3,7 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <Update.h>
+#include <HTTPUpdate.h>
 #include "time.h"
 
 #include "ServerHandler.h"
@@ -60,10 +60,15 @@ String systemInfos() {
 String getFirmwareList() {
   HTTPClient http;
   const String firmwarelistPath = repoPath + "list.json";
-  http.begin(client,firmwarelistPath.c_str()) ;
+  #ifdef __debug
+    Serial.printf("[MAIN] Retrieving firmware list from %s\n",firmwarelistPath.c_str());
+  #endif
+  http.begin(client,firmwarelistPath.c_str());
   int httpResponseCode = http.GET();
   if (httpResponseCode>0) {
-    Serial.print("[MAIN] Retrieve firmware list ");
+    #ifdef __debug
+      Serial.println("[MAIN] firmware list retrieved");
+    #endif
     return http.getString();
   }
   else {
@@ -77,114 +82,32 @@ String getHeaderValue(String header, String headerName) {
   return header.substring(strlen(headerName.c_str()));
 }
 
-void execOTA(double version) {
-  char* error;
-  long contentLength = 0;
-  bool isValidContentType = false;  
+void execOTA(const char* version) {
   const String bin = version+String("/especial.ino.bin");
+  const String spiffs = version+String("/spiffs.bin");
   const String binPath = repoPath+bin;
-  Serial.println("[OTA] Download start");
-  if (client.connect(binPath.c_str(), 80)) {
-    Serial.println("[OTA] Connection ok. Fetching bin");
-    // Get the contents of the bin file
-    client.print(String("GET ") + bin + " HTTP/1.1\r\n" +
-                 "Host: " + repoPath + "\r\n" +
-                 "Cache-Control: no-cache\r\n" +
-                 "Connection: close\r\n\r\n");
-
-    unsigned long timeout = millis();
-    while (client.available() == 0) {
-      if (millis() - timeout > 5000) {
-        error = "Client Timeout";
-        client.stop();
-        return;
-      }
-    }
-    // Once the response is available,
-    // check stuff
-    while (client.available()) {
-      String line = client.readStringUntil('\n');
-      // remove space, to check if the line is end of headers
-      line.trim();
-
-      // if the the line is empty, this is end of headers
-      // break the while and feed the remaining `client` to the Update.writeStream();
-      if (!line.length()) {
-        break; // get the OTA started
-      }
-
-      // Check if the HTTP Response is 200
-      // else break and Exit Update
-      if (line.startsWith("HTTP/1.1")) {
-        if (line.indexOf("200") < 0) {
-          error = "Non 200 status code from server.";
-          break;
+  t_httpUpdate_return ret = httpUpdate.updateSpiffs(client, spiffs);
+  if (ret == HTTP_UPDATE_OK) {
+    ret = httpUpdate.update(client, binPath);
+    switch (ret) {
+      case HTTP_UPDATE_FAILED:
+        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+        if (serverhandler->events.count()>0) {
+          serverhandler->events.send(httpUpdate.getLastErrorString().c_str(),"firmwareUpdateError",millis());
         }
-      }
+        break;
 
-      // extract headers here
-      if (line.startsWith("Content-Length: ")) {
-        contentLength = atol((getHeaderValue(line, "Content-Length: ")).c_str());
-        Serial.println("Got " + String(contentLength) + " bytes from server");
-      }
-      if (line.startsWith("Content-Type: ")) {
-        String contentType = getHeaderValue(line, "Content-Type: ");
-        Serial.println("Got " + contentType + " payload.");
-        if (contentType == "application/octet-stream") {
-          isValidContentType = true;
+      case HTTP_UPDATE_NO_UPDATES:
+        Serial.println("HTTP_UPDATE_NO_UPDATES");
+        if (serverhandler->events.count()>0) {
+          serverhandler->events.send("No updates","firmwareUpdateError",millis());
         }
-      }
-    }
-  } else {
-    error = "Connection to host failed. Please check your setup";
-  }
+        break;
 
-  // Notify client we have successfully downloaded new firmware
-  if (!error) {
-    if (serverhandler->events.count()>0) {
-      serverhandler->events.send("Download success","firmwareDownloaded",millis());
-    }
-  }
-
-  if (contentLength && isValidContentType) {
-    // Check if there is enough to OTA Update
-    bool canBegin = Update.begin(contentLength);
-
-    if (canBegin) {
-      Serial.println("[OTA] Starting");
-      size_t written = Update.writeStream(client);
-
-      if (written == contentLength) {
-        Serial.println("Written : " + String(written) + " successfully");
-      } else {
-        Serial.println("Written only : " + String(written) + "/" + String(contentLength));
-      }
-
-      if (Update.end()) {
-        Serial.println("[OTA] Done");
-        if (Update.isFinished()) {
-          Serial.println("[OTA] Rebooting.");
-          ESP.restart();
-        } else {
-          error = "Update not finished. Something went wrong!";
-        }
-      } else {
-        sprintf(error, "%d", Update.getError());
-      }
-    } else {
-      error = "not enough space to begin OTA";
-      client.flush();
-    }
-  } else {
-    error = "no content in response";
-    client.flush();
-  }
-  // If error notify any client
-  if (error) {
-    const String errorFormat = "[OTA] Error: " + String(error);
-    Serial.println(errorFormat.c_str());
-    if (serverhandler->events.count()>0) {
-      serverhandler->events.send(errorFormat.c_str(),"firmwareUpdateError",millis());
+      case HTTP_UPDATE_OK:
+        Serial.println("HTTP_UPDATE_OK");
+        ESP.restart();
+        break;
     }
   }
 }
@@ -549,10 +472,12 @@ void loop(void) {
     ESP.restart();
   }
   // Check if OTA has been requested from server
-  if (serverhandler->shouldOTAFirmwareVersion>0) {
+  if (strcmp(serverhandler->shouldOTAFirmwareVersion,"")>0) {
     // Reset shouldOTAFirmwareVersion to avoid multiple OTA from main loop
-    const double version = serverhandler->shouldOTAFirmwareVersion;
-    serverhandler->shouldOTAFirmwareVersion = 0;
+    Serial.printf("OTA version: %s\n", serverhandler->shouldOTAFirmwareVersion);
+    char version[10];
+    strcpy(version,serverhandler->shouldOTAFirmwareVersion);
+    strcpy(serverhandler->shouldOTAFirmwareVersion,"");
     execOTA(version);
   }
   // Notify clients esp has restarted

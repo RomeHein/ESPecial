@@ -52,7 +52,7 @@ public:
     int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     bool shouldRestart = false; // Set this flag in the callbacks to restart ESP in the main loop
     bool shouldReloadFirmwareList = false;
-    double shouldOTAFirmwareVersion;
+    char shouldOTAFirmwareVersion[10] = "";
     void begin();
 };
 #endif
