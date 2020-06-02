@@ -14,7 +14,7 @@ const char *valueParamName = "value";
 
 void ServerHandler::begin()
 {
-    if(!SPIFFS.begin(true)){
+    if(!SPIFFS.begin()){
         Serial.println("Server: An Error has occurred while mounting SPIFFS");
         return;
     }
