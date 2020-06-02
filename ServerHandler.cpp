@@ -1,5 +1,6 @@
 #include "ServerHandler.h"
 #include "PreferenceHandler.h"
+#include <HTTPClient.h>
 #include <AsyncJson.h>
 #include <Update.h>
 #include <SPIFFS.h>
@@ -39,6 +40,8 @@ void ServerHandler::begin()
     server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { getSettings(request); });
     server.on("/restart", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRestart(request); });
     server.on("/mqtt/retry",HTTP_GET, [this](AsyncWebServerRequest *request) { handleMqttRetry(request); });
+    server.on("/firmware/list",HTTP_GET, [this](AsyncWebServerRequest *request) { handleFirmwareList(request); });
+    server.on("/update/version", HTTP_GET, [this](AsyncWebServerRequest *request) { handleUpdateToVersion(request); });
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
         shouldRestart = !Update.hasError();
         AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldRestart?"OK":"FAIL");
@@ -99,6 +102,7 @@ void ServerHandler::begin()
     // server.addRewrite(new OneParamRewrite("/automation/{id}", "/automation?id={id}"));
     // server.addRewrite(new OneParamRewrite("/automation/run/{id}", "/automation/run?id={id}"));
 
+    server.addHandler(&events);
     server.begin();
 
     Update.onProgress([this](size_t prg, size_t sz) {
@@ -106,6 +110,7 @@ void ServerHandler::begin()
     });
 
     shouldRestart = false;
+    shouldOTAFirmwareVersion = 0;
 }
 
 // Main
@@ -113,6 +118,15 @@ void ServerHandler::handleClearSettings(AsyncWebServerRequest *request)
 {
     preference.clear();
     request->send(200, "text/plain", "Settings clear");
+}
+
+// This will ask the main loop to retrieve firmware list from github account.
+// Once the list is retrieved, we'll send an event to the client with the list inside
+void ServerHandler::handleFirmwareList(AsyncWebServerRequest *request)
+{
+    shouldReloadFirmwareList = true;
+    request->send(200, "text/plain", "Waiting for result");
+    return;
 }
 
 void ServerHandler::handleSystemHealth(AsyncWebServerRequest *request)
@@ -168,16 +182,19 @@ void ServerHandler::getSettings(AsyncWebServerRequest *request) {
 }
 
 void ServerHandler::handleUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+    bool gotError = false;
     if(!index){
       Serial.printf("[SERVER] Update Start: %s\n", filename.c_str());
       //Update.runAsync(true);
       if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
         Update.printError(Serial);
+        gotError = true;
       }
     }
     if(!Update.hasError()){
       if(Update.write(data, len) != len){
         Update.printError(Serial);
+        gotError = true;
       }
     }
     if(final){
@@ -185,8 +202,19 @@ void ServerHandler::handleUpdate(AsyncWebServerRequest *request, const String& f
         Serial.printf("Update Success: %uB\n", index+len);
       } else {
         Update.printError(Serial);
+        gotError = true;
       }
     }
+    if (gotError) {
+        events.send("Could not update firmware","firmwareUpdateError",millis());
+    }
+}
+
+void ServerHandler::handleUpdateToVersion(AsyncWebServerRequest *request) {
+    if (request->hasParam("v")) {
+        shouldOTAFirmwareVersion = request->getParam("v")->value().toDouble();
+    }
+    request->send(200, "text/plain", "Downloading");
 }
 
 void ServerHandler::handleMqttEdit (AsyncWebServerRequest *request,JsonVariant &json) {

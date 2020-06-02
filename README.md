@@ -64,7 +64,7 @@ This library will allow you to easily set your board to your wifi. You'll need t
 - ESPAsyncWebServer
 - AsyncTCP
 
-Once all library installed, upload the scetch to your board. Make sure to select `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS) in Tools>Partition scheme
+Once all libraries installed, upload the scetch to your board. Make sure to select `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS) in Tools>Partition scheme
 
 We now need to upload webserver files to the SPIFF partition, simply follow [this](https://randomnerdtutorials.com/install-esp32-filesystem-uploader-arduino-ide/) guide and then click on `tools>ESP Scketch data upload`
 

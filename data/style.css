@@ -65,8 +65,7 @@ form {
     border-radius: 5px;
     padding: 5px;
     height: 30px;
-    margin: auto;
-    width: 70%;
+    width: 65%;
 }
 .row {
     display: flex;
@@ -97,10 +96,14 @@ form {
 }
 .set {
     display: flex;
-    flex-direction: column;
     width: 100%;
+    flex-direction: column;
     background-color: lightgray;
     padding: 10px;
+}
+#update .set {
+    width: unset;
+    background-color: whitesmoke;
 }
 .set>.set-inputs {
     display: flex;
@@ -128,6 +131,7 @@ select {
     border: none;
     margin-top: 5px;
     margin-bottom: 5px;
+    background-color: white;
 }
 .set>.set-buttons {
     display: flex;
@@ -151,7 +155,6 @@ select {
     justify-content: flex-end;
 }
 .btn-container input {
-    width: 15%;
     border: 1px solid lightgrey;
     border-radius: 5px;
     padding: 15px 32px;

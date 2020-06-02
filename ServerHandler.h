@@ -13,11 +13,13 @@ class ServerHandler {
 private:
     PreferenceHandler &preference;
     void handleClearSettings(AsyncWebServerRequest *request);
+    void handleFirmwareList(AsyncWebServerRequest *request);
     void handleSystemHealth(AsyncWebServerRequest *request);
     void getSettings(AsyncWebServerRequest *request);
     void install(AsyncWebServerRequest *request);
     void handleRestart(AsyncWebServerRequest *request);
     void handleUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final);
+    void handleUpdateToVersion(AsyncWebServerRequest *request);
 
     void handleMqttEdit(AsyncWebServerRequest *request,JsonVariant &json);
     void handleMqttRetry(AsyncWebServerRequest *request);
@@ -46,8 +48,11 @@ private:
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     AsyncWebServer server = {80};
+    AsyncEventSource events = {"/events"};
     int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
-    bool shouldRestart; // Set this flag in the callbacks to restart ESP in the main loop
+    bool shouldRestart = false; // Set this flag in the callbacks to restart ESP in the main loop
+    bool shouldReloadFirmwareList = false;
+    double shouldOTAFirmwareVersion;
     void begin();
 };
 #endif

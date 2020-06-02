@@ -22,7 +22,6 @@ const restart = async () => {
     try {
         const res = await fetch(window.location.href + 'restart');
         blocker.classList.add('hidden');
-        location.reload();
     } catch (err) {
         blocker.classList.add('hidden');
         console.error(`Error: ${err}`);
@@ -52,17 +51,9 @@ const fetchServicesHealth = async () => {
 }
 
 // Update software
-const fetchFirmwareVersionsList = async () => {
+const reloadFirmwareVersionsList = async () => {
     try {
-        const res = await fetch('https://github.com/RomeHein/ESPecial/tree/v0.2/versions/list.json',{
-            mode: 'no-cors'
-          });
-        versionsList = await res.json();
-        for (let info in versionsList) {
-            if (info.version > settings.general.firmwareVersion) {
-                await displayNotification(`'New firmware(${info.version}) available`,'success');
-            }
-        }
+        await fetch(window.location.href + 'firmware/list');
     } catch (err) {
         console.error(`Error: ${err}`);
     }
@@ -72,25 +63,48 @@ const fillUpdateInput = (element) => {
     document.getElementById('file-update-label').innerHTML = fileName[fileName.length-1];
     document.getElementById('submit-update-file').classList.remove('disable');
 };
-const submitUpdate = async (e) => {
-    e.preventDefault();
+const selectFirmwareVersion = (element) => {
+    const versiontSelector = document.getElementById('select-firmware-version');
+    if (versiontSelector.value) {
+        document.getElementById('submit-update-file').classList.remove('disable');
+    } else {
+        document.getElementById('submit-update-file').classList.add('disable');
+    }
+};
+const submitUpdate = async () => {
     const blocker = document.getElementById('blocker');
     blocker.classList.remove('hidden');
-    document.getElementById('blocker-title').innerText = 'Loading new software, please wait...';
-    const form = document.getElementById('upload-form');
-    const data = new FormData(form);
-    try {
-        const res = await fetch(window.location.href + 'update', {
-            method: 'POST',
-            body: data
-        });
-        document.getElementById('blocker-title').innerText = 'Restarting device, please wait...';
-        await delay(2000);
-        location.reload();
-    } catch (err) {
-        blocker.classList.add('hidden');
-        console.error(`Error: ${err}`);
+    const versiontSelector = document.getElementById('select-firmware-version');
+    if (versiontSelector.value) {
+        // Reqest repo download
+        try {
+            await fetch(window.location.href + `update/version?v=${versiontSelector.value}`);
+            document.getElementById('blocker-title').innerText = `Downloading firmware v${versiontSelector.value}, please wait...`;
+        } catch (err) {
+            blocker.classList.add('hidden');
+            console.error(`Error: ${err}`);
+        }
+    } else {
+        // Manual upload
+        document.getElementById('blocker-title').innerText = 'Loading new software, please wait...';
+        const firmwareFile = document.getElementById('firmware-file');
+        const data = new FormData();
+        data.append('firmware',firmwareFile.files[0]);
+        try {
+            const res = await fetch(window.location.href + 'update', {
+                processData: false,
+                contentType: false,
+                method: 'POST',
+                body: data
+            });
+            document.getElementById('blocker-title').innerText = 'Restarting device, please wait...';
+        } catch (err) {
+            blocker.classList.add('hidden');
+            console.error(`Error: ${err}`);
+            await displayNotification(err,'error');
+        }
     }
+    
 };
 // Telegram
 const submitTelegram = async (e) => {
@@ -1057,6 +1071,7 @@ window.onload = async () => {
     fetchSettings();
     fetchAvailableGpios();
     fetchServicesHealth();
+    reloadFirmwareVersionsList();
     await Promise.all([fetchGpios(), fetchAutomations(), fetchI2cSlaves()]);
     const containerG = document.getElementById('gpios');
     gpios.forEach(gpio => {
@@ -1071,5 +1086,44 @@ window.onload = async () => {
         gpioRow.appendChild(createI2cSlaveControlRow(slave));
     });
     document.getElementById('page-loader').remove();
-    await fetchFirmwareVersionsList();
 };
+
+if (!!window.EventSource) {
+    var source = new EventSource('/events');
+  
+    source.addEventListener('open', (e) => {
+      console.log("Events Connected");
+    }, false);
+  
+    source.addEventListener('error', (e) => {
+      if (e.target.readyState != EventSource.OPEN) {
+        console.log("Events Disconnected");
+      }
+    }, false);
+  
+    source.addEventListener('firmwareList', async (e) => {
+        versionsList = JSON.parse(e.data);
+        const versionSelector = document.getElementById('select-firmware-version');
+        for (let info of versionsList) {
+            let option = document.createElement('div');
+            option.innerHTML = `<option value='${info.version}'>v${info.version}</option>`;
+            versionSelector.appendChild(option.firstChild);
+            if (info.version > settings.general.firmwareVersion) {
+                await displayNotification(`'New firmware(${info.version}) available`,'success');
+            }
+        }
+    }, false);
+
+    source.addEventListener('firmwareDownloaded', (e) => {
+        document.getElementById('blocker-title').innerText = `Installing firmware v${versiontSelector.value}...`;
+    }, false);
+
+    source.addEventListener('firmwareUpdateError', async (e) => {
+        document.getElementById('blocker-title').classList.add('hidden');
+        await displayNotification(e.data,'error');
+    }, false);
+
+    source.addEventListener('shouldRefresh', (e) => {
+        location.reload();
+    }, false);
+  }

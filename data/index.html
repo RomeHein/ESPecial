@@ -40,11 +40,24 @@
         <div class='column'>
             <div id='update' class='setting-container'>
                 <p>Software update</p>
-                <form onsubmit='submitUpdate(event)' enctype='multipart/form-data' id='upload-form'>
-                    <label for='file' id='file-update-label'>Choose file</label>
-                    <input type='file' name='update' id='file' onchange='fillUpdateInput(this)' style=display:none>
-                    <input id='submit-update-file' type='submit' class='btn save disable' value='Update'>
-                </form>
+                <div class='set'>
+                    <div class='set-inputs'>
+                        <div class='row'>
+                            <div>From file:</div>
+                            <label for='firmware-file' id='file-update-label'>Choose file</label>
+                            <input type='file' name='update' id='firmware-file' onchange='fillUpdateInput(this)' style=display:none>
+                        </div>
+                        <div class='row'>
+                            <label for='select-firmware-version'>From repo:</label>
+                            <select onchange='selectFirmwareVersion(this)' id='select-firmware-version' name='versions'>
+                                <option value="">Select version</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class='btn-container'>
+                        <a id='submit-update-file' onclick='submitUpdate()' class='btn save disable'>Update</a>
+                    </div>
+                </div>
             </div>
             <div id='mqtt' class='setting-container'>
                 <p>MQTT</p>

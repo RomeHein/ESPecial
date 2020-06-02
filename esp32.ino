@@ -3,6 +3,7 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <Update.h>
 #include "time.h"
 
 #include "ServerHandler.h"
@@ -25,6 +26,9 @@ WiFiClient clientNotSecure;
 const char *APName = "ESP32";
 const char *APPassword = "p@ssword2000";
 
+// Notify client esp has just restarted
+bool hasJustRestarted = true;
+
 // Delay between each tft display refresh 
 int delayBetweenScreenUpdate = 3000;
 long screenRefreshLastTime;
@@ -42,6 +46,9 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
 
+// Repo info for updates
+const String repoPath = "https://raw.githubusercontent.com/RomeHein/ESPecial/v0.2/versions/";
+
 String systemInfos() {
   String infos;
   infos = String("\nFree memory:") + ESP.getFreeHeap();
@@ -50,16 +57,152 @@ String systemInfos() {
   return infos;
 }
 
+String getFirmwareList() {
+  HTTPClient http;
+  const String firmwarelistPath = repoPath + "list.json";
+  http.begin(client,firmwarelistPath.c_str()) ;
+  int httpResponseCode = http.GET();
+  if (httpResponseCode>0) {
+    Serial.print("[MAIN] Retrieve firmware list ");
+    return http.getString();
+  }
+  else {
+    Serial.printf("[MAIN] Could not get firmware list: %s\n", http.errorToString(httpResponseCode).c_str());
+  }
+  http.end();
+}
+
+// Utility to extract header value from headers
+String getHeaderValue(String header, String headerName) {
+  return header.substring(strlen(headerName.c_str()));
+}
+
+void execOTA(double version) {
+  char* error;
+  long contentLength = 0;
+  bool isValidContentType = false;  
+  const String bin = version+String("/especial.ino.bin");
+  const String binPath = repoPath+bin;
+  Serial.println("[OTA] Download start");
+  if (client.connect(binPath.c_str(), 80)) {
+    Serial.println("[OTA] Connection ok. Fetching bin");
+    // Get the contents of the bin file
+    client.print(String("GET ") + bin + " HTTP/1.1\r\n" +
+                 "Host: " + repoPath + "\r\n" +
+                 "Cache-Control: no-cache\r\n" +
+                 "Connection: close\r\n\r\n");
+
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+      if (millis() - timeout > 5000) {
+        error = "Client Timeout";
+        client.stop();
+        return;
+      }
+    }
+    // Once the response is available,
+    // check stuff
+    while (client.available()) {
+      String line = client.readStringUntil('\n');
+      // remove space, to check if the line is end of headers
+      line.trim();
+
+      // if the the line is empty, this is end of headers
+      // break the while and feed the remaining `client` to the Update.writeStream();
+      if (!line.length()) {
+        break; // get the OTA started
+      }
+
+      // Check if the HTTP Response is 200
+      // else break and Exit Update
+      if (line.startsWith("HTTP/1.1")) {
+        if (line.indexOf("200") < 0) {
+          error = "Non 200 status code from server.";
+          break;
+        }
+      }
+
+      // extract headers here
+      if (line.startsWith("Content-Length: ")) {
+        contentLength = atol((getHeaderValue(line, "Content-Length: ")).c_str());
+        Serial.println("Got " + String(contentLength) + " bytes from server");
+      }
+      if (line.startsWith("Content-Type: ")) {
+        String contentType = getHeaderValue(line, "Content-Type: ");
+        Serial.println("Got " + contentType + " payload.");
+        if (contentType == "application/octet-stream") {
+          isValidContentType = true;
+        }
+      }
+    }
+  } else {
+    error = "Connection to host failed. Please check your setup";
+  }
+
+  // Notify client we have successfully downloaded new firmware
+  if (!error) {
+    if (serverhandler->events.count()>0) {
+      serverhandler->events.send("Download success","firmwareDownloaded",millis());
+    }
+  }
+
+  if (contentLength && isValidContentType) {
+    // Check if there is enough to OTA Update
+    bool canBegin = Update.begin(contentLength);
+
+    if (canBegin) {
+      Serial.println("[OTA] Starting");
+      size_t written = Update.writeStream(client);
+
+      if (written == contentLength) {
+        Serial.println("Written : " + String(written) + " successfully");
+      } else {
+        Serial.println("Written only : " + String(written) + "/" + String(contentLength));
+      }
+
+      if (Update.end()) {
+        Serial.println("[OTA] Done");
+        if (Update.isFinished()) {
+          Serial.println("[OTA] Rebooting.");
+          ESP.restart();
+        } else {
+          error = "Update not finished. Something went wrong!";
+        }
+      } else {
+        sprintf(error, "%d", Update.getError());
+      }
+    } else {
+      error = "not enough space to begin OTA";
+      client.flush();
+    }
+  } else {
+    error = "no content in response";
+    client.flush();
+  }
+  // If error notify any client
+  if (error) {
+    const String errorFormat = "[OTA] Error: " + String(error);
+    Serial.println(errorFormat.c_str());
+    if (serverhandler->events.count()>0) {
+      serverhandler->events.send(errorFormat.c_str(),"firmwareUpdateError",millis());
+    }
+  }
+}
+
 bool checkAgainstLocalHour(int time, int signType) {
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
+    #ifdef __debug
+      Serial.println("[MAIN] Failed to obtain time");
+    #endif
     return false;
   }
   int hour = time/100;
   int minutes = time % 100;
-  Serial.printf("Checking hour %i:%i against local time:",hour,minutes);
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  #ifdef __debug
+    Serial.printf("[MAIN] Checking hour %i:%i against local time:",hour,minutes);
+    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  #endif
   if (signType == 1) {
     return timeinfo.tm_hour == hour && minutes == timeinfo.tm_min;
   } else if (signType == 2) {
@@ -382,7 +525,7 @@ void setup(void)
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     // Set input reading on a different thread
     xTaskCreatePinnedToCore(automation_loop, "automation", 12288, NULL, 0, NULL, 0);
-
+    // Get local time
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
       Serial.println(F("[SETUP] Failed to obtain time"));
@@ -395,9 +538,27 @@ void setup(void)
 }
 
 void loop(void) {
+  // Reload firmware list
+  if (serverhandler->shouldReloadFirmwareList) {
+    serverhandler->shouldReloadFirmwareList = false;
+    serverhandler->events.send(getFirmwareList().c_str(),"firmwareList",millis());
+  }
+  // Check restart flag from server
   if (serverhandler->shouldRestart) {
     serverhandler->shouldRestart = false;
     ESP.restart();
+  }
+  // Check if OTA has been requested from server
+  if (serverhandler->shouldOTAFirmwareVersion>0) {
+    // Reset shouldOTAFirmwareVersion to avoid multiple OTA from main loop
+    const double version = serverhandler->shouldOTAFirmwareVersion;
+    serverhandler->shouldOTAFirmwareVersion = 0;
+    execOTA(version);
+  }
+  // Notify clients esp has restarted
+  if (hasJustRestarted && serverhandler->events.count()>0) {
+    serverhandler->events.send("rebooted","shouldRefresh",millis());
+    hasJustRestarted = false;
   }
   if ( WiFi.status() ==  WL_CONNECTED ) {
     mqtthandler->handle();
