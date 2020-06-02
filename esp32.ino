@@ -86,29 +86,58 @@ void execOTA(const char* version) {
   const String bin = version+String("/especial.ino.bin");
   const String spiffs = version+String("/spiffs.bin");
   const String binPath = repoPath+bin;
-  t_httpUpdate_return ret = httpUpdate.updateSpiffs(client, spiffs);
-  if (ret == HTTP_UPDATE_OK) {
-    ret = httpUpdate.update(client, binPath);
-    switch (ret) {
-      case HTTP_UPDATE_FAILED:
-        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
-        if (serverhandler->events.count()>0) {
-          serverhandler->events.send(httpUpdate.getLastErrorString().c_str(),"firmwareUpdateError",millis());
-        }
-        break;
+  const String spiffsPath = repoPath+spiffs;
+  #ifdef __debug
+    Serial.printf("[OTA] start SPIFFS download from: %s\n", spiffsPath.c_str());
+  #endif
+  t_httpUpdate_return ret = httpUpdate.updateSpiffs(client, spiffsPath);
+  switch (ret) {
+    case HTTP_UPDATE_FAILED:
+      Serial.printf("[OTA] Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+      if (serverhandler->events.count()>0) {
+        serverhandler->events.send(httpUpdate.getLastErrorString().c_str(),"firmwareUpdateError",millis());
+      }
+      return;
 
-      case HTTP_UPDATE_NO_UPDATES:
-        Serial.println("HTTP_UPDATE_NO_UPDATES");
-        if (serverhandler->events.count()>0) {
-          serverhandler->events.send("No updates","firmwareUpdateError",millis());
-        }
-        break;
+    case HTTP_UPDATE_NO_UPDATES:
+      Serial.println("[OTA] no updates");
+      if (serverhandler->events.count()>0) {
+        serverhandler->events.send("No updates","firmwareUpdateError",millis());
+      }
+      return;
 
-      case HTTP_UPDATE_OK:
-        Serial.println("HTTP_UPDATE_OK");
-        ESP.restart();
-        break;
-    }
+    case HTTP_UPDATE_OK:
+      #ifdef __debug
+        Serial.println("[OTA] SPIFFS updated");
+      #endif
+      Serial.println("HTTP_UPDATE_OK");
+      break;
+  }
+  #ifdef __debug
+    Serial.printf("[OTA] start BIN download from: %s\n", binPath.c_str());
+  #endif
+  ret = httpUpdate.update(client, binPath);
+  switch (ret) {
+    case HTTP_UPDATE_FAILED:
+      Serial.printf("[OTA] Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+      if (serverhandler->events.count()>0) {
+        serverhandler->events.send(httpUpdate.getLastErrorString().c_str(),"firmwareUpdateError",millis());
+      }
+      break;
+
+    case HTTP_UPDATE_NO_UPDATES:
+      Serial.println("[OTA] no updates");
+      if (serverhandler->events.count()>0) {
+        serverhandler->events.send("No updates","firmwareUpdateError",millis());
+      }
+      break;
+
+    case HTTP_UPDATE_OK:
+      #ifdef __debug
+        Serial.println("[OTA] BIN updated");
+      #endif
+      ESP.restart();
+      break;
   }
 }
 
@@ -474,7 +503,9 @@ void loop(void) {
   // Check if OTA has been requested from server
   if (strcmp(serverhandler->shouldOTAFirmwareVersion,"")>0) {
     // Reset shouldOTAFirmwareVersion to avoid multiple OTA from main loop
-    Serial.printf("OTA version: %s\n", serverhandler->shouldOTAFirmwareVersion);
+    #ifdef __debug
+      Serial.printf("OTA version %s detected\n", serverhandler->shouldOTAFirmwareVersion);
+    #endif
     char version[10];
     strcpy(version,serverhandler->shouldOTAFirmwareVersion);
     strcpy(serverhandler->shouldOTAFirmwareVersion,"");
