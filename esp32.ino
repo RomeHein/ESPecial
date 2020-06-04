@@ -83,7 +83,7 @@ String getHeaderValue(String header, String headerName) {
 }
 
 void execOTA(const char* version) {
-  const String bin = version+String("/especial.ino.bin");
+  const String bin = version+String("/espinstall.ino.bin");
   const String spiffs = version+String("/spiffs.bin");
   const String binPath = repoPath+bin;
   const String spiffsPath = repoPath+spiffs;
