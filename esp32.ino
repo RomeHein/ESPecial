@@ -198,8 +198,13 @@ void readPins() {
           #ifdef __debug
             Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
           #endif
+          // Save to preferences if allowed
           preferencehandler->setGpioState(gpio.pin, newState, true);
+          // Notifiy mqtt clients
           mqtthandler->publish(gpio.pin);
+          // Notifiy web interface with format "pinNumber-state"
+          String eventMessage = String(gpio.pin) + "-" + String(newState);
+          serverhandler->events.send(eventMessage.c_str(),"pin",millis());
           gpioStateChanged = true;
         }
       }

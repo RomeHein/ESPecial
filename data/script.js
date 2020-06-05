@@ -1116,6 +1116,19 @@ if (!!window.EventSource) {
         }
     }, false);
 
+    source.addEventListener('pin', (e) => {
+        const pin = e.data.split('-')[0];
+        const state = e.data.split('-')[1];
+        const gpioRow = document.getElementById(`stateGpio-${pin}`);
+        if (gpioRow.type === 'number') {
+            gpioRow.value = state;
+        } else {
+            gpioRow.classList.remove(+state ? 'off' : 'on');
+            gpioRow.classList.add(+state ? 'on' : 'off');
+            gpioRow.textContent = +state ? 'on' : 'off';
+        }
+    }, false);
+
     source.addEventListener('firmwareDownloaded', (e) => {
         document.getElementById('blocker-title').innerText = `Installing firmware v${versiontSelector.value}...`;
     }, false);
