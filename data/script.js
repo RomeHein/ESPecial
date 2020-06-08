@@ -6,7 +6,7 @@ var availableGpios = [];
 var automations = [];
 var versionsList = [];
 var isSettingsMenuActivated = false;
-const delay = (ms => new Promise(resolve => setTimeout(resolve, ms)));
+const delay = ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
 const displayNotification = async (message, type) => {
     const blocker = document.getElementById("blocker");
     blocker.classList.add("hidden");
@@ -18,7 +18,7 @@ const displayNotification = async (message, type) => {
     await delay(2000);
     notifier.classList.add("hidden");
     notifier.classList.remove(type);
-}
+};
 // Restart ESP
 const restart = async () => {
     try {
@@ -28,7 +28,7 @@ const restart = async () => {
         blocker.classList.add("hidden");
         await displayNotification(err, "error");
     }
-}
+};
 const switchIndicatorState = (indicatorId, stateCode) => {
     if (+stateCode === 1) {
         document.getElementById(indicatorId).classList.add("ok");
@@ -40,7 +40,7 @@ const switchIndicatorState = (indicatorId, stateCode) => {
         document.getElementById(indicatorId).classList.remove("ok");
         document.getElementById(indicatorId).classList.add("error");
     }
-}
+};
 const fetchServicesHealth = async () => {
     try {
         const res = await fetch(window.location.href + "health");
@@ -112,7 +112,7 @@ const submitTelegram = async (e) => {
     e.preventDefault();
     const active = +document.getElementById("telegram-active").checked;
     const token = document.getElementById("telegram-token").value;
-    const users = document.getElementById("telegram-users").value.split(",").map(id => +id);
+    const users = document.getElementById("telegram-users").value.split(",").map((id) => +id);
     if (token !== settings.telegram.token || active !== +settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
         try {
             const res = await fetch(window.location.href + "telegram", {
