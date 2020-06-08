@@ -1,418 +1,418 @@
 body {
-    text-align: center;
-    font-family: helvetica;
-    background-color: lightskyblue;
-    margin: 0;
+  text-align: center;
+  font-family: helvetica;
+  background-color: lightskyblue;
+  margin: 0;
 }
 
 form {
-    display: flex;
+  display: flex;
 }
 
 .spacer {
-    display: block;
-    width: 100%;
-    height: 80px;
+  display: block;
+  width: 100%;
+  height: 80px;
 }
 
 .header {
-    display: flex;
-    position: fixed;
-    top: 0;
-    width: 100%;
-    background-color: white;
+  display: flex;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background-color: white;
 }
 
 .container {
-    background-color: whitesmoke;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    border: solid 1px lightgray;
-    border-radius: 5px;
-    width: 500px;
-    margin: auto;
-    margin-bottom: 10px;
+  background-color: whitesmoke;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: solid 1px lightgray;
+  border-radius: 5px;
+  width: 500px;
+  margin: auto;
+  margin-bottom: 10px;
 }
 
 .column {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .setting-container {
-    display: flex;
-    flex-direction: column;
-    border-bottom: 1px solid lightgray;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid lightgray;
 }
 
 .setting-container form {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    padding: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  padding: 10px;
 }
 
 .setting-container label {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    width: calc(35% - 10px);
-    margin: 5px 0 5px;
-    text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: calc(35% - 10px);
+  margin: 5px 0 5px;
+  text-align: left;
 }
 
 .setting-container input[type='text'], input[type='checkbox'] {
-    width: 65%;
-    margin: 5px 0 5px;
-    height: 30px;
-    border: none;
-    border-radius: 5px;
-    padding-left: 9px;
+  width: 65%;
+  margin: 5px 0 5px;
+  height: 30px;
+  border: none;
+  border-radius: 5px;
+  padding-left: 9px;
 }
 
 #file-update-label {
-    background-color: white;
-    border-radius: 5px;
-    padding: 5px;
-    height: 30px;
-    width: 65%;
+  background-color: white;
+  border-radius: 5px;
+  padding: 5px;
+  height: 30px;
+  width: 65%;
 }
 
 .row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .slave {
-    width: 100%;
-    background-color: lightgray;
+  width: 100%;
+  background-color: lightgray;
 }
 
 .hidden {
-    display: none !important;
+  display: none !important;
 }
 
 .header-container {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    border-bottom: solid 1px lightgray;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-bottom: solid 1px lightgray;
 }
 
 .header-container>h2 {
-    padding-left: 10px;
+  padding-left: 10px;
 }
 
 .row>.label {
-    margin-left: 10px;
+  margin-left: 10px;
 }
 
 .set {
-    display: flex;
-    width: 100%;
-    flex-direction: column;
-    background-color: lightgray;
-    padding: 10px;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  background-color: lightgray;
+  padding: 10px;
 }
 
 #update .set {
-    width: unset;
-    background-color: whitesmoke;
+  width: unset;
+  background-color: whitesmoke;
 }
 
 .set>.set-inputs {
-    display: flex;
-    flex-direction: column;
+  display: flex;
+  flex-direction: column;
 }
 
 .set>.set-inputs input {
-    width: 50%;
-    height: 30px;
-    border: none;
-    border-radius: 5px;
-    padding-left: 10px;
-    margin-top: 5px;
-    margin-bottom: 5px;
+  width: 50%;
+  height: 30px;
+  border: none;
+  border-radius: 5px;
+  padding-left: 10px;
+  margin-top: 5px;
+  margin-bottom: 5px;
 }
 
 .set>.set-inputs>.column {
-    background: darkgrey;
-    border-radius: 5px;
-    padding: 10px;
-    color: white;
-    margin-top: 5px;
+  background: darkgrey;
+  border-radius: 5px;
+  padding: 10px;
+  color: white;
+  margin-top: 5px;
 }
 
 select {
-    width: calc(50% + 10px);
-    height: 30px;
-    border: none;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    background-color: white;
+  width: calc(50% + 10px);
+  height: 30px;
+  border: none;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  background-color: white;
 }
 
 .set>.set-buttons {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
 }
 
 .scan-results {
-    width: 100%;
-    padding: 10px;
-    background: lightgray;
+  width: 100%;
+  padding: 10px;
+  background: lightgray;
 }
 
 .slave-settings {
-    width: 100%;
-    padding: 10px;
-    margin: 10px;
-    background-color: darkgray;
-    border-radius: 5px;
+  width: 100%;
+  padding: 10px;
+  margin: 10px;
+  background-color: darkgray;
+  border-radius: 5px;
 }
 
 .btn-container {
-    display: flex;
-    justify-content: flex-end;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .btn-container input {
-    border: 1px solid lightgrey;
-    border-radius: 5px;
-    padding: 15px 32px;
-    margin: 10px 5px;
+  border: 1px solid lightgrey;
+  border-radius: 5px;
+  padding: 15px 32px;
+  margin: 10px 5px;
 }
 
 .btn {
-    border-radius: 5px;
-    padding: 15px 32px;
-    text-align: center;
-    transition-duration: 0.4s;
-    margin: 10px 5px;
-    cursor: pointer;
-    text-decoration: none;
+  border-radius: 5px;
+  padding: 15px 32px;
+  text-align: center;
+  transition-duration: 0.4s;
+  margin: 10px 5px;
+  cursor: pointer;
+  text-decoration: none;
 }
 
 .btn.small {
-    padding: 5px 5px;
-    margin: 5px 5px;
+  padding: 5px 5px;
+  margin: 5px 5px;
 }
 
 .btn.round {
-    border-radius: 50%;
+  border-radius: 50%;
 }
 
 .disable {
-    border-color: lightgray !important;
-    background-color: lightgray !important;
-    pointer-events: none;
+  border-color: lightgray !important;
+  background-color: lightgray !important;
+  pointer-events: none;
 }
 
 .edit {
-    background-color: dodgerblue;
-    border: solid 1px dodgerblue;
-    color: white;
+  background-color: dodgerblue;
+  border: solid 1px dodgerblue;
+  color: white;
 }
 
 .edit:hover {
-    color: dodgerblue;
+  color: dodgerblue;
 }
 
 .on, .save {
-    background-color: yellowgreen;
-    border: solid 1px yellowgreen;
-    color: white;
+  background-color: yellowgreen;
+  border: solid 1px yellowgreen;
+  color: white;
 }
 
 .on:hover, .save:hover {
-    color: yellowgreen;
+  color: yellowgreen;
 }
 
 .off, .delete {
-    background-color: tomato;
-    border: solid 1px tomato;
-    color: white;
+  background-color: tomato;
+  border: solid 1px tomato;
+  color: white;
 }
 
 .off:hover, .delete:hover {
-    color: tomato;
+  color: tomato;
 }
 
 .cancel {
-    background-color: lightgray;
-    border: solid 1px lightgray;
-    color: white;
+  background-color: lightgray;
+  border: solid 1px lightgray;
+  color: white;
 }
 
 .cancel:hover {
-    color: lightgray;
+  color: lightgray;
 }
 
 .btn:hover {
-    background-color: white;
+  background-color: white;
 }
 
 .input-mode {
-    pointer-events: none;
-    background-color: white;
+  pointer-events: none;
+  background-color: white;
 }
 
 .input-mode.on {
-    color: yellowgreen;
+  color: yellowgreen;
 }
 
 .input-mode.off {
-    color: tomato;
+  color: tomato;
 }
 
 #condition-editor select, #condition-editor input, #condition-editor-result>.row select, #condition-editor-result>.row input, #action-editor select, #action-editor input, #action-editor-result>.row select, #action-editor-result>.row input {
-    width: 15%;
+  width: 15%;
 }
 
 #blocker {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    top: 0;
-    left: 0;
-    z-index: 1;
-    position: fixed;
-    height: 100%;
-    width: 100%;
-    background: lightgray;
-    opacity: 0.95;
-    color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  position: fixed;
+  height: 100%;
+  width: 100%;
+  background: lightgray;
+  opacity: 0.95;
+  color: white;
 }
 
 #notifier {
-    position: fixed;
-    top: 90px;
-    right: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding-left: 20px;
-    padding-right: 10px;
-    border-radius: 10px;
-    background-color: lightgray;
-    box-shadow: 1px 1px 3px darkgray;
-    transition-duration: 0.4s;
-    opacity: 100%;
-    color: white;
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 20px;
+  padding-right: 10px;
+  border-radius: 10px;
+  background-color: lightgray;
+  box-shadow: 1px 1px 3px darkgray;
+  transition-duration: 0.4s;
+  opacity: 100%;
+  color: white;
 }
 
 #notifier.hidden {
-    opacity: 0;
-    right: -100%;
+  opacity: 0;
+  right: -100%;
 }
 
 #notifier.success {
-    background-color: yellowgreen;
+  background-color: yellowgreen;
 }
 
 #notifier.error {
-    background-color: tomato;
+  background-color: tomato;
 }
 
 #notifier>.btn {
-    width: 20px;
-    height: 20px;
+  width: 20px;
+  height: 20px;
 }
 
 #mqtt-retry-loader {
-    height: 100%;
-    width: 100%;
+  height: 100%;
+  width: 100%;
 }
 
 #mqtt-retry-loader div {
-    border-width: 2px;
+  border-width: 2px;
 }
 
 .spinner {
-    height: 30px;
-    border-radius: 5px;
-    background-color: lightgray;
+  height: 30px;
+  border-radius: 5px;
+  background-color: lightgray;
 }
 
 .lds-ring {
-    width: 50px;
-    height: 50px;
-    display: inline-block;
-    position: relative;
-    margin: 20px;
+  width: 50px;
+  height: 50px;
+  display: inline-block;
+  position: relative;
+  margin: 20px;
 }
 
 .lds-ring div {
-    box-sizing: border-box;
-    display: block;
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border: 8px solid #fff;
-    border-radius: 50%;
-    animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-    border-color: #fff transparent transparent transparent;
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 8px solid #fff;
+  border-radius: 50%;
+  animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  border-color: #fff transparent transparent transparent;
 }
 
 .lds-ring div:nth-child(1) {
-    animation-delay: -0.45s;
+  animation-delay: -0.45s;
 }
 
 .lds-ring div:nth-child(2) {
-    animation-delay: -0.3s;
+  animation-delay: -0.3s;
 }
 
 .lds-ring div:nth-child(3) {
-    animation-delay: -0.15s;
+  animation-delay: -0.15s;
 }
 
 @keyframes lds-ring {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @media only screen and (max-width: 600px) {
-    body {
-        margin: 0;
-    }
-    .container {
-        width: 100%;
-        border: none;
-        border-radius: 0px;
-    }
-    #gpios>.row {
-        border-bottom: 1px solid lightgray
-    }
+  body {
+    margin: 0;
+  }
+  .container {
+    width: 100%;
+    border: none;
+    border-radius: 0px;
+  }
+  #gpios>.row {
+    border-bottom: 1px solid lightgray
+  }
 }
 
 .state-indicator-container {
-    display: flex;
-    align-items: center;
-    margin: 10px;
+  display: flex;
+  align-items: center;
+  margin: 10px;
 }
 
 .state-indicator {
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    background: gray;
-    margin-left: 5px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: gray;
+  margin-left: 5px;
 }
 
 .ok {
-    background-color: green;
+  background-color: green;
 }
 
 .error {
-    background-color: red;
+  background-color: red;
 }

@@ -96,11 +96,11 @@ void PreferenceHandler::save(char* preference) {
 int PreferenceHandler::firstEmptySlot(char* preference) {
     int i = 0;
     if (strcmp(preference,PREFERENCES_AUTOMATION) == 0) {
-        while(automations[i].id && i<MAX_AUTOMATIONS_NUMBER) {
+        while(i<MAX_AUTOMATIONS_NUMBER && automations[i].id) {
             i++;
         }
     } else if (strcmp(preference,PREFERENCES_I2C_SLAVE)==0) {
-        while(i2cSlaves[i].id && i<MAX_I2C_SLAVES) {
+        while(i<MAX_I2C_SLAVES && i2cSlaves[i].id) {
             i++;
         }
     }

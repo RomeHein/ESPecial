@@ -7,6 +7,17 @@ var automations = [];
 var versionsList = [];
 var isSettingsMenuActivated = false;
 const delay = ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
+const request = async (uri, post) => {
+    const resp = await fetch(`${window.location.href}${uri}`, {
+        method: post ? "POST" : "PUT",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(req)
+    });
+    return resp.json();
+}
 const displayNotification = async (message, type) => {
     const blocker = document.getElementById("blocker");
     blocker.classList.add("hidden");
@@ -279,15 +290,7 @@ const saveI2cSlaveSettings = async (element) => {
         if (!req.settings.label) {
             throw new Error("Parameters missing, please fill at least label and type inputs.");
         }
-        const resp = await fetch(`${window.location.href}slave`, {
-            method: isNew ? "POST" : "PUT",
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(req)
-        });
-        const newSetting = await resp.json();
+        const newSetting = await request("slave",isNew);
         let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
         if (isNew) {
             slaves.push(newSetting);
@@ -426,15 +429,7 @@ const saveGpioSetting = async (element) => {
         if (!req.settings.mode || !req.settings.label) {
             throw new Error("Parameters missing, please fill all the inputs");
         }
-        const resp = await fetch(`${window.location.href}gpio`, {
-            method: isNew ? "POST" : "PUT",
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(req)
-        });
-        const newSetting = await resp.json();
+        const newSetting = await request("gpio",isNew);
         let column = document.getElementById("gpios");
         if (isNew) {
             gpios.push(newSetting);
@@ -491,15 +486,7 @@ const saveAutomationSetting = async (element) => {
         if (!req.settings.label) {
             throw new Error("Parameters missing, please fill at least label and type inputs.");
         }
-        const resp = await fetch(`${window.location.href}automation`, {
-            method: isNew ? "POST" : "PUT",
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(req)
-        });
-        const newSetting = await resp.json();
+        const newSetting = await request("automation",isNew);
         let column = document.getElementById("automations");
         if (isNew) {
             automations.push(newSetting);
@@ -1019,34 +1006,27 @@ const updateActionType = (element) => {
     if (element.value == 1) {
         document.getElementById(`addGpioAction-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addSignAction-${rowNumber}`).classList.remove("hidden");
+    } else {
+        document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
+        document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
+    }
+    if (element.value == 5 || element.value == 6) {
+        document.getElementById(`addValueAction-${rowNumber}`).classList.add("hidden");
+    } else {
         document.getElementById(`addValueAction-${rowNumber}`).classList.remove("hidden");
-        document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addHTTPBody-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addAutomation-${rowNumber}`).classList.add("hidden");
-    } else if (element.value == 5) {
+    }
+    if (element.value == 5) {
         document.getElementById(`addHTTPMethod-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addHTTPAddress-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addHTTPBody-${rowNumber}`).classList.remove("hidden");
-        document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addValueAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addAutomation-${rowNumber}`).classList.add("hidden");
-    } else if (element.value == 6) {
-        document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addHTTPBody-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addValueAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addAutomation-${rowNumber}`).classList.remove("hidden");
     } else {
         document.getElementById(`addHTTPMethod-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addHTTPBody-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
-        document.getElementById(`addValueAction-${rowNumber}`).classList.remove("hidden");
+    }
+    if ( element.value == 6) {
+        document.getElementById(`addAutomation-${rowNumber}`).classList.remove("hidden");
+    } else {
         document.getElementById(`addAutomation-${rowNumber}`).classList.add("hidden");
     }
 };
