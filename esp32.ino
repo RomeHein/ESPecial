@@ -335,13 +335,13 @@ void runAutomation(AutomationFlash& automation) {
     // Run automation
     for (int repeat=0; repeat<automation.loopCount; repeat++) {
       for (int i=0;i<MAX_AUTOMATIONS_NUMBER;i++) {
-        if (automation.actions[i][0] && strlen(automation.actions[i][0])!=0) {
+        if (automation.actions[i][0] && strnlen(automation.actions[i][0],MAX_MESSAGE_TEXT_SIZE)!=0) {
           #ifdef __debug
             Serial.printf("[ACTION] Running action type: %s\n",automation.actions[i][0]);
           #endif
           const int type = atoi(automation.actions[i][0]);
           // We deal with a gpio action
-          if (type == 1 && automation.actions[i][2] && strlen(automation.actions[i][2])!=0) {
+          if (type == 1 && automation.actions[i][2] && strnlen(automation.actions[i][2],MAX_MESSAGE_TEXT_SIZE)!=0) {
             int pin = atoi(automation.actions[i][2]);
             int16_t value = atoi(automation.actions[i][1]);
             int8_t assignmentType = atoi(automation.actions[i][3]);

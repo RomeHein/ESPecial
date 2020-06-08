@@ -21,10 +21,10 @@ void MqttHandler::begin()
         mqtt_client->setServer(preference.mqtt.host, preference.mqtt.port);
         mqtt_client->setCallback([this](char* topic, byte* payload, unsigned int length) { callback(topic, payload, length);});
 
-        snprintf(topic.config, 256, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.gpio, 256, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.automation, 256, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.debug, 256, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.config, TOPIC_MAX_SIZE, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.gpio, TOPIC_MAX_SIZE, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.automation, TOPIC_MAX_SIZE, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.debug, TOPIC_MAX_SIZE, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
         isInit = true;
     }
 }
@@ -87,10 +87,10 @@ void MqttHandler::connect() {
             #ifdef __debug  
                 Serial.println("MQTT: server subscribed");
             #endif
-            char gpiosTopic[strlen(topic.gpio)+3];
+            char gpiosTopic[strnlen(topic.gpio,TOPIC_MAX_SIZE)+3];
             sprintf(gpiosTopic, "%s/+\0",topic.gpio);
             mqtt_client->subscribe(gpiosTopic);
-            char automationsTopic[strlen(topic.automation)+3];
+            char automationsTopic[strnlen(topic.automation,TOPIC_MAX_SIZE)+3];
             sprintf(automationsTopic, "%s/+\0",topic.automation);
             mqtt_client->subscribe(automationsTopic);
             mqtt_client->subscribe(topic.config);
@@ -123,9 +123,9 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
     // Check if topic is contained in the topic payload
     if (strstr(topic,this->topic.gpio)) {
         // Logic to get what pin was published
-        int len = (strlen(topic) - strlen(this->topic.gpio))+1;
+        int len = (strnlen(topic,TOPIC_MAX_SIZE) - strnlen(this->topic.gpio,TOPIC_MAX_SIZE))+1;
         char pin_c[len];
-        strncpy(pin_c, topic + strlen(this->topic.gpio)+1, len-1);
+        strncpy(pin_c, topic + strnlen(this->topic.gpio,TOPIC_MAX_SIZE)+1, len-1);
         pin_c[len] = '\0';
         int pin = atoi(pin_c);
         int state = atoi(message);
@@ -141,9 +141,9 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
             #endif
         }
     } else if (strstr(topic,this->topic.automation)) {
-        int len = (strlen(topic) - strlen(this->topic.automation))+1;
+        int len = (strnlen(topic,TOPIC_MAX_SIZE) - strnlen(this->topic.automation,TOPIC_MAX_SIZE))+1;
         char id_c[len];
-        strncpy(id_c, topic + strlen(this->topic.automation)+1, len-1);
+        strncpy(id_c, topic + strnlen(this->topic.automation,TOPIC_MAX_SIZE)+1, len-1);
         id_c[len] = '\0';
         int id = atoi(id_c);
         int state = atoi(message);
@@ -164,8 +164,8 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
 
 void MqttHandler::publish(int pin){
     if (isInit && mqtt_client->state() == MQTT_CONNECTED) {
-        char pinTopic[strlen(topic.gpio)+3];
-        snprintf(pinTopic,strlen(pinTopic), "%s/%i\0",topic.gpio,pin);
+        char pinTopic[strnlen(topic.gpio,TOPIC_MAX_SIZE)+3];
+        snprintf(pinTopic,strnlen(pinTopic,TOPIC_MAX_SIZE), "%s/%i\0",topic.gpio,pin);
         char state[2];
         snprintf(state,sizeof(state), "%i\0",digitalRead(pin));
         #ifdef __debug  

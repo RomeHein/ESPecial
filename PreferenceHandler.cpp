@@ -664,7 +664,7 @@ String PreferenceHandler::automationToJson(AutomationFlash& a) {
     }
     JsonArray actions = doc.createNestedArray("actions");
     for (int i = 0; i<MAX_AUTOMATION_ACTION_NUMBER; i++) {
-        if (a.actions[i][0] && strlen(a.actions[i][0])!=0) { // Check if the action has a type, in that case, it's define, so add it
+        if (a.actions[i][0] && strnlen(a.actions[i][0],MAX_MESSAGE_TEXT_SIZE)!=0) { // Check if the action has a type, in that case, it's define, so add it
             JsonArray action = actions.createNestedArray();
             for (int j=0; j<4; j++) {
                 action.add(a.actions[i][j]);

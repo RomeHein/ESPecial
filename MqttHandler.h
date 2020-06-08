@@ -8,13 +8,14 @@
 #include <PubSubClient.h>  
 
 #define RETRY_ATTEMPT 5
+#define TOPIC_MAX_SIZE 256
 
 typedef struct
 {
-    char debug[256];
-    char gpio[256];
-    char automation[256];
-    char config[256];
+    char debug[TOPIC_MAX_SIZE];
+    char gpio[TOPIC_MAX_SIZE];
+    char automation[TOPIC_MAX_SIZE];
+    char config[TOPIC_MAX_SIZE];
  }  MqttTopic;
 
 class MqttHandler
