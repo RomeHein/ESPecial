@@ -388,10 +388,10 @@ select {
   .container {
     width: 100%;
     border: none;
-    border-radius: 0px;
+    border-radius: 0;
   }
   #gpios>.row {
-    border-bottom: 1px solid lightgray
+    border-bottom: 1px solid lightgray;
   }
 }
 

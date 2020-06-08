@@ -17,7 +17,7 @@ const request = async (uri, body, post) => {
         body: JSON.stringify(body)
     });
     return resp.json();
-}
+};
 const displayNotification = async (message, type) => {
     const blocker = document.getElementById("blocker");
     blocker.classList.add("hidden");
@@ -61,7 +61,7 @@ const fetchServicesHealth = async () => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 
 // Update software
 const reloadFirmwareVersionsList = async () => {
@@ -70,7 +70,7 @@ const reloadFirmwareVersionsList = async () => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 const fillUpdateInput = (element) => {
     const fileName = element.value.split("\\");
     document.getElementById("file-update-label").innerHTML = fileName[fileName.length - 1];
@@ -211,7 +211,7 @@ const fetchAvailableGpios = async () => {
 const switchGpioState = async (element) => {
     try {
         const gpio = gpios.find(gpio => gpio.pin === +element.id.split("-")[1])
-        element.classList.add('disable');
+        element.classList.add("disable");
         if (gpio.mode > 0) {
             const isOn = element.classList.value.includes("on");
             await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
@@ -238,7 +238,7 @@ const deleteGpio = async (element) => {
     const gpioPin = element.id.split("-")[1];
     try {
         await fetch(`${window.location.href}gpio?pin=${gpioPin}`, { method: "DELETE" });
-        gpios = gpios.filter(gpio => +gpio.pin !== +gpioPin)
+        gpios = gpios.filter(gpio => +gpio.pin !== +gpioPin);
         closeAnySettings();
         document.getElementById("rowGpio-" + gpioPin).remove();
         await displayNotification("Gpio removed", "success");
@@ -257,7 +257,7 @@ const fetchI2cSlaves = async () => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 
 const sendI2cSlaveCommand = async (element, write) => {
     const id = element.id.split("-")[1];
@@ -272,7 +272,7 @@ const sendI2cSlaveCommand = async (element, write) => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 
 const saveI2cSlaveSettings = async (element) => {
     const id = element.id.split("-")[1];
@@ -299,7 +299,7 @@ const saveI2cSlaveSettings = async (element) => {
             row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
             closeI2cSlaveSettings(id);
         } else {
-            slaves = slaves.map(oldSlave => (+oldSlave.id === +id) ? { ...newSetting } : oldSlave);
+            slaves = slaves.map((oldSlave) => (+oldSlave.id === +id) ? { ...newSetting } : oldSlave);
             let oldRow = document.getElementById("rowSlave-" + id);
             row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
         }
@@ -313,7 +313,6 @@ const deleteI2cSlave = async (element) => {
     const id = element.id.split("-")[1];
     try {
         await fetch(`${window.location.href}slave?id=${id}`, { method: "DELETE" });
-        await fetchAutomations();
         let row = document.getElementById("rowSlave-" + id);
         closeI2cSlaveSettings(id);
         row.remove();
@@ -321,7 +320,7 @@ const deleteI2cSlave = async (element) => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 
 // Automations
 const fetchAutomations = async () => {
@@ -337,15 +336,15 @@ const fetchAutomations = async () => {
 };
 const runAutomation = async (element) => {
     const id = element.id.split("-")[1];
-    element.classList.add('loading');
-    element.classList.add('disable');
+    element.classList.add("loading");
+    element.classList.add("disable");
     try {
         await fetch(window.location.href + "automation/run?id=" + id);
         await displayNotification("Automation run", "success");
     } catch (err) {
         await displayNotification(err, "error");
     }
-    element.classList.remove('loading');
+    element.classList.remove("loading");
 };
 const addAutomation = () => {
     closeAnySettings();
@@ -363,7 +362,7 @@ const deleteAutomation = async (element) => {
         await fetchAutomations();
         let row = document.getElementById("rowAutomation-" + automationId);
         closeAnySettings();
-        row.remove()
+        row.remove();
         await displayNotification("Automation removed", "success");
     } catch (err) {
         await displayNotification(err, "error");
@@ -381,7 +380,7 @@ const scan = async (element) => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 // Settings
 const fetchSettings = async () => {
     try {
@@ -440,7 +439,7 @@ const saveGpioSetting = async (element) => {
             column.insertBefore(createGpioControlRow(newSetting), column.firstChild);
             closeAnySettings();
         } else {
-            gpios = gpios.map(oldGpio => (+oldGpio.pin === +gpioPin) ? { ...newSetting } : oldGpio);
+            gpios = gpios.map((oldGpio) => (+oldGpio.pin === +gpioPin) ? { ...newSetting } : oldGpio);
             let oldRow = document.getElementById("rowGpio-" + gpioPin);
             column.replaceChild(createGpioControlRow(newSetting), oldRow);
         }
@@ -457,7 +456,7 @@ const saveAutomationSetting = async (element) => {
         req.id = automationId;
     }
     req.settings.label = document.getElementById(`setAutomationLabel-${automationId}`).value;
-    req.settings.conditions = [...document.getElementById(`condition-editor-result`).childNodes].map(rowElement => {
+    req.settings.conditions = [...document.getElementById("condition-editor-result").childNodes].map((rowElement) => {
         const id = +rowElement.id.split("-")[1];
         return [
             +document.getElementById(`addGpioCondition-${id}`).value,
@@ -465,7 +464,7 @@ const saveAutomationSetting = async (element) => {
             +document.getElementById(`addValueCondition-${id}`).value.split(":").join(""),
             +document.getElementById(`addNextSignCondition-${id}`).value,
         ];
-    })
+    });
     req.settings.actions = [...document.getElementById("action-editor-result").childNodes].map(rowElement => {
         const id = +rowElement.id.split("-")[1];
         const type = document.getElementById(`addTypeAction-${id}`).value;
@@ -497,7 +496,7 @@ const saveAutomationSetting = async (element) => {
             column.insertBefore(createAutomationRow(newSetting), column.firstChild);
             closeAnySettings();
         } else {
-            automations = automations.map(oldAutomation => (+oldAutomation.id === +automationId) ? { ...newSetting } : oldAutomation);
+            automations = automations.map((oldAutomation) => (+oldAutomation.id === +automationId) ? { ...newSetting } : oldAutomation);
             let oldRow = document.getElementById("rowAutomation-" + automationId);
             column.replaceChild(createAutomationRow(newSetting), oldRow);
         }
@@ -508,7 +507,7 @@ const saveAutomationSetting = async (element) => {
 };
 const openGpioSetting = (element) => {
     closeAnySettings();
-    const gpio = gpios.find(gpio => gpio.pin === +element.id.split("-")[1]);
+    const gpio = gpios.find((gpio) => gpio.pin === +element.id.split("-")[1]);
     const row = document.getElementById("rowGpio-" + gpio.pin);
     if (!row.classList.value.includes("open")) {
         row.appendChild(createEditGpioPanel(gpio));
@@ -524,14 +523,14 @@ const openAutomationSetting = (element) => {
     if (!row.classList.value.includes("open")) {
         row.appendChild(createEditAutomationPanel(automation));
         // Fill conditions
-        automation.conditions.forEach(condition => {
+        automation.conditions.forEach((condition) => {
             // Check if the condition contains a valid math operator sign
             if (condition[1]) {
                 addConditionEditor(condition);
             }
         })
         // Fill actions
-        automation.actions.forEach(action => {
+        automation.actions.forEach((action) => {
             // Check if the action contains a valid type
             if (action[0]) {
                 addActionEditor(action);
@@ -567,10 +566,10 @@ const switchPage = () => {
 const createGpioControlRow = (gpio) => {
     let child = document.createElement("div");
     const digitalState = (gpio.state && !gpio.invert) || (!gpio.state && gpio.invert);
-    let additionnalButton = `<a onclick="switchGpioState(this)" id="stateGpio-${gpio.pin}" class="btn ${digitalState ? "on" : "off"} ${gpio.mode != 2 ? "input-mode" : ""}">${digitalState ? "on" : "off"}</a>`;
-    if (gpio.mode == -1) {
+    let additionnalButton = `<a onclick="switchGpioState(this)" id="stateGpio-${gpio.pin}" class="btn ${digitalState ? "on" : "off"} ${+gpio.mode !== 2 ? "input-mode" : ""}">${digitalState ? "on" : "off"}</a>`;
+    if (+gpio.mode === -1) {
         additionnalButton = `<input type="number" onchange="switchGpioState(this)" id="stateGpio-${gpio.pin}" value="${gpio.state}">`;
-    } else if (gpio.mode == -2) {
+    } else if (+gpio.mode === -2) {
         additionnalButton = `<a onclick="scan(this)" id="i2cScan-${gpio.pin}" class="btn on">scan</a>`;
     }
     child.innerHTML = `<div class="row" id="rowGpio-${gpio.pin}">
@@ -584,9 +583,9 @@ const createGpioControlRow = (gpio) => {
 
 const createI2cSlaveControlRow = (slave) => {
     let child = document.createElement("div");
-    let actionButton = `<a onclick="sendI2cSlaveCommand(this,true)" id="setI2cSlaveData-${slave.id}" class="btn on">set</a>`
+    let actionButton = `<a onclick="sendI2cSlaveCommand(this,true)" id="setI2cSlaveData-${slave.id}" class="btn on">set</a>`;
     if (slave.octetRequest) {
-        actionButton = `<a onclick="sendI2cSlaveCommand(this)" id="getI2cSlaveData-${slave.id}" class="btn on">get</a>`
+        actionButton = `<a onclick="sendI2cSlaveCommand(this)" id="getI2cSlaveData-${slave.id}" class="btn on">get</a>`;
     }
     child.innerHTML = `<div class="row slave" id="rowSlave-${slave.id}">
         <div class="label"> ${slave.label}</div>
@@ -596,7 +595,7 @@ const createI2cSlaveControlRow = (slave) => {
         </div>
     </div>`;
     return child.firstChild;
-}
+};
 
 const openI2cSlaveSettings = (element) => {
     const infos = element.id.split("-");
@@ -605,7 +604,7 @@ const openI2cSlaveSettings = (element) => {
     let label = "";
     let commands = "";
     let octetToRequest = 0;
-    let save = 0
+    let save = 0;
     // Find the right slave attached to gpioPin
     let slave = slaves.find(s => s.id == id);
     if (slave) {
@@ -642,16 +641,16 @@ const openI2cSlaveSettings = (element) => {
         </div>
     </div>`;
     row.appendChild(child.firstChild);
-}
+};
 
 const closeScan = (element) => {
     const gpioPin = element.id.split("-")[1];
     document.getElementById(`scanResults-${gpioPin}`).remove();
-}
+};
 
 const closeI2cSlaveSettings = (id) => {
     document.getElementById(`i2cSlaveSettings-${id}`).remove();
-}
+};
 
 const createScanResult = (gpioPin, scanResults) => {
     let child = document.createElement("div");
@@ -672,7 +671,7 @@ const createScanResult = (gpioPin, scanResults) => {
     }
     child.innerHTML = `<div class="column scan-results" id="scanResults-${gpioPin}">${headRow}${rows}</div>`;
     return child.firstChild;
-}
+};
 const createAutomationRow = (automation) => {
     let child = document.createElement("div");
     child.innerHTML = `<div class="row" id="rowAutomation-${automation.id}">
@@ -983,8 +982,7 @@ const updateGpioOptions = (element) => {
         document.getElementById("i2c-options").classList.add("hidden");
 
     }
-}
-
+};
 const updateI2cSlaveOptions = (element) => {
     const selectType = element.value;
     if (selectType == 1) {
@@ -992,7 +990,7 @@ const updateI2cSlaveOptions = (element) => {
     } else {
         document.getElementById("lcd-slave-options").classList.add("hidden");
     }
-}
+};
 const updateAutomationTypes = (id) => {
     const selectType = document.getElementById(`setAutomationType-${id || "new"}`);
     if (+selectType.value !== 3) {
@@ -1124,7 +1122,7 @@ if (!!window.EventSource) {
             button.classList.add("disable")
             button.innerText = "running...";
         } else {
-            button.classList.remove('disable');
+            button.classList.remove("disable");
             button.innerText = "run";
         }
         
