@@ -42,7 +42,7 @@ String TelegramHandler::generateButtonFormat(GpioFlash& gpio) {
   const size_t capacity = JSON_OBJECT_SIZE(2) + 200;
   DynamicJsonDocument doc(capacity);
   char text[50];
-  snprintf(text, sizeof(text), "%s %s", gpio.state ? "🔆" : "🌙", gpio.label);
+  snprintf(text, sizeof(text), "%s %s", gpio.state ? "🌙": "🔆", gpio.label);
   doc["text"] = text;
   char callback[50];
   snprintf(callback, sizeof(callback), "g-%i", gpio.pin);
