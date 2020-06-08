@@ -47,7 +47,7 @@ const long  gmtOffset_sec = 3600;
 const int   daylightOffset_sec = 3600;
 
 // Repo info for updates
-const String repoPath = "https://raw.githubusercontent.com/RomeHein/ESPecial/v0.2/versions/";
+const String repoPath = "https://raw.githubusercontent.com/RomeHein/ESPecial/master/versions/";
 
 String systemInfos() {
   String infos;

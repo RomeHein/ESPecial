@@ -56,7 +56,7 @@ form {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  width: calc(35% - 10px);
+  width: calc(34% - 10px);
   margin: 5px 0 5px;
   text-align: left;
 }
