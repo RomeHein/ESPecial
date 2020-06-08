@@ -41,8 +41,7 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 - [ ] Use async MQTT client: https://github.com/marvinroger/async-mqtt-client.
 
 ## Work in progress:
-- I2C integration
-- Analog output
+Have a look to [this page](https://github.com/RomeHein/ESPecial/projects/1) to track current work.
 
 ## Getting Started
 
