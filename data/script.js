@@ -26,14 +26,14 @@ const restart = async () => {
         blocker.classList.add('hidden');
     } catch (err) {
         blocker.classList.add('hidden');
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 }
 const switchIndicatorState = (indicatorId, stateCode) => {
-    if (stateCode == 1) {
+    if (+stateCode === 1) {
         document.getElementById(indicatorId).classList.add('ok');
         document.getElementById(indicatorId).classList.remove('error');
-    } else if (stateCode == 0) {
+    } else if (+stateCode === 0) {
         document.getElementById(indicatorId).classList.remove('ok');
         document.getElementById(indicatorId).classList.remove('error');
     } else {
@@ -48,7 +48,7 @@ const fetchServicesHealth = async () => {
         switchIndicatorState('telegram-indicator', health.telegram);
         switchIndicatorState('mqtt-indicator', health.mqtt);
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 }
 
@@ -57,7 +57,7 @@ const reloadFirmwareVersionsList = async () => {
     try {
         await fetch(window.location.href + 'firmware/list');
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 }
 const fillUpdateInput = (element) => {
@@ -84,7 +84,7 @@ const submitUpdate = async () => {
             document.getElementById('blocker-title').innerText = `Downloading firmware v${versiontSelector.value}, please wait...`;
         } catch (err) {
             blocker.classList.add('hidden');
-            console.error(`Error: ${err}`);
+            await displayNotification(err,'error');
         }
     } else {
         // Manual upload
@@ -102,7 +102,6 @@ const submitUpdate = async () => {
             document.getElementById('blocker-title').innerText = 'Restarting device, please wait...';
         } catch (err) {
             blocker.classList.add('hidden');
-            console.error(`Error: ${err}`);
             await displayNotification(err,'error');
         }
     }
@@ -114,7 +113,7 @@ const submitTelegram = async (e) => {
     const active = +document.getElementById(`telegram-active`).checked;
     const token = document.getElementById(`telegram-token`).value;
     const users = document.getElementById(`telegram-users`).value.split(',').map(id => +id);
-    if (token != settings.telegram.token || active != settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
+    if (token !== settings.telegram.token || active !== +settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
         try {
             const res = await fetch(window.location.href + 'telegram', {
                 method: 'POST',
@@ -124,7 +123,6 @@ const submitTelegram = async (e) => {
             settings.telegram = {active, token};
             await displayNotification('Telegram parameters saved','success');
         } catch (err) {
-            console.error(`Error: ${err}`);
             await displayNotification(err,'error');
         }
     }
@@ -149,7 +147,6 @@ const submitMqtt = async (e) => {
         await displayNotification('Mqtt parameters saved','success');
         await mqttConnect();
     } catch (err) {
-        console.error(`Error: ${err}`);
         await displayNotification(err,'error');
     }
 };
@@ -165,7 +162,7 @@ const mqttConnect = async () => {
             await fetchServicesHealth();
             await delay(1000); //avoid spaming esp32
         }
-        if (health.mqtt == 1) {
+        if (+health.mqtt === 1) {
             retryButton.classList.add('hidden');
             await displayNotification('Mqtt client connected','success');
         } else {
@@ -173,7 +170,6 @@ const mqttConnect = async () => {
             await displayNotification('Could not connect Mqtt client','error');
         }
     } catch(err) {
-        console.error(`Error: ${err}`);
         await displayNotification(err,'error');
     }
     loader.classList.add('hidden');
@@ -188,7 +184,7 @@ const fetchGpios = async () => {
             gpios = newGpios;
         }
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 };
 const fetchAvailableGpios = async () => {
@@ -196,7 +192,7 @@ const fetchAvailableGpios = async () => {
         const res = await fetch(window.location.href + 'gpios/available');
         availableGpios = await res.json();
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 };
 const switchGpioState = async (element) => {
@@ -212,7 +208,7 @@ const switchGpioState = async (element) => {
             await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${element.value}`);
         }
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 };
 const addGpio = () => {
@@ -232,7 +228,6 @@ const deleteGpio = async (element) => {
         document.getElementById('rowGpio-' + gpioPin).remove();
         await displayNotification('Gpio removed','success');
     } catch (err) {
-        console.error(err);
         await displayNotification(err,'error');
     }
 };
@@ -245,7 +240,7 @@ const fetchI2cSlaves = async () => {
             slaves = newSlaves;
         }
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 }
 
@@ -260,7 +255,6 @@ const sendI2cSlaveCommand = async (element, write) => {
         }
         await displayNotification('Command sent','success');
     } catch (err) {
-        console.error(`Error: ${err}`);
         await displayNotification(err,'error');
     }
 }
@@ -304,7 +298,6 @@ const saveI2cSlaveSettings = async (element) => {
         }
         await displayNotification('Slave saved','success');
     } catch (err) {
-        console.error(err);
         await displayNotification(err,'error');
     }
 };
@@ -319,7 +312,6 @@ const deleteI2cSlave = async (element) => {
         row.remove();
         await displayNotification('Slave removed','success');
     } catch (err) {
-        console.error(err);
         await displayNotification(err,'error');
     }
 }
@@ -333,7 +325,7 @@ const fetchAutomations = async () => {
             automations = newAutomations;
         }
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 };
 const runAutomation = async (element) => {
@@ -342,7 +334,6 @@ const runAutomation = async (element) => {
         await fetch(window.location.href + 'automation/run?id='+automationId);
         await displayNotification('Automation run','success');
     } catch (err) {
-        console.error(`Error: ${err}`);
         await displayNotification(err,'error');
     }
 };
@@ -365,7 +356,6 @@ const deleteAutomation = async (element) => {
         row.remove()
         await displayNotification('Automation removed','success');
     } catch (err) {
-        console.error(err);
         await displayNotification(err,'error');
     }
 };
@@ -379,7 +369,7 @@ const scan = async (element) => {
         gpioRow.appendChild(createScanResult(gpioPin, addresses));
         
     } catch (err) {
-        console.error(err);
+        await displayNotification(err,'error');
     }
 }
 // Settings
@@ -403,7 +393,7 @@ const fetchSettings = async () => {
             document.getElementById(`mqtt-topic`).value = settings.mqtt.topic;
         }
     } catch (err) {
-        console.error(`Error: ${err}`);
+        await displayNotification(err,'error');
     }
 };
 const saveGpioSetting = async (element) => {
@@ -455,7 +445,6 @@ const saveGpioSetting = async (element) => {
         }
         await displayNotification('Gpio saved','success');
     } catch (err) {
-        console.error(err);
         await displayNotification(err,'error');
     }
 };
@@ -521,7 +510,6 @@ const saveAutomationSetting = async (element) => {
         }
         await displayNotification('Automation saved','success');
     } catch (err) {
-        console.error(err);
         await displayNotification(err,'error');
     }
 };

@@ -95,11 +95,11 @@ void PreferenceHandler::save(char* preference) {
 // Returns the first empty slot of a given array
 int PreferenceHandler::firstEmptySlot(char* preference) {
     int i = 0;
-    if (preference == PREFERENCES_AUTOMATION) {
+    if (strcmp(preference,PREFERENCES_AUTOMATION) == 0) {
         while(automations[i].id && i<MAX_AUTOMATIONS_NUMBER) {
             i++;
         }
-    } else if (preference == PREFERENCES_I2C_SLAVE) {
+    } else if (strcmp(preference,PREFERENCES_I2C_SLAVE)==0) {
         while(i2cSlaves[i].id && i<MAX_I2C_SLAVES) {
             i++;
         }

@@ -255,7 +255,7 @@ select {
     position: fixed;
     top: 90px;
     right: 20px;
-    display: flex !important;
+    display: flex;
     justify-content: center;
     align-items: center;
     padding-left: 20px;

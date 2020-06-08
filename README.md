@@ -7,8 +7,10 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 
 ## Features:
 - [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C support), send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
+
 - [x] REST API: Exposes gpio and automations logic. Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations. Scan I2C addresses, send I2C commands.
-- [x] Web interface: full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface.
+
+- [x] Event driven Web interface: full vanilla js. No internet connexion required. Pins mode, actions, conditions, telegram, everything can be set via the interface. You don't need to refresh the page to get pins state update.
 <div>
     <img src="images/sample-home.png" width="200">
     <img src="images/edit-gpio-panel.png" width="200">
@@ -16,7 +18,6 @@ https://www.youtube.com/watch?v=_E-ywkafs94
     <img src="images/settings.png" width="200">
 </div>
 
-- [ ] Web Sockets: No refresh needed to see a pin state change.
 - [x] Telegram bot: Access and control your esp32 from outside your home. No domotic server required! No port exposed to the outside world (way more secure than exposing your router ports). Restrict the access with a user authorised list.
 
 <div>
@@ -24,13 +25,18 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 </div>
 
 - [x] Mqtt client: publish/subscribe pin state, actions.
+
 - [x] Wifi manager: gives a way to easily set your esp32 to your network.
-- [x] OTA: Update firmware from the web interface.
-- [x] Remote OTA: Update firmware directly when a new version is available on this repo. This would also allow nice things like only installing a light version of ESPecial and then download the full ESPecial from server. No more hassle to download all dependencies and tools.
+
+- [x] OTA: Update firmware from the web interface. Get notifiy when a new version is available from github and install it directly from it.
+
 - [ ] Unit/integration tests!
+
 - [ ] Plateform.io/Makefile/bash script: simplify the installation process.
-- [ ] Compatibility with single cored boards
-- [ ] Use async MQTT client: https://github.com/marvinroger/async-mqtt-client
+
+- [ ] Compatibility with single cored boards.
+
+- [ ] Use async MQTT client: https://github.com/marvinroger/async-mqtt-client.
 
 ## Work in progress:
 - I2C integration
