@@ -203,8 +203,11 @@ void readPins() {
           // Notifiy mqtt clients
           mqtthandler->publish(gpio.pin);
           // Notifiy web interface with format "pinNumber-state"
-          String eventMessage = String(gpio.pin) + "-" + String(newState);
-          serverhandler->events.send(eventMessage.c_str(),"pin",millis());
+          if (serverhandler->events.count()>0) {
+            char eventMessage[10];
+            snprintf(eventMessage,10,"%d-%d",gpio.pin,newState);
+            serverhandler->events.send(eventMessage,"pin",millis());
+          }
           gpioStateChanged = true;
         }
       }
@@ -329,6 +332,12 @@ void runAutomation(AutomationFlash& automation) {
     }
   }
   if (canRun) {
+    // Notify clients automation is running
+    if (serverhandler->events.count()>0) {
+      char eventMessage[10];
+      snprintf(eventMessage,10,"%d-1",automation.id);
+      serverhandler->events.send(eventMessage,"automation",millis());
+    }
     #ifdef __debug
       Serial.printf("[AUTOMATION] Running automation: %s\n",automation.label);
     #endif
@@ -360,6 +369,12 @@ void runAutomation(AutomationFlash& automation) {
               digitalWrite(pin, newValue);
             } else {
               ledcWrite(gpio.channel, newValue);
+            }
+            // Notifiy web clients
+            if (serverhandler->events.count()>0) {
+              char eventMessage[10];
+              snprintf(eventMessage,10,"%d-%d",pin,newValue);
+              serverhandler->events.send(eventMessage,"pin",millis());
             }
           // Send telegram message action
           } else if (type == 2) {
@@ -417,6 +432,12 @@ void runAutomation(AutomationFlash& automation) {
         }
       }
     }
+  }
+  // Notify clients automation is done
+  if (serverhandler->events.count()>0) {
+    char eventMessage[10];
+    snprintf(eventMessage,10,"%d-0",automation.id);
+    serverhandler->events.send(eventMessage,"automation",millis());
   }
 }
 
@@ -496,7 +517,7 @@ void setup(void)
 
 void loop(void) {
   // Reload firmware list
-  if (serverhandler->shouldReloadFirmwareList) {
+  if (serverhandler->shouldReloadFirmwareList && serverhandler->events.count()>0) {
     serverhandler->shouldReloadFirmwareList = false;
     serverhandler->events.send(getFirmwareList().c_str(),"firmwareList",millis());
   }

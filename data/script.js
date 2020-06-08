@@ -7,14 +7,14 @@ var automations = [];
 var versionsList = [];
 var isSettingsMenuActivated = false;
 const delay = ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
-const request = async (uri, post) => {
+const request = async (uri, body, post) => {
     const resp = await fetch(`${window.location.href}${uri}`, {
         method: post ? "POST" : "PUT",
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json"
         },
-        body: JSON.stringify(req)
+        body: JSON.stringify(body)
     });
     return resp.json();
 }
@@ -211,6 +211,7 @@ const fetchAvailableGpios = async () => {
 const switchGpioState = async (element) => {
     try {
         const gpio = gpios.find(gpio => gpio.pin === +element.id.split("-")[1])
+        element.classList.add('disable');
         if (gpio.mode > 0) {
             const isOn = element.classList.value.includes("on");
             await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
@@ -223,6 +224,7 @@ const switchGpioState = async (element) => {
     } catch (err) {
         await displayNotification(err, "error");
     }
+    element.classList.remove('disable');
 };
 const addGpio = () => {
     closeAnySettings();
@@ -290,7 +292,7 @@ const saveI2cSlaveSettings = async (element) => {
         if (!req.settings.label) {
             throw new Error("Parameters missing, please fill at least label and type inputs.");
         }
-        const newSetting = await request("slave",isNew);
+        const newSetting = await request("slave",req,isNew);
         let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
         if (isNew) {
             slaves.push(newSetting);
@@ -334,13 +336,16 @@ const fetchAutomations = async () => {
     }
 };
 const runAutomation = async (element) => {
-    const automationId = element.id.split("-")[1];
+    const id = element.id.split("-")[1];
+    element.classList.add('loading');
+    element.classList.add('disable');
     try {
-        await fetch(window.location.href + "automation/run?id=" + automationId);
+        await fetch(window.location.href + "automation/run?id=" + id);
         await displayNotification("Automation run", "success");
     } catch (err) {
         await displayNotification(err, "error");
     }
+    element.classList.remove('loading');
 };
 const addAutomation = () => {
     closeAnySettings();
@@ -429,7 +434,7 @@ const saveGpioSetting = async (element) => {
         if (!req.settings.mode || !req.settings.label) {
             throw new Error("Parameters missing, please fill all the inputs");
         }
-        const newSetting = await request("gpio",isNew);
+        const newSetting = await request("gpio",req,isNew);
         let column = document.getElementById("gpios");
         if (isNew) {
             gpios.push(newSetting);
@@ -486,7 +491,7 @@ const saveAutomationSetting = async (element) => {
         if (!req.settings.label) {
             throw new Error("Parameters missing, please fill at least label and type inputs.");
         }
-        const newSetting = await request("automation",isNew);
+        const newSetting = await request("automation",req,isNew);
         let column = document.getElementById("automations");
         if (isNew) {
             automations.push(newSetting);
@@ -926,7 +931,7 @@ const createEditAutomationPanel = (automation) => {
 const createSpinner = () => {
     let spinner = document.createElement("div");
     spinner.classList.add("spinner");
-    spinner.innerHTML = "<div class="lds-ring"><div></div><div></div><div></div><div></div></div>";
+    spinner.innerHTML = "<div class=\"lds-ring\"><div></div><div></div><div></div><div></div></div>";
     return spinner;
 };
 // Change the input of available mode for a given pin
@@ -1087,10 +1092,21 @@ if (!!window.EventSource) {
         }
     }, false);
 
+    source.addEventListener("firmwareDownloaded", (e) => {
+        document.getElementById("blocker-title").innerText = `Installing firmware v${versiontSelector.value}...`;
+    }, false);
+
+    source.addEventListener("firmwareUpdateError", async (e) => {
+        document.getElementById("blocker-title").classList.add("hidden");
+        await displayNotification(e.data, "error");
+    }, false);
+
+    // Allow Gpio buttons refresh
     source.addEventListener("pin", (e) => {
         const pin = e.data.split("-")[0];
         const state = e.data.split("-")[1];
         const gpioRow = document.getElementById(`stateGpio-${pin}`);
+        // * is the code to aknowledge esp32 has received the request
         if (gpioRow.type === "number") {
             gpioRow.value = state;
         } else {
@@ -1100,13 +1116,19 @@ if (!!window.EventSource) {
         }
     }, false);
 
-    source.addEventListener("firmwareDownloaded", (e) => {
-        document.getElementById("blocker-title").innerText = `Installing firmware v${versiontSelector.value}...`;
-    }, false);
-
-    source.addEventListener("firmwareUpdateError", async (e) => {
-        document.getElementById("blocker-title").classList.add("hidden");
-        await displayNotification(e.data, "error");
+    // Allow Automation buttons refresh
+    source.addEventListener("automation", (e) => {
+        const automation = e.data.split("-")[0];
+        const state = e.data.split("-")[1];
+        const button = document.getElementById(`runAutomation-${automation}`);
+        if (+state) {
+            button.classList.add("disable")
+            button.innerText = "running...";
+        } else {
+            button.classList.remove('disable');
+            button.innerText = "run";
+        }
+        
     }, false);
 
     source.addEventListener("shouldRefresh", (e) => {
