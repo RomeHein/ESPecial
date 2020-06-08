@@ -1,6 +1,6 @@
 # ESPecial
-
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/25ad921f1df74692a7448abeff6c7b6b)](https://app.codacy.com/manual/RomeHein/ESPecial?utm_source=github.com&utm_medium=referral&utm_content=RomeHein/ESPecial&utm_campaign=Badge_Grade_Settings)
+[![Chat on Telegram](https://img.shields.io/badge/Chat%20on-Telegram-brightgreen.svg)](https://t.me/joinchat/AAAAAET-x6q-63Q4ZmFGng)
 
 This project aim to provide an easy way to control your esp32. You no longer need programming skills to set complex tasks. This can be a very nice approach for small projects, home automation and/or educational purposes.
 
