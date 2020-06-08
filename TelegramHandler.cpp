@@ -103,7 +103,7 @@ String TelegramHandler::generateInlineKeyboardsForAutomations() {
     {
       i++;
     } while (i<MAX_AUTOMATIONS_NUMBER && !preference.automations[i].id);
-    if (preference.automations[i].id && i<MAX_AUTOMATIONS_NUMBER) {
+    if (i<MAX_AUTOMATIONS_NUMBER && preference.automations[i].id) {
         subArray.add(serialized(generateButtonFormat(preference.automations[i])));
     }
   }

@@ -4,14 +4,17 @@ body {
     background-color: lightskyblue;
     margin: 0;
 }
+
 form {
     display: flex;
 }
+
 .spacer {
     display: block;
     width: 100%;
     height: 80px;
 }
+
 .header {
     display: flex;
     position: fixed;
@@ -19,6 +22,7 @@ form {
     width: 100%;
     background-color: white;
 }
+
 .container {
     background-color: whitesmoke;
     display: flex;
@@ -30,20 +34,24 @@ form {
     margin: auto;
     margin-bottom: 10px;
 }
+
 .column {
     display: flex;
     flex-direction: column;
 }
+
 .setting-container {
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid lightgray;
 }
+
 .setting-container form {
     flex-wrap: wrap;
     justify-content: flex-end;
     padding: 10px;
 }
+
 .setting-container label {
     display: flex;
     align-items: center;
@@ -52,6 +60,7 @@ form {
     margin: 5px 0 5px;
     text-align: left;
 }
+
 .setting-container input[type='text'], input[type='checkbox'] {
     width: 65%;
     margin: 5px 0 5px;
@@ -60,6 +69,7 @@ form {
     border-radius: 5px;
     padding-left: 9px;
 }
+
 #file-update-label {
     background-color: white;
     border-radius: 5px;
@@ -67,6 +77,7 @@ form {
     height: 30px;
     width: 65%;
 }
+
 .row {
     display: flex;
     flex-direction: row;
@@ -74,13 +85,16 @@ form {
     justify-content: space-between;
     flex-wrap: wrap;
 }
+
 .slave {
     width: 100%;
     background-color: lightgray;
 }
+
 .hidden {
     display: none !important;
 }
+
 .header-container {
     display: flex;
     flex-direction: row;
@@ -88,12 +102,15 @@ form {
     flex-wrap: wrap;
     border-bottom: solid 1px lightgray;
 }
-.header-container > h2 {
+
+.header-container>h2 {
     padding-left: 10px;
 }
+
 .row>.label {
     margin-left: 10px;
 }
+
 .set {
     display: flex;
     width: 100%;
@@ -101,14 +118,17 @@ form {
     background-color: lightgray;
     padding: 10px;
 }
+
 #update .set {
     width: unset;
     background-color: whitesmoke;
 }
+
 .set>.set-inputs {
     display: flex;
     flex-direction: column;
 }
+
 .set>.set-inputs input {
     width: 50%;
     height: 30px;
@@ -118,6 +138,7 @@ form {
     margin-top: 5px;
     margin-bottom: 5px;
 }
+
 .set>.set-inputs>.column {
     background: darkgrey;
     border-radius: 5px;
@@ -125,6 +146,7 @@ form {
     color: white;
     margin-top: 5px;
 }
+
 select {
     width: calc(50% + 10px);
     height: 30px;
@@ -133,16 +155,19 @@ select {
     margin-bottom: 5px;
     background-color: white;
 }
+
 .set>.set-buttons {
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
 }
+
 .scan-results {
     width: 100%;
     padding: 10px;
     background: lightgray;
 }
+
 .slave-settings {
     width: 100%;
     padding: 10px;
@@ -150,16 +175,19 @@ select {
     background-color: darkgray;
     border-radius: 5px;
 }
+
 .btn-container {
     display: flex;
     justify-content: flex-end;
 }
+
 .btn-container input {
     border: 1px solid lightgrey;
     border-radius: 5px;
     padding: 15px 32px;
     margin: 10px 5px;
 }
+
 .btn {
     border-radius: 5px;
     padding: 15px 32px;
@@ -169,73 +197,83 @@ select {
     cursor: pointer;
     text-decoration: none;
 }
+
 .btn.small {
     padding: 5px 5px;
     margin: 5px 5px;
 }
+
 .btn.round {
     border-radius: 50%;
 }
+
 .disable {
     border-color: lightgray !important;
     background-color: lightgray !important;
     pointer-events: none;
 }
+
 .edit {
     background-color: dodgerblue;
     border: solid 1px dodgerblue;
     color: white;
 }
+
 .edit:hover {
     color: dodgerblue;
 }
-.on,.save {
+
+.on, .save {
     background-color: yellowgreen;
     border: solid 1px yellowgreen;
     color: white;
 }
-.on:hover,.save:hover {
+
+.on:hover, .save:hover {
     color: yellowgreen;
 }
-.off,.delete {
+
+.off, .delete {
     background-color: tomato;
     border: solid 1px tomato;
     color: white;
 }
+
 .off:hover, .delete:hover {
     color: tomato;
 }
+
 .cancel {
     background-color: lightgray;
     border: solid 1px lightgray;
     color: white;
 }
+
 .cancel:hover {
     color: lightgray;
 }
+
 .btn:hover {
     background-color: white;
 }
+
 .input-mode {
     pointer-events: none;
     background-color: white;
 }
+
 .input-mode.on {
     color: yellowgreen;
 }
+
 .input-mode.off {
     color: tomato;
 }
-#condition-editor select,
-#condition-editor input, 
-#condition-editor-result>.row select, 
-#condition-editor-result>.row input,
-#action-editor select,
-#action-editor input, 
-#action-editor-result>.row select, 
-#action-editor-result>.row input {
+
+#condition-editor select, #condition-editor input, #condition-editor-result>.row select, #condition-editor-result>.row input, #action-editor select, #action-editor input, #action-editor-result>.row select, #action-editor-result>.row input {
     width: 15%;
 }
+
 #blocker {
     display: flex;
     flex-direction: column;
@@ -251,6 +289,7 @@ select {
     opacity: 0.95;
     color: white;
 }
+
 #notifier {
     position: fixed;
     top: 90px;
@@ -267,17 +306,21 @@ select {
     opacity: 100%;
     color: white;
 }
+
 #notifier.hidden {
     opacity: 0;
     right: -100%;
 }
+
 #notifier.success {
     background-color: yellowgreen;
 }
+
 #notifier.error {
     background-color: tomato;
 }
-#notifier > .btn {
+
+#notifier>.btn {
     width: 20px;
     height: 20px;
 }
@@ -286,14 +329,17 @@ select {
     height: 100%;
     width: 100%;
 }
+
 #mqtt-retry-loader div {
     border-width: 2px;
 }
+
 .spinner {
     height: 30px;
     border-radius: 5px;
     background-color: lightgray;
 }
+
 .lds-ring {
     width: 50px;
     height: 50px;
@@ -301,6 +347,7 @@ select {
     position: relative;
     margin: 20px;
 }
+
 .lds-ring div {
     box-sizing: border-box;
     display: block;
@@ -312,15 +359,19 @@ select {
     animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
     border-color: #fff transparent transparent transparent;
 }
+
 .lds-ring div:nth-child(1) {
     animation-delay: -0.45s;
 }
+
 .lds-ring div:nth-child(2) {
     animation-delay: -0.3s;
 }
+
 .lds-ring div:nth-child(3) {
     animation-delay: -0.15s;
 }
+
 @keyframes lds-ring {
     0% {
         transform: rotate(0deg);
@@ -329,6 +380,7 @@ select {
         transform: rotate(360deg);
     }
 }
+
 @media only screen and (max-width: 600px) {
     body {
         margin: 0;
@@ -342,11 +394,13 @@ select {
         border-bottom: 1px solid lightgray
     }
 }
+
 .state-indicator-container {
     display: flex;
     align-items: center;
     margin: 10px;
 }
+
 .state-indicator {
     width: 15px;
     height: 15px;
@@ -354,9 +408,11 @@ select {
     background: gray;
     margin-left: 5px;
 }
+
 .ok {
     background-color: green;
 }
+
 .error {
     background-color: red;
 }
