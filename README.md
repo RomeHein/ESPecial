@@ -30,6 +30,8 @@ https://www.youtube.com/watch?v=_E-ywkafs94
 
 - [x] Wifi manager: gives a way to easily set your esp32 to your network.
 
+- [x] Easy installation via [ESPInstaller](https://github.com/RomeHein/ESPInstaller): No dependencies or extra tools to install.
+
 - [x] OTA: Update firmware from the web interface. Get notifiy when a new version is available from github and install it directly from it.
 
 - [ ] Unit/integration tests!
@@ -135,6 +137,8 @@ You can choose between three types of actions:
 - Send http/https request.
 - Automation: run another automation you have already set. This means you can nest an infinite number of automations! Each automation will check its conditions before running.
 - Delay: note that this delay is an actual 'delay' function. Meaning that you'll block the process. Yes, automations run sequencially. The process maintains an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option (meaning this should not be used as a timer 😉).
+- Print message on serial
+- Deep sleep: coming soone
 
 For telegram message and http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text.
 
@@ -150,22 +154,22 @@ Sometimes complex behaviours can overlaps, this can be the case when one automat
 Once controls and actions added to your panel, you'll be able to trigger them by hitting the rest API: 
 
 ```
-http://your.ip.local.ip/gpio/pinNumber/value
+http://your.ip.local.ip/gpio/value?pin=5
 ```
 And set its state `on` with:
 ```
-http://your.ip.local.ip/gpio/pinNumber/value/1
+http://your.ip.local.ip/gpio/value?pin=5&value=1
 ```
 or `off`
 ```
-http://your.ip.local.ip/gpio/pinNumber/value/0
+http://your.ip.local.ip/gpio/value?pin=5&value=0
 ```
 
 And simply send:
 ```
-http://your.ip.local.ip/automationtion/run/automationId
+http://your.ip.local.ip/automationtion/run?id=1
 ```
-to run a specific action. Note that all conditions you have specified for than action must be fullfilled in order to execute it.
+to run a specific action (check its id in the webinterface). Note that all conditions you have specified for that action must be fullfilled in order to execute it.
 
 ### Telegram Bot
 All this is cool, but what if you want to access/control your esp32 from outside your local network?
@@ -179,6 +183,11 @@ When you first start the conversation with your bot, telegram will only display 
 It's important to note that if you leave the authorised user list empty, your bot will answer to anyone. So be secure, and add at least one user id 😉
 
 Now you're be able to control all pins in output mode by sending a `/out` or the automations you have set with `/auto`. The bot will answer a list of buttons corresponding to the list you've set on the web interface of the ESP32, sweet!
+
+### Siri integration (iOS)
+
+This part is actually really easy. Starting with iOS 8, Siri can read shortcuts titles and play them whenever you call/say them.
+So all you have to do is create a shortcut in the iOS native app (the app is litteraly called `Shortcut`) that send an http request to the ESPecial API, name it whatever you like, and you are all set up!
 
 ### MQTT client (advance)
 MQTT is a really nice pubsub protocol. I really encourage you to integrate this feature in your home automation. This allows a two ways communication between your home bridge and your iot device (here the esp32) in a very lightweight way.
