@@ -385,7 +385,7 @@ const fetchSettings = async () => {
             // Add them to the dom
             document.getElementById("telegram-active").checked = settings.telegram.active;
             document.getElementById("telegram-token").value = settings.telegram.token;
-            document.getElementById("telegram-users").value = settings.telegram.users.filter(userId => userId != 0).join(",");
+            document.getElementById("telegram-users").value = settings.telegram.users.filter(userId => userId !== 0).join(",");
             document.getElementById("mqtt-active").checked = settings.mqtt.active;
             document.getElementById("mqtt-fn").value = settings.mqtt.fn;
             document.getElementById("mqtt-host").value = settings.mqtt.host;

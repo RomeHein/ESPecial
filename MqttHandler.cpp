@@ -21,10 +21,10 @@ void MqttHandler::begin()
         mqtt_client->setServer(preference.mqtt.host, preference.mqtt.port);
         mqtt_client->setCallback([this](char* topic, byte* payload, unsigned int length) { callback(topic, payload, length);});
 
-        snprintf(topic.config, 512, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.gpio, 512, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.automation, 512, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.debug, 512, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.config, 256, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.gpio, 256, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.automation, 256, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topic.debug, 256, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
         isInit = true;
     }
 }

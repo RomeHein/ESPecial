@@ -110,13 +110,13 @@ int PreferenceHandler::firstEmptySlot(char* preference) {
 // Return the highest id of an array, + 1
 int PreferenceHandler::newId(char *preference) {
     int newId = 1;
-    if (preference == PREFERENCES_AUTOMATION) {
+    if (strcmp(preference,PREFERENCES_AUTOMATION) == 0) {
         for (AutomationFlash& automation: automations) {
             if (automation.id>=newId) {
                 newId = automation.id + 1;
             }
         }
-    } else if (PREFERENCES_I2C_SLAVE) {
+    } else if (strcmp(preference, PREFERENCES_I2C_SLAVE) == 0) {
         for (I2cSlaveFlash& slave: i2cSlaves) {
             if (slave.id>=newId) {
                 newId = slave.id + 1;
