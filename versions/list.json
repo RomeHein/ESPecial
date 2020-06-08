@@ -1,6 +1,6 @@
 [{
     "version": 0.3,
-    "build": 1,
+    "build": 2,
     "current": true,
     "partitionScheme":"min_spiffs",
     "description": "Add web events, fix minor code issue",
