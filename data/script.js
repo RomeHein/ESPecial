@@ -238,7 +238,7 @@ const deleteGpio = async (element) => {
     const gpioPin = element.id.split("-")[1];
     try {
         await fetch(`${window.location.href}gpio?pin=${gpioPin}`, { method: "DELETE" });
-        gpios = gpios.filter(gpio => gpio.pin != gpioPin)
+        gpios = gpios.filter(gpio => +gpio.pin !== +gpioPin)
         closeAnySettings();
         document.getElementById("rowGpio-" + gpioPin).remove();
         await displayNotification("Gpio removed", "success");
@@ -299,7 +299,7 @@ const saveI2cSlaveSettings = async (element) => {
             row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
             closeI2cSlaveSettings(id);
         } else {
-            slaves = slaves.map(oldSlave => (oldSlave.id == +id) ? { ...newSetting } : oldSlave);
+            slaves = slaves.map(oldSlave => (+oldSlave.id === +id) ? { ...newSetting } : oldSlave);
             let oldRow = document.getElementById("rowSlave-" + id);
             row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
         }
@@ -414,17 +414,16 @@ const saveGpioSetting = async (element) => {
     req.settings.label = document.getElementById(`setGpioLabel-${gpioPin}`).value;
     req.settings.mode = document.getElementById(`setGpioMode-${gpioPin}`).value;
     req.settings.sclpin = document.getElementById(`setGpioSclPin-${gpioPin}`).value;
-    if (req.settings.mode == -1) {
+    if (+req.settings.mode === -1) {
         req.settings.frequency = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
-    } else if (req.settings.mode == -2) {
+    } else if (+req.settings.mode === -2) {
         req.settings.frequency = document.getElementById(`setI2cFrequency-${gpioPin}`).value;
     }
     req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
-    const channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
     req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
     req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
     req.settings.invert = document.getElementById(`setGpioInvertState-${gpioPin}`).checked;
-    if (newPin && newPin != gpioPin) {
+    if (newPin && +newPin !== +gpioPin) {
         req.settings.pin = +newPin;
     }
     if (!isNew) {
@@ -441,7 +440,7 @@ const saveGpioSetting = async (element) => {
             column.insertBefore(createGpioControlRow(newSetting), column.firstChild);
             closeAnySettings();
         } else {
-            gpios = gpios.map(oldGpio => (oldGpio.pin == +gpioPin) ? { ...newSetting } : oldGpio);
+            gpios = gpios.map(oldGpio => (+oldGpio.pin === +gpioPin) ? { ...newSetting } : oldGpio);
             let oldRow = document.getElementById("rowGpio-" + gpioPin);
             column.replaceChild(createGpioControlRow(newSetting), oldRow);
         }
@@ -470,12 +469,12 @@ const saveAutomationSetting = async (element) => {
     req.settings.actions = [...document.getElementById("action-editor-result").childNodes].map(rowElement => {
         const id = +rowElement.id.split("-")[1];
         const type = document.getElementById(`addTypeAction-${id}`).value;
-        if (type == 5) {
+        if (+type === 5) {
             return [type, document.getElementById(`addHTTPMethod-${id}`).value,
                 document.getElementById(`addHTTPAddress-${id}`).value,
                 document.getElementById(`addHTTPBody-${id}`).value
             ];
-        } else if (type == 6) {
+        } else if (+type === 6) {
             return [type, document.getElementById(`addAutomation-${id}`).value, "", ""];
         } else {
             return [type, document.getElementById(`addValueAction-${id}`).value,
@@ -498,7 +497,7 @@ const saveAutomationSetting = async (element) => {
             column.insertBefore(createAutomationRow(newSetting), column.firstChild);
             closeAnySettings();
         } else {
-            automations = automations.map(oldAutomation => (oldAutomation.id == +automationId) ? { ...newSetting } : oldAutomation);
+            automations = automations.map(oldAutomation => (+oldAutomation.id === +automationId) ? { ...newSetting } : oldAutomation);
             let oldRow = document.getElementById("rowAutomation-" + automationId);
             column.replaceChild(createAutomationRow(newSetting), oldRow);
         }
