@@ -30,523 +30,13 @@ const displayNotification = async (message, type) => {
     notifier.classList.add("hidden");
     notifier.classList.remove(type);
 };
-// Restart ESP
-const restart = async () => {
-    try {
-        const res = await fetch(window.location.href + "restart");
-        blocker.classList.add("hidden");
-    } catch (err) {
-        blocker.classList.add("hidden");
-        await displayNotification(err, "error");
-    }
-};
-const switchIndicatorState = (indicatorId, stateCode) => {
-    if (+stateCode === 1) {
-        document.getElementById(indicatorId).classList.add("ok");
-        document.getElementById(indicatorId).classList.remove("error");
-    } else if (+stateCode === 0) {
-        document.getElementById(indicatorId).classList.remove("ok");
-        document.getElementById(indicatorId).classList.remove("error");
-    } else {
-        document.getElementById(indicatorId).classList.remove("ok");
-        document.getElementById(indicatorId).classList.add("error");
-    }
-};
-const fetchServicesHealth = async () => {
-    try {
-        const res = await fetch(window.location.href + "health");
-        health = await res.json();
-        switchIndicatorState("telegram-indicator", health.telegram);
-        switchIndicatorState("mqtt-indicator", health.mqtt);
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-// Update software
-const reloadFirmwareVersionsList = async () => {
-    try {
-        await fetch(window.location.href + "firmware/list");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const fillUpdateInput = (element) => {
-    const fileName = element.value.split("\\");
-    document.getElementById("file-update-label").innerHTML = fileName[fileName.length - 1];
-    document.getElementById("submit-update-file").classList.remove("disable");
-};
-const selectFirmwareVersion = (element) => {
-    const versiontSelector = document.getElementById("select-firmware-version");
-    if (versiontSelector.value) {
-        document.getElementById("submit-update-file").classList.remove("disable");
-    } else {
-        document.getElementById("submit-update-file").classList.add("disable");
-    }
-};
-const submitUpdate = async () => {
-    const blocker = document.getElementById("blocker");
-    blocker.classList.remove("hidden");
-    const versiontSelector = document.getElementById("select-firmware-version");
-    if (versiontSelector.value) {
-        // Reqest repo download
-        try {
-            await fetch(window.location.href + `update/version?v=${versiontSelector.value}`);
-            document.getElementById("blocker-title").innerText = `Downloading firmware v${versiontSelector.value}, please wait...`;
-        } catch (err) {
-            blocker.classList.add("hidden");
-            await displayNotification(err, "error");
-        }
-    } else {
-        // Manual upload
-        document.getElementById("blocker-title").innerText = "Loading new software, please wait...";
-        const firmwareFile = document.getElementById("firmware-file");
-        const data = new FormData();
-        data.append("firmware", firmwareFile.files[0]);
-        try {
-            const res = await fetch(window.location.href + "update", {
-                processData: false,
-                contentType: false,
-                method: "POST",
-                body: data
-            });
-            document.getElementById("blocker-title").innerText = "Restarting device, please wait...";
-        } catch (err) {
-            blocker.classList.add("hidden");
-            await displayNotification(err, "error");
-        }
-    }
-
-};
-// Telegram
-const submitTelegram = async (e) => {
-    e.preventDefault();
-    const active = +document.getElementById("telegram-active").checked;
-    const token = document.getElementById("telegram-token").value;
-    const users = document.getElementById("telegram-users").value.split(",").map((id) => +id);
-    if (token !== settings.telegram.token || active !== +settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
-        try {
-            const res = await fetch(window.location.href + "telegram", {
-                method: "POST",
-                headers: { contentType: false, processData: false },
-                body: JSON.stringify({ token, active, users })
-            });
-            settings.telegram = { active, token };
-            await displayNotification("Telegram parameters saved", "success");
-        } catch (err) {
-            await displayNotification(err, "error");
-        }
-    }
-};
-// MQTT
-const mqttConnect = async () => {
-    const loader = document.getElementById("mqtt-retry-loader");
-    const retryButton = document.getElementById("mqtt-retry");
-    const retryText = retryButton.firstElementChild;
-    try {
-        retryText.classList.add("hidden");
-        loader.classList.remove("hidden");
-        await fetch(window.location.href + "mqtt/retry");
-        while (health.mqtt === 0) {
-            await fetchServicesHealth();
-            await delay(1000); //avoid spaming esp32
-        }
-        if (+health.mqtt === 1) {
-            retryButton.classList.add("hidden");
-            await displayNotification("Mqtt client connected", "success");
-        } else {
-            retryButton.classList.remove("hidden");
-            await displayNotification("Could not connect Mqtt client", "error");
-        }
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-    loader.classList.add("hidden");
-    retryText.classList.remove("hidden");
-};
-
-const submitMqtt = async (e) => {
-    e.preventDefault();
-    const active = document.getElementById("mqtt-active").checked;
-    const fn = document.getElementById("mqtt-fn").value;
-    const host = document.getElementById("mqtt-host").value;
-    const port = document.getElementById("mqtt-port").value;
-    const user = document.getElementById("mqtt-user").value;
-    const password = document.getElementById("mqtt-password").value;
-    const topic = document.getElementById("mqtt-topic").value;
-    try {
-        await fetch(window.location.href + "mqtt", {
-            method: "POST",
-            headers: { contentType: false, processData: false },
-            body: JSON.stringify({ active, fn, host, port, user, password, topic })
-        });
-        settings.mqtt = { active, fn, host, port, user, password, topic };
-        await displayNotification("Mqtt parameters saved", "success");
-        await mqttConnect();
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-// Gpios
-const fetchGpios = async () => {
-    try {
-        const res = await fetch(window.location.href + "gpios");
-        const newGpios = await res.json();
-        if (newGpios && newGpios.length) {
-            gpios = newGpios;
-        }
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const fetchAvailableGpios = async () => {
-    try {
-        const res = await fetch(window.location.href + "gpios/available");
-        availableGpios = await res.json();
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const switchGpioState = async (element) => {
-    try {
-        const gpio = gpios.find(gpio => gpio.pin === +element.id.split("-")[1])
-        element.classList.add("disable");
-        if (gpio.mode > 0) {
-            const isOn = element.classList.value.includes("on");
-            await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
-            element.classList.remove(isOn ? "on" : "off");
-            element.classList.add(isOn ? "off" : "on");
-            element.innerText = (isOn ? "off" : "on");
-        } else if (gpio.mode === -1) {
-            await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${element.value}`);
-        }
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-    element.classList.remove('disable');
-};
-const addGpio = () => {
-    closeAnySettings();
-    const topBar = document.getElementById("gpio-header-bar");
-    if (!topBar.classList.value.includes("open")) {
-        topBar.appendChild(createEditGpioPanel());
-        topBar.classList.add("open");
-    }
-};
-const deleteGpio = async (element) => {
-    const gpioPin = element.id.split("-")[1];
-    try {
-        await fetch(`${window.location.href}gpio?pin=${gpioPin}`, { method: "DELETE" });
-        gpios = gpios.filter(gpio => +gpio.pin !== +gpioPin);
-        closeAnySettings();
-        document.getElementById("rowGpio-" + gpioPin).remove();
-        await displayNotification("Gpio removed", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-// I2C
-const fetchI2cSlaves = async () => {
-    try {
-        const res = await fetch(window.location.href + "slaves");
-        const newSlaves = await res.json();
-        if (newSlaves && newSlaves.length) {
-            slaves = newSlaves;
-        }
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-const sendI2cSlaveCommand = async (element, write) => {
-    const id = element.id.split("-")[1];
-    const inputElement = document.getElementById(`i2cSlaveData-${id}`);
-    try {
-        const res = await fetch(window.location.href + `slave/command?id=${id}` + (write && inputElement.value ? `&value=${+inputElement.value}` : ""));
-        if (!write && res) {
-            const data = await res.json();
-            inputElement.value = data;
-        }
-        await displayNotification("Command sent", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-const saveI2cSlaveSettings = async (element) => {
-    const id = element.id.split("-")[1];
-    const isNew = (id === "new");
-    let req = { settings: {} };
-    if (isNew) {
-        req.settings.address = +element.parentElement.parentElement.parentElement.firstChild.textContent;
-        req.settings.mPin = +element.parentElement.parentElement.parentElement.id.split("-")[1];
-    } else {
-        req.id = id;
-    }
-    req.settings.label = document.getElementById(`setI2cSlaveLabel-${id}`).value;
-    req.settings.commands = document.getElementById(`setI2cSlaveCommands-${id}`).value.split(",");
-    req.settings.octetRequest = +document.getElementById(`setI2cSlaveOctet-${id}`).value;
-    req.settings.save = +document.getElementById(`setI2cSlaveSave-${id}`).checked;
-    try {
-        if (!req.settings.label) {
-            throw new Error("Parameters missing, please fill at least label and type inputs.");
-        }
-        const newSetting = await request("slave",req,isNew);
-        let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
-        if (isNew) {
-            slaves.push(newSetting);
-            row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
-            closeI2cSlaveSettings(id);
-        } else {
-            slaves = slaves.map((oldSlave) => (+oldSlave.id === +id) ? { ...newSetting } : oldSlave);
-            let oldRow = document.getElementById("rowSlave-" + id);
-            row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
-        }
-        await displayNotification("Slave saved", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-const deleteI2cSlave = async (element) => {
-    const id = element.id.split("-")[1];
-    try {
-        await fetch(`${window.location.href}slave?id=${id}`, { method: "DELETE" });
-        let row = document.getElementById("rowSlave-" + id);
-        closeI2cSlaveSettings(id);
-        row.remove();
-        await displayNotification("Slave removed", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-// Automations
-const fetchAutomations = async () => {
-    try {
-        const res = await fetch(window.location.href + "automations");
-        const newAutomations = await res.json();
-        if (newAutomations && newAutomations.length) {
-            automations = newAutomations;
-        }
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const runAutomation = async (element) => {
-    const id = element.id.split("-")[1];
-    element.classList.add("loading");
-    element.classList.add("disable");
-    try {
-        await fetch(window.location.href + "automation/run?id=" + id);
-        await displayNotification("Automation run", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-    element.classList.remove("loading");
-};
-const addAutomation = () => {
-    closeAnySettings();
-    const topBar = document.getElementById("automation-header-bar");
-    if (!topBar.classList.value.includes("open")) {
-        topBar.appendChild(createEditAutomationPanel());
-        topBar.classList.add("open");
-    }
-};
-
-const deleteAutomation = async (element) => {
-    const automationId = element.id.split("-")[1];
-    try {
-        await fetch(`${window.location.href}automation?id=${automationId}`, { method: "DELETE" });
-        await fetchAutomations();
-        let row = document.getElementById("rowAutomation-" + automationId);
-        closeAnySettings();
-        row.remove();
-        await displayNotification("Automation removed", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-
-const scan = async (element) => {
-    const gpioPin = element.id.split("-")[1];
-    try {
-        const res = await fetch(`${window.location.href}gpio/scan?pin=${gpioPin}`);
-        const addresses = await res.json();
-        const gpioRow = document.getElementById(`rowGpio-${gpioPin}`);
-        gpioRow.appendChild(createScanResult(gpioPin, addresses));
-
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-// Settings
-const fetchSettings = async () => {
-    try {
-        const res = await fetch(window.location.href + "settings");
-        const s = await res.json();
-        if (s) {
-            // Save settings
-            settings = s;
-            // Add them to the dom
-            document.getElementById("telegram-active").checked = settings.telegram.active;
-            document.getElementById("telegram-token").value = settings.telegram.token;
-            document.getElementById("telegram-users").value = settings.telegram.users.filter(userId => userId !== 0).join(",");
-            document.getElementById("mqtt-active").checked = settings.mqtt.active;
-            document.getElementById("mqtt-fn").value = settings.mqtt.fn;
-            document.getElementById("mqtt-host").value = settings.mqtt.host;
-            document.getElementById("mqtt-port").value = settings.mqtt.port;
-            document.getElementById("mqtt-user").value = settings.mqtt.user;
-            document.getElementById("mqtt-password").value = settings.mqtt.password;
-            document.getElementById("mqtt-topic").value = settings.mqtt.topic;
-        }
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const saveGpioSetting = async (element) => {
-    const gpioPin = element.id.split("-")[1];
-    const isNew = (gpioPin === "new");
-    let req = { settings: {} };
-    const newPin = document.getElementById(`setGpioPin-${gpioPin}`).value;
-    req.settings.label = document.getElementById(`setGpioLabel-${gpioPin}`).value;
-    req.settings.mode = document.getElementById(`setGpioMode-${gpioPin}`).value;
-    req.settings.sclpin = document.getElementById(`setGpioSclPin-${gpioPin}`).value;
-    if (+req.settings.mode === -1) {
-        req.settings.frequency = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
-    } else if (+req.settings.mode === -2) {
-        req.settings.frequency = document.getElementById(`setI2cFrequency-${gpioPin}`).value;
-    }
-    req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
-    req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
-    req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
-    req.settings.invert = document.getElementById(`setGpioInvertState-${gpioPin}`).checked;
-    if (newPin && +newPin !== +gpioPin) {
-        req.settings.pin = +newPin;
-    }
-    if (!isNew) {
-        req.pin = gpioPin;
-    }
-    try {
-        if (!req.settings.mode || !req.settings.label) {
-            throw new Error("Parameters missing, please fill all the inputs");
-        }
-        const newSetting = await request("gpio",req,isNew);
-        let column = document.getElementById("gpios");
-        if (isNew) {
-            gpios.push(newSetting);
-            column.insertBefore(createGpioControlRow(newSetting), column.firstChild);
-            closeAnySettings();
-        } else {
-            gpios = gpios.map((oldGpio) => (+oldGpio.pin === +gpioPin) ? { ...newSetting } : oldGpio);
-            let oldRow = document.getElementById("rowGpio-" + gpioPin);
-            column.replaceChild(createGpioControlRow(newSetting), oldRow);
-        }
-        await displayNotification("Gpio saved", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const saveAutomationSetting = async (element) => {
-    const automationId = element.id.split("-")[1];
-    const isNew = (automationId === "new");
-    let req = { settings: {} };
-    if (!isNew) {
-        req.id = automationId;
-    }
-    req.settings.label = document.getElementById(`setAutomationLabel-${automationId}`).value;
-    req.settings.conditions = [...document.getElementById("condition-editor-result").childNodes].map((rowElement) => {
-        const id = +rowElement.id.split("-")[1];
-        return [
-            +document.getElementById(`addGpioCondition-${id}`).value,
-            +document.getElementById(`addSignCondition-${id}`).value,
-            +document.getElementById(`addValueCondition-${id}`).value.split(":").join(""),
-            +document.getElementById(`addNextSignCondition-${id}`).value,
-        ];
-    });
-    req.settings.actions = [...document.getElementById("action-editor-result").childNodes].map(rowElement => {
-        const id = +rowElement.id.split("-")[1];
-        const type = document.getElementById(`addTypeAction-${id}`).value;
-        if (+type === 5) {
-            return [type, document.getElementById(`addHTTPMethod-${id}`).value,
-                document.getElementById(`addHTTPAddress-${id}`).value,
-                document.getElementById(`addHTTPBody-${id}`).value
-            ];
-        } else if (+type === 6) {
-            return [type, document.getElementById(`addAutomation-${id}`).value, "", ""];
-        } else {
-            return [type, document.getElementById(`addValueAction-${id}`).value,
-                document.getElementById(`addGpioAction-${id}`).value,
-                document.getElementById(`addSignAction-${id}`).value
-            ];
-        }
-    })
-    req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
-    req.settings.debounceDelay = +document.getElementById(`setAutomationDebounceDelay-${automationId}`).value;
-    req.settings.loopCount = +document.getElementById(`setAutomationLoopCount-${automationId}`).value;
-    try {
-        if (!req.settings.label) {
-            throw new Error("Parameters missing, please fill at least label and type inputs.");
-        }
-        const newSetting = await request("automation",req,isNew);
-        let column = document.getElementById("automations");
-        if (isNew) {
-            automations.push(newSetting);
-            column.insertBefore(createAutomationRow(newSetting), column.firstChild);
-            closeAnySettings();
-        } else {
-            automations = automations.map((oldAutomation) => (+oldAutomation.id === +automationId) ? { ...newSetting } : oldAutomation);
-            let oldRow = document.getElementById("rowAutomation-" + automationId);
-            column.replaceChild(createAutomationRow(newSetting), oldRow);
-        }
-        await displayNotification("Automation saved", "success");
-    } catch (err) {
-        await displayNotification(err, "error");
-    }
-};
-const openGpioSetting = (element) => {
-    closeAnySettings();
-    const gpio = gpios.find((gpio) => gpio.pin === +element.id.split("-")[1]);
-    const row = document.getElementById("rowGpio-" + gpio.pin);
-    if (!row.classList.value.includes("open")) {
-        row.appendChild(createEditGpioPanel(gpio));
-        row.classList.add("open");
-        document.getElementById(`setGpioSave-${gpio.pin}`).checked = gpio.save;
-        document.getElementById(`setGpioInvertState-${gpio.pin}`).checked = gpio.invert;
-    }
-};
-const openAutomationSetting = (element) => {
-    closeAnySettings();
-    const automation = automations.find(automation => automation.id === +element.id.split("-")[1]);
-    const row = document.getElementById("rowAutomation-" + automation.id);
-    if (!row.classList.value.includes("open")) {
-        row.appendChild(createEditAutomationPanel(automation));
-        // Fill conditions
-        automation.conditions.forEach((condition) => {
-            // Check if the condition contains a valid math operator sign
-            if (condition[1]) {
-                addConditionEditor(condition);
-            }
-        })
-        // Fill actions
-        automation.actions.forEach((action) => {
-            // Check if the action contains a valid type
-            if (action[0]) {
-                addActionEditor(action);
-            }
-        })
-        row.classList.add("open");
-        document.getElementById(`setAutomationAutoRun-${automation.id}`).checked = automation.autoRun;
-    }
-};
+// UI
 const closeAnySettings = () => {
-    document.querySelectorAll(".open").forEach(row => {
+    document.querySelectorAll(".open").forEach((row) => {
         row.classList.remove("open");
         row.removeChild(row.lastChild);
     });
 };
-// Element creation
 const switchPage = () => {
     isSettingsMenuActivated = !isSettingsMenuActivated;
     if (isSettingsMenuActivated) {
@@ -658,16 +148,16 @@ const createScanResult = (gpioPin, scanResults) => {
             <div class="btn-container">
                 <a onclick="closeScan(this)" id="closeScan-${gpioPin}" class="btn delete">x</a>
             </div>
-    </div>`
-    let rows = `<div class="row" id="scanResult-${gpioPin}">No device attached</div>`
+    </div>`;
+    let rows = `<div class="row" id="scanResult-${gpioPin}">No device attached</div>`;
     if (scanResults) {
         rows = scanResults.reduce((prev, scanResult) => {
             return prev + `<div class="row" id="scanResult-${gpioPin}">${scanResult}
                 <div class="btn-container">
                         <a onclick="openI2cSlaveSettings(this)" id="editI2c-${gpioPin}" class="btn edit">set</a>
                     </div>
-                </div>`
-        }, "")
+                </div>`;
+        }, "");
     }
     child.innerHTML = `<div class="column scan-results" id="scanResults-${gpioPin}">${headRow}${rows}</div>`;
     return child.firstChild;
@@ -711,7 +201,7 @@ const createEditGpioPanel = (gpio) => {
     }, []);
     const channelOptions = [...Array(settings.general.maxChannels).keys()]
         .reduce((prev, channelNumber) => {
-            return prev += `<option ${+gpio.channel === +channelNumber ? "selected" : ""} value=${channelNumber}>${channelNumber}</option>`
+            return prev += `<option ${+gpio.channel === +channelNumber ? "selected" : ""} value=${channelNumber}>${channelNumber}</option>`;
         }
             , `<option ${+gpio.channel === -1 ? "selected" : ""} value=-1>-1</option>`);
     let child = document.createElement("div");
@@ -1042,6 +532,517 @@ const updateConditionValueType = (element) => {
         document.getElementById(`addValueCondition-${rowNumber}`).type = "number";
     }
 };
+// Restart ESP
+const restart = async () => {
+    try {
+        const blocker = document.getElementById("blocker");
+        const res = await fetch(window.location.href + "restart");
+        blocker.classList.add("hidden");
+    } catch (err) {
+        blocker.classList.add("hidden");
+        await displayNotification(err, "error");
+    }
+};
+const switchIndicatorState = (indicatorId, stateCode) => {
+    if (+stateCode === 1) {
+        document.getElementById(indicatorId).classList.add("ok");
+        document.getElementById(indicatorId).classList.remove("error");
+    } else if (+stateCode === 0) {
+        document.getElementById(indicatorId).classList.remove("ok");
+        document.getElementById(indicatorId).classList.remove("error");
+    } else {
+        document.getElementById(indicatorId).classList.remove("ok");
+        document.getElementById(indicatorId).classList.add("error");
+    }
+};
+const fetchServicesHealth = async () => {
+    try {
+        const res = await fetch(window.location.href + "health");
+        health = await res.json();
+        switchIndicatorState("telegram-indicator", health.telegram);
+        switchIndicatorState("mqtt-indicator", health.mqtt);
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+// Update software
+const reloadFirmwareVersionsList = async () => {
+    try {
+        await fetch(window.location.href + "firmware/list");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const fillUpdateInput = (element) => {
+    const fileName = element.value.split("\\");
+    document.getElementById("file-update-label").innerHTML = fileName[fileName.length - 1];
+    document.getElementById("submit-update-file").classList.remove("disable");
+};
+const selectFirmwareVersion = (element) => {
+    const versiontSelector = document.getElementById("select-firmware-version");
+    if (versiontSelector.value) {
+        document.getElementById("submit-update-file").classList.remove("disable");
+    } else {
+        document.getElementById("submit-update-file").classList.add("disable");
+    }
+};
+const submitUpdate = async () => {
+    const blocker = document.getElementById("blocker");
+    blocker.classList.remove("hidden");
+    const versiontSelector = document.getElementById("select-firmware-version");
+    if (versiontSelector.value) {
+        // Reqest repo download
+        try {
+            await fetch(window.location.href + `update/version?v=${versiontSelector.value}`);
+            document.getElementById("blocker-title").innerText = `Downloading firmware v${versiontSelector.value}, please wait...`;
+        } catch (err) {
+            blocker.classList.add("hidden");
+            await displayNotification(err, "error");
+        }
+    } else {
+        // Manual upload
+        document.getElementById("blocker-title").innerText = "Loading new software, please wait...";
+        const firmwareFile = document.getElementById("firmware-file");
+        const data = new FormData();
+        data.append("firmware", firmwareFile.files[0]);
+        try {
+            const res = await fetch(window.location.href + "update", {
+                processData: false,
+                contentType: false,
+                method: "POST",
+                body: data
+            });
+            document.getElementById("blocker-title").innerText = "Restarting device, please wait...";
+        } catch (err) {
+            blocker.classList.add("hidden");
+            await displayNotification(err, "error");
+        }
+    }
+
+};
+// Telegram
+const submitTelegram = async (e) => {
+    e.preventDefault();
+    const active = +document.getElementById("telegram-active").checked;
+    const token = document.getElementById("telegram-token").value;
+    const users = document.getElementById("telegram-users").value.split(",").map((id) => +id);
+    if (token !== settings.telegram.token || active !== +settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
+        try {
+            const res = await fetch(window.location.href + "telegram", {
+                method: "POST",
+                headers: { contentType: false, processData: false },
+                body: JSON.stringify({ token, active, users })
+            });
+            settings.telegram = { active, token };
+            await displayNotification("Telegram parameters saved", "success");
+        } catch (err) {
+            await displayNotification(err, "error");
+        }
+    }
+};
+// MQTT
+const mqttConnect = async () => {
+    const loader = document.getElementById("mqtt-retry-loader");
+    const retryButton = document.getElementById("mqtt-retry");
+    const retryText = retryButton.firstElementChild;
+    try {
+        retryText.classList.add("hidden");
+        loader.classList.remove("hidden");
+        await fetch(window.location.href + "mqtt/retry");
+        while (health.mqtt === 0) {
+            await fetchServicesHealth();
+            await delay(1000); //avoid spaming esp32
+        }
+        if (+health.mqtt === 1) {
+            retryButton.classList.add("hidden");
+            await displayNotification("Mqtt client connected", "success");
+        } else {
+            retryButton.classList.remove("hidden");
+            await displayNotification("Could not connect Mqtt client", "error");
+        }
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+    loader.classList.add("hidden");
+    retryText.classList.remove("hidden");
+};
+
+const submitMqtt = async (e) => {
+    e.preventDefault();
+    const active = document.getElementById("mqtt-active").checked;
+    const fn = document.getElementById("mqtt-fn").value;
+    const host = document.getElementById("mqtt-host").value;
+    const port = document.getElementById("mqtt-port").value;
+    const user = document.getElementById("mqtt-user").value;
+    const password = document.getElementById("mqtt-password").value;
+    const topic = document.getElementById("mqtt-topic").value;
+    try {
+        await fetch(window.location.href + "mqtt", {
+            method: "POST",
+            headers: { contentType: false, processData: false },
+            body: JSON.stringify({ active, fn, host, port, user, password, topic })
+        });
+        settings.mqtt = { active, fn, host, port, user, password, topic };
+        await displayNotification("Mqtt parameters saved", "success");
+        await mqttConnect();
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+// Gpios
+const fetchGpios = async () => {
+    try {
+        const res = await fetch(window.location.href + "gpios");
+        const newGpios = await res.json();
+        if (newGpios && newGpios.length) {
+            gpios = newGpios;
+        }
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const fetchAvailableGpios = async () => {
+    try {
+        const res = await fetch(window.location.href + "gpios/available");
+        availableGpios = await res.json();
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const switchGpioState = async (element) => {
+    try {
+        const gpio = gpios.find((gpio) => gpio.pin === +element.id.split("-")[1]);
+        element.classList.add("disable");
+        if (gpio.mode > 0) {
+            const isOn = element.classList.value.includes("on");
+            await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${(isOn && !gpio.invert) || (!isOn && gpio.invert) ? 0 : 1}`);
+            element.classList.remove(isOn ? "on" : "off");
+            element.classList.add(isOn ? "off" : "on");
+            element.innerText = (isOn ? "off" : "on");
+        } else if (gpio.mode === -1) {
+            await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${element.value}`);
+        }
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+    element.classList.remove("disable");
+};
+const addGpio = () => {
+    closeAnySettings();
+    const topBar = document.getElementById("gpio-header-bar");
+    if (!topBar.classList.value.includes("open")) {
+        topBar.appendChild(createEditGpioPanel());
+        topBar.classList.add("open");
+    }
+};
+const deleteGpio = async (element) => {
+    const gpioPin = element.id.split("-")[1];
+    try {
+        await fetch(`${window.location.href}gpio?pin=${gpioPin}`, { method: "DELETE" });
+        gpios = gpios.filter((gpio) => +gpio.pin !== +gpioPin);
+        closeAnySettings();
+        document.getElementById("rowGpio-" + gpioPin).remove();
+        await displayNotification("Gpio removed", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+// I2C
+const fetchI2cSlaves = async () => {
+    try {
+        const res = await fetch(window.location.href + "slaves");
+        const newSlaves = await res.json();
+        if (newSlaves && newSlaves.length) {
+            slaves = newSlaves;
+        }
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+const sendI2cSlaveCommand = async (element, write) => {
+    const id = element.id.split("-")[1];
+    const inputElement = document.getElementById(`i2cSlaveData-${id}`);
+    try {
+        const res = await fetch(window.location.href + `slave/command?id=${id}` + (write && inputElement.value ? `&value=${+inputElement.value}` : ""));
+        if (!write && res) {
+            const data = await res.json();
+            inputElement.value = data;
+        }
+        await displayNotification("Command sent", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+const saveI2cSlaveSettings = async (element) => {
+    const id = element.id.split("-")[1];
+    const isNew = (id === "new");
+    let req = { settings: {} };
+    if (isNew) {
+        req.settings.address = +element.parentElement.parentElement.parentElement.firstChild.textContent;
+        req.settings.mPin = +element.parentElement.parentElement.parentElement.id.split("-")[1];
+    } else {
+        req.id = id;
+    }
+    req.settings.label = document.getElementById(`setI2cSlaveLabel-${id}`).value;
+    req.settings.commands = document.getElementById(`setI2cSlaveCommands-${id}`).value.split(",");
+    req.settings.octetRequest = +document.getElementById(`setI2cSlaveOctet-${id}`).value;
+    req.settings.save = +document.getElementById(`setI2cSlaveSave-${id}`).checked;
+    try {
+        if (!req.settings.label) {
+            throw new Error("Parameters missing, please fill at least label and type inputs.");
+        }
+        const newSetting = await request("slave",req,isNew);
+        let row = document.getElementById(`rowGpio-${newSetting.mPin}`);
+        if (isNew) {
+            slaves.push(newSetting);
+            row.insertBefore(createI2cSlaveControlRow(newSetting), row.lastChild);
+            closeI2cSlaveSettings(id);
+        } else {
+            slaves = slaves.map((oldSlave) => (+oldSlave.id === +id) ? { ...newSetting } : oldSlave);
+            let oldRow = document.getElementById("rowSlave-" + id);
+            row.replaceChild(createI2cSlaveControlRow(newSetting), oldRow);
+        }
+        await displayNotification("Slave saved", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+const deleteI2cSlave = async (element) => {
+    const id = element.id.split("-")[1];
+    try {
+        await fetch(`${window.location.href}slave?id=${id}`, { method: "DELETE" });
+        let row = document.getElementById("rowSlave-" + id);
+        closeI2cSlaveSettings(id);
+        row.remove();
+        await displayNotification("Slave removed", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+// Automations
+const fetchAutomations = async () => {
+    try {
+        const res = await fetch(window.location.href + "automations");
+        const newAutomations = await res.json();
+        if (newAutomations && newAutomations.length) {
+            automations = newAutomations;
+        }
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const runAutomation = async (element) => {
+    const id = element.id.split("-")[1];
+    element.classList.add("loading");
+    element.classList.add("disable");
+    try {
+        await fetch(window.location.href + "automation/run?id=" + id);
+        await displayNotification("Automation run", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+    element.classList.remove("loading");
+};
+const addAutomation = () => {
+    closeAnySettings();
+    const topBar = document.getElementById("automation-header-bar");
+    if (!topBar.classList.value.includes("open")) {
+        topBar.appendChild(createEditAutomationPanel());
+        topBar.classList.add("open");
+    }
+};
+
+const deleteAutomation = async (element) => {
+    const automationId = element.id.split("-")[1];
+    try {
+        await fetch(`${window.location.href}automation?id=${automationId}`, { method: "DELETE" });
+        await fetchAutomations();
+        let row = document.getElementById("rowAutomation-" + automationId);
+        closeAnySettings();
+        row.remove();
+        await displayNotification("Automation removed", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+
+const scan = async (element) => {
+    const gpioPin = element.id.split("-")[1];
+    try {
+        const res = await fetch(`${window.location.href}gpio/scan?pin=${gpioPin}`);
+        const addresses = await res.json();
+        const gpioRow = document.getElementById(`rowGpio-${gpioPin}`);
+        gpioRow.appendChild(createScanResult(gpioPin, addresses));
+
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+// Settings
+const fetchSettings = async () => {
+    try {
+        const res = await fetch(window.location.href + "settings");
+        const s = await res.json();
+        if (s) {
+            // Save settings
+            settings = s;
+            // Add them to the dom
+            document.getElementById("telegram-active").checked = settings.telegram.active;
+            document.getElementById("telegram-token").value = settings.telegram.token;
+            document.getElementById("telegram-users").value = settings.telegram.users.filter(userId => userId !== 0).join(",");
+            document.getElementById("mqtt-active").checked = settings.mqtt.active;
+            document.getElementById("mqtt-fn").value = settings.mqtt.fn;
+            document.getElementById("mqtt-host").value = settings.mqtt.host;
+            document.getElementById("mqtt-port").value = settings.mqtt.port;
+            document.getElementById("mqtt-user").value = settings.mqtt.user;
+            document.getElementById("mqtt-password").value = settings.mqtt.password;
+            document.getElementById("mqtt-topic").value = settings.mqtt.topic;
+        }
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const saveGpioSetting = async (element) => {
+    const gpioPin = element.id.split("-")[1];
+    const isNew = (gpioPin === "new");
+    let req = { settings: {} };
+    const newPin = document.getElementById(`setGpioPin-${gpioPin}`).value;
+    req.settings.label = document.getElementById(`setGpioLabel-${gpioPin}`).value;
+    req.settings.mode = document.getElementById(`setGpioMode-${gpioPin}`).value;
+    req.settings.sclpin = document.getElementById(`setGpioSclPin-${gpioPin}`).value;
+    if (+req.settings.mode === -1) {
+        req.settings.frequency = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
+    } else if (+req.settings.mode === -2) {
+        req.settings.frequency = document.getElementById(`setI2cFrequency-${gpioPin}`).value;
+    }
+    req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
+    req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
+    req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
+    req.settings.invert = document.getElementById(`setGpioInvertState-${gpioPin}`).checked;
+    if (newPin && +newPin !== +gpioPin) {
+        req.settings.pin = +newPin;
+    }
+    if (!isNew) {
+        req.pin = gpioPin;
+    }
+    try {
+        if (!req.settings.mode || !req.settings.label) {
+            throw new Error("Parameters missing, please fill all the inputs");
+        }
+        const newSetting = await request("gpio",req,isNew);
+        let column = document.getElementById("gpios");
+        if (isNew) {
+            gpios.push(newSetting);
+            column.insertBefore(createGpioControlRow(newSetting), column.firstChild);
+            closeAnySettings();
+        } else {
+            gpios = gpios.map((oldGpio) => (+oldGpio.pin === +gpioPin) ? { ...newSetting } : oldGpio);
+            let oldRow = document.getElementById("rowGpio-" + gpioPin);
+            column.replaceChild(createGpioControlRow(newSetting), oldRow);
+        }
+        await displayNotification("Gpio saved", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const saveAutomationSetting = async (element) => {
+    const automationId = element.id.split("-")[1];
+    const isNew = (automationId === "new");
+    let req = { settings: {} };
+    if (!isNew) {
+        req.id = automationId;
+    }
+    req.settings.label = document.getElementById(`setAutomationLabel-${automationId}`).value;
+    req.settings.conditions = [...document.getElementById("condition-editor-result").childNodes].map((rowElement) => {
+        const id = +rowElement.id.split("-")[1];
+        return [
+            +document.getElementById(`addGpioCondition-${id}`).value,
+            +document.getElementById(`addSignCondition-${id}`).value,
+            +document.getElementById(`addValueCondition-${id}`).value.split(":").join(""),
+            +document.getElementById(`addNextSignCondition-${id}`).value,
+        ];
+    });
+    req.settings.actions = [...document.getElementById("action-editor-result").childNodes].map((rowElement) => {
+        const id = +rowElement.id.split("-")[1];
+        const type = document.getElementById(`addTypeAction-${id}`).value;
+        if (+type === 5) {
+            return [type, document.getElementById(`addHTTPMethod-${id}`).value,
+                document.getElementById(`addHTTPAddress-${id}`).value,
+                document.getElementById(`addHTTPBody-${id}`).value
+            ];
+        } else if (+type === 6) {
+            return [type, document.getElementById(`addAutomation-${id}`).value, "", ""];
+        } else {
+            return [type, document.getElementById(`addValueAction-${id}`).value,
+                document.getElementById(`addGpioAction-${id}`).value,
+                document.getElementById(`addSignAction-${id}`).value
+            ];
+        }
+    })
+    req.settings.autoRun = document.getElementById(`setAutomationAutoRun-${automationId}`).checked;
+    req.settings.debounceDelay = +document.getElementById(`setAutomationDebounceDelay-${automationId}`).value;
+    req.settings.loopCount = +document.getElementById(`setAutomationLoopCount-${automationId}`).value;
+    try {
+        if (!req.settings.label) {
+            throw new Error("Parameters missing, please fill at least label and type inputs.");
+        }
+        const newSetting = await request("automation",req,isNew);
+        let column = document.getElementById("automations");
+        if (isNew) {
+            automations.push(newSetting);
+            column.insertBefore(createAutomationRow(newSetting), column.firstChild);
+            closeAnySettings();
+        } else {
+            automations = automations.map((oldAutomation) => (+oldAutomation.id === +automationId) ? { ...newSetting } : oldAutomation);
+            let oldRow = document.getElementById("rowAutomation-" + automationId);
+            column.replaceChild(createAutomationRow(newSetting), oldRow);
+        }
+        await displayNotification("Automation saved", "success");
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+};
+const openGpioSetting = (element) => {
+    closeAnySettings();
+    const gpio = gpios.find((gpio) => gpio.pin === +element.id.split("-")[1]);
+    const row = document.getElementById("rowGpio-" + gpio.pin);
+    if (!row.classList.value.includes("open")) {
+        row.appendChild(createEditGpioPanel(gpio));
+        row.classList.add("open");
+        document.getElementById(`setGpioSave-${gpio.pin}`).checked = gpio.save;
+        document.getElementById(`setGpioInvertState-${gpio.pin}`).checked = gpio.invert;
+    }
+};
+const openAutomationSetting = (element) => {
+    closeAnySettings();
+    const automation = automations.find(automation => automation.id === +element.id.split("-")[1]);
+    const row = document.getElementById("rowAutomation-" + automation.id);
+    if (!row.classList.value.includes("open")) {
+        row.appendChild(createEditAutomationPanel(automation));
+        // Fill conditions
+        automation.conditions.forEach((condition) => {
+            // Check if the condition contains a valid math operator sign
+            if (condition[1]) {
+                addConditionEditor(condition);
+            }
+        })
+        // Fill actions
+        automation.actions.forEach((action) => {
+            // Check if the action contains a valid type
+            if (action[0]) {
+                addActionEditor(action);
+            }
+        })
+        row.classList.add("open");
+        document.getElementById(`setAutomationAutoRun-${automation.id}`).checked = automation.autoRun;
+    }
+};
 // Events
 window.onload = async () => {
     fetchSettings();
@@ -1050,14 +1051,14 @@ window.onload = async () => {
     reloadFirmwareVersionsList();
     await Promise.all([fetchGpios(), fetchAutomations(), fetchI2cSlaves()]);
     const containerG = document.getElementById("gpios");
-    gpios.forEach(gpio => {
+    gpios.forEach((gpio) => {
         containerG.appendChild(createGpioControlRow(gpio));
     });
     const containerA = document.getElementById("automations");
-    automations.forEach(automation => {
+    automations.forEach((automation) => {
         containerA.appendChild(createAutomationRow(automation));
     });
-    slaves.forEach(slave => {
+    slaves.forEach((slave) => {
         const gpioRow = document.getElementById(`rowGpio-${slave.mPin}`);
         if (gpioRow) {
             gpioRow.appendChild(createI2cSlaveControlRow(slave));
@@ -1083,7 +1084,8 @@ if (!!window.EventSource) {
     }, false);
 
     source.addEventListener("firmwareDownloaded", (e) => {
-        document.getElementById("blocker-title").innerText = `Installing firmware v${versiontSelector.value}...`;
+        const versionSelector = document.getElementById("select-firmware-version");
+        document.getElementById("blocker-title").innerText = `Installing firmware v${versionSelector.value}...`;
     }, false);
 
     source.addEventListener("firmwareUpdateError", async (e) => {
@@ -1112,7 +1114,7 @@ if (!!window.EventSource) {
         const state = e.data.split("-")[1];
         const button = document.getElementById(`runAutomation-${automation}`);
         if (+state) {
-            button.classList.add("disable")
+            button.classList.add("disable");
             button.innerText = "running...";
         } else {
             button.classList.remove("disable");
