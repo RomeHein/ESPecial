@@ -1069,16 +1069,6 @@ window.onload = async () => {
 if (!!window.EventSource) {
     var source = new EventSource("/events");
 
-    source.addEventListener("open", (e) => {
-        console.log("Events Connected");
-    }, false);
-
-    source.addEventListener("error", (e) => {
-        if (e.target.readyState !== EventSource.OPEN) {
-            console.log("Events Disconnected");
-        }
-    }, false);
-
     source.addEventListener("firmwareList", async (e) => {
         versionsList = JSON.parse(e.data);
         const versionSelector = document.getElementById("select-firmware-version");

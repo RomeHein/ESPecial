@@ -128,7 +128,7 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
     if (bot->messages[i].type == "callback_query") {
       const char *cmd = bot->messages[i].text.c_str();
       char id_c[5];
-      strncpy(id_c, cmd+2, strlen(cmd)-1);
+      strncpy(id_c, cmd+2, strnlen(cmd,MAX_MESSAGE_TEXT_SIZE)-1);
       int id = atoi(id_c);
       #ifdef __debug  
         Serial.printf("Telegram: command: %c, id: %i\n",cmd[0], id);

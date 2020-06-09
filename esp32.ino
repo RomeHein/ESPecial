@@ -79,7 +79,7 @@ String getFirmwareList() {
 
 // Utility to extract header value from headers
 String getHeaderValue(String header, String headerName) {
-  return header.substring(strlen(headerName.c_str()));
+  return header.substring(headerName.length());
 }
 
 void execOTA(const char* version) {
