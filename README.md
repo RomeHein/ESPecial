@@ -62,12 +62,12 @@ If you want to use vscode while coding (I strongly recommand it) follow this nic
 
 ### Installing
 
-## Esay way (work in progress)
+#### Easy way (work in progress)
 
 You'll need [this](https://github.com/RomeHein/ESPInstaller.git) project installed on your esp32. This is a very lightweight project that will enable you to install any project from their github repo if the owner has enabled it. The good thing is that you don't need to install any dependencies or anything to get that project on your esp32. Just make sure to select the right partition scheme when installing ESPInstaller: `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS`
 Once ESPInstaller installed, select the ESPecial from the list of available repo and click install. This will install everything automatically 👌
 
-## Manual way
+#### Manual way
 
 First copy this repo to your local directory. Use the `download as zip` or `git clone` method.
 Then 6 dependencies need to be added to your Arduino libraries (when you download these dependencies, make sure to remove the '-master' part of the folder name):

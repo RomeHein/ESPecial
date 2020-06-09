@@ -606,7 +606,7 @@ const openI2cSlaveSettings = (element) => {
     let octetToRequest = 0;
     let save = 0;
     // Find the right slave attached to gpioPin
-    let slave = slaves.find(s => s.id == id);
+    let slave = slaves.find((s) => +s.id === id);
     if (slave) {
         label = slave.label;
         commands = slave.commands.join(",");
@@ -690,36 +690,36 @@ const createEditGpioPanel = (gpio) => {
             pin: "new"
         };
     }
-    let modeOptions = `<option ${gpio.mode == 1 ? "selected" : ""} value=1>INPUT</option><option ${gpio.mode == 4 ? "selected" : ""} value=4>PULLUP</option><option ${gpio.mode == 5 ? "selected" : ""} value=5>INPUT PULLUP</option><option ${gpio.mode == 8 ? "selected" : ""} value=8>PULLDOWN</option><option ${gpio.mode == 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>`;
+    let modeOptions = `<option ${+gpio.mode === 1 ? "selected" : ""} value=1>INPUT</option><option ${+gpio.mode === 4 ? "selected" : ""} value=4>PULLUP</option><option ${+gpio.mode === 5 ? "selected" : ""} value=5>INPUT PULLUP</option><option ${+gpio.mode === 8 ? "selected" : ""} value=8>PULLDOWN</option><option ${+gpio.mode === 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>`;
     const pinOptions = availableGpios.reduce((prev, availableGpio) => {
-        if ((!gpios.find(_gpio => _gpio.pin == availableGpio.pin) && availableGpio.pin != gpio.pin) || availableGpio.pin == gpio.pin) {
+        if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.pin) || +availableGpio.pin === +gpio.pin) {
             // Complete the mode select input while we are here...
-            if (availableGpio.pin == gpio.pin && !availableGpio.inputOnly) {
-                modeOptions += `<option ${gpio.mode == 2 ? "selected" : ""} value=2>OUTPUT</option>`;
-                modeOptions += `<option ${gpio.mode == -1 ? "selected" : ""} value=-1>LED CONTROL</option>`;
-                modeOptions += `<option ${gpio.mode == -2 ? "selected" : ""} value=-2>I2C</option>`;
+            if (+availableGpio.pin === +gpio.pin && !availableGpio.inputOnly) {
+                modeOptions += `<option ${+gpio.mode === 2 ? "selected" : ""} value=2>OUTPUT</option>`;
+                modeOptions += `<option ${+gpio.mode === -1 ? "selected" : ""} value=-1>LED CONTROL</option>`;
+                modeOptions += `<option ${+gpio.mode === -2 ? "selected" : ""} value=-2>I2C</option>`;
             }
-            prev += `<option ${availableGpio.pin == gpio.pin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
+            prev += `<option ${+availableGpio.pin === +gpio.pin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
         }
         return prev;
     }, []);
     const sclPinOptions = availableGpios.reduce((prev, availableGpio) => {
-        if ((!gpios.find(_gpio => _gpio.pin == availableGpio.pin) && availableGpio.pin != gpio.sclpin) || availableGpio.pin == gpio.sclpin) {
-            prev += `<option ${availableGpio.pin == gpio.sclpin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
+        if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.sclpin) || +availableGpio.pin === +gpio.sclpin) {
+            prev += `<option ${+availableGpio.pin === +gpio.sclpin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
         }
         return prev;
     }, []);
     const channelOptions = [...Array(settings.general.maxChannels).keys()]
         .reduce((prev, channelNumber) => {
-            return prev += `<option ${gpio.channel == channelNumber ? "selected" : ""} value=${channelNumber}>${channelNumber}</option>`
+            return prev += `<option ${+gpio.channel === +channelNumber ? "selected" : ""} value=${channelNumber}>${channelNumber}</option>`
         }
-            , `<option ${gpio.channel == -1 ? "selected" : ""} value=-1>-1</option>`);
+            , `<option ${+gpio.channel === -1 ? "selected" : ""} value=-1>-1</option>`);
     let child = document.createElement("div");
     child.classList.add("set");
     child.innerHTML = `<div class="set-inputs">
             <div class="row">
                 <label for="setGpioPin-${gpio.pin}">Pin:</label>
-                <select id="setGpioPin-${gpio.pin}" name="pin" onchange="updateModeOptions("${gpio.pin}")">${pinOptions}</select>
+                <select id="setGpioPin-${gpio.pin}" name="pin" onchange="updateModeOptions('${gpio.pin}')">${pinOptions}</select>
             </div>
             <div class="row">
                 <label for="setGpioLabel-${gpio.pin}">Label:</label>
@@ -729,7 +729,7 @@ const createEditGpioPanel = (gpio) => {
                 <label for="setGpioMode-${gpio.pin}">I/O mode:</label>
                 <select onchange="updateGpioOptions(this)" id="setGpioMode-${gpio.pin}" name="mode">${modeOptions}</select>
             </div>
-            <div id="led-options" class="${gpio.mode != -1 ? "hidden" : ""}">
+            <div id="led-options" class="${+gpio.mode !== -1 ? "hidden" : ""}">
                 <div class="row">
                     <label for="setGpioFrequency-${gpio.pin}">Frequency:</label>
                     <input id="setGpioFrequency-${gpio.pin}" type="text" name="frequency" value="${gpio.frequency || ""}" placeholder="Default to 50Hz if empty">
@@ -743,7 +743,7 @@ const createEditGpioPanel = (gpio) => {
                     <select id="setGpioChannel-${gpio.pin}" name="channel" value="${gpio.channel}" placeholder="Default to 0">${channelOptions}</select>
                 </div>
             </div>
-            <div id="i2c-options" class="${gpio.mode != -2 ? "hidden" : ""}">
+            <div id="i2c-options" class="${+gpio.mode !== -2 ? "hidden" : ""}">
                 <div class="row">
                     <label for="setGpioSclPin-${gpio.pin}">SCL pin:</label>
                     <select id="setGpioSclPin-${gpio.pin}" type="text" name="sclpin">${sclPinOptions}</select>
@@ -757,7 +757,7 @@ const createEditGpioPanel = (gpio) => {
                 <label for="setGpioInvertState-${gpio.pin}">Invert state:</label>
                 <input type="checkbox" name="invert" id="setGpioInvertState-${gpio.pin}" value="${gpio.invert}">
             </div>
-            <div class="row ${gpio.mode != -1 && gpio.mode != 2 ? "hidden" : ""}" id="setGpioSaveRow">
+            <div class="row ${+gpio.mode !== -1 && +gpio.mode !== 2 ? "hidden" : ""}" id="setGpioSaveRow">
                 <label for="setGpioSave-${gpio.pin}">Save state:</label>
                 <input type="checkbox" name="save" id="setGpioSave-${gpio.pin}" value="${gpio.save}">
             </div>
@@ -780,18 +780,18 @@ const addConditionEditor = (condition) => {
     let selectedValue = 0;
     let selectedNextSign = 0;
     if (condition) {
-        selectedGpio = condition[0];
-        selectedSign = condition[1];
+        selectedGpio = +condition[0];
+        selectedSign = +condition[1];
         selectedValue = condition[2];
-        selectedNextSign = condition[3];
+        selectedNextSign = +condition[3];
     }
     // If time type is selected, put the value in HH:MM format
-    if (selectedGpio == -1) {
+    if (selectedGpio === -1) {
         selectedValue = `${Math.floor(selectedValue / 100)}:${selectedValue % 100}`;
     }
 
-    let gpioConditionOptions = `<option value=-2 ${selectedGpio == -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio == -1 ? "selected" : ""}>Time</option>`
-    gpioConditionOptions += gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedGpio == gpio.pin ? "selected" : ""}>${gpio.label}</option>`, ``);
+    let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`
+    gpioConditionOptions += gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, ``);
 
     const conditionEditorElement = document.getElementById("condition-editor-result");
     const conditionNumber = "-" + conditionEditorElement.childElementCount;
@@ -800,17 +800,17 @@ const addConditionEditor = (condition) => {
     rowElement.classList.add("row");
     rowElement.innerHTML = `<select onchange="updateConditionValueType(this)" id="addGpioCondition${conditionNumber}" name="gpioCondition">${gpioConditionOptions}</select>
                     <select id="addSignCondition${conditionNumber}" name="signCondition">
-                        <option value=1 ${selectedSign == 1 ? "selected" : ""}>=</option>
-                        <option value=2 ${selectedSign == 2 ? "selected" : ""}>!=</option>
-                        <option value=3 ${selectedSign == 3 ? "selected" : ""}>></option>
-                        <option value=4 ${selectedSign == 4 ? "selected" : ""}><</option>
+                        <option value=1 ${selectedSign === 1 ? "selected" : ""}>=</option>
+                        <option value=2 ${selectedSign === 2 ? "selected" : ""}>!=</option>
+                        <option value=3 ${selectedSign === 3 ? "selected" : ""}>></option>
+                        <option value=4 ${selectedSign === 4 ? "selected" : ""}><</option>
                     </select>
-                    <input type="${selectedGpio == -1 ? "time" : "number"}" id="addValueCondition${conditionNumber}" name="valueCondition" value="${selectedValue}" placeholder="value">
+                    <input type="${selectedGpio === -1 ? "time" : "number"}" id="addValueCondition${conditionNumber}" name="valueCondition" value="${selectedValue}" placeholder="value">
                     <select id="addNextSignCondition${conditionNumber}" name="nextSignCondition">
-                        <option value=0 ${selectedNextSign == 0 ? "selected" : ""}>none</option>
-                        <option value=1 ${selectedNextSign == 1 ? "selected" : ""}>AND</option>
-                        <option value=2 ${selectedNextSign == 2 ? "selected" : ""}>OR</option>
-                        <option value=3 ${selectedNextSign == 3 ? "selected" : ""}>XOR</option>
+                        <option value=0 ${selectedNextSign === 0 ? "selected" : ""}>none</option>
+                        <option value=1 ${selectedNextSign === 1 ? "selected" : ""}>AND</option>
+                        <option value=2 ${selectedNextSign === 2 ? "selected" : ""}>OR</option>
+                        <option value=3 ${selectedNextSign === 3 ? "selected" : ""}>XOR</option>
                     </select>
                     <a onclick="deleteRowEditor(this)" id="deleteCondition${conditionNumber}" class="btn delete">x</a>`
     conditionEditorElement.appendChild(rowElement);
@@ -826,44 +826,44 @@ const addActionEditor = (action) => {
     selectedHttpAddress = "";
     selectedHttpContent = "";
     if (action) {
-        selectedType = action[0];
-        selectedValue = action[1];
+        selectedType = +action[0];
+        selectedValue = +action[1];
         selectedPin = action[2];
         selectedSign = action[3];
         selectedHttpMethod = action[1];
         selectedHttpAddress = action[2];
         selectedHttpContent = action[3];
     }
-    let gpioActionOptions = gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedPin == gpio.pin ? "selected" : ""}>${gpio.label}</option>`, "");
-    let automationOptions = automations.reduce((acc, automation) => acc + `<option value=${automation.id} ${selectedValue == automation.id ? "selected" : ""}>${automation.label}</option>`, "");
+    let gpioActionOptions = gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedPin === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, "");
+    let automationOptions = automations.reduce((acc, automation) => acc + `<option value=${automation.id} ${selectedValue === +automation.id ? "selected" : ""}>${automation.label}</option>`, "");
     const actionEditorElement = document.getElementById("action-editor-result");
     const actionNumber = "-" + actionEditorElement.childElementCount;
     const rowElement = document.createElement("div");
     rowElement.id = `action${actionNumber}`;
     rowElement.classList.add("row");
     rowElement.innerHTML = `<select onchange="updateActionType(this)" id="addTypeAction${actionNumber}" name="signAction">
-                        <option value=1 ${selectedType == 1 ? "selected" : ""}>Set Gpio pin</option>
-                        <option value=2 ${selectedType == 2 ? "selected" : ""}>Send telegram message</option>
-                        <option value=3 ${selectedType == 3 ? "selected" : ""}>Delay</option>
-                        <option value=4 ${selectedType == 4 ? "selected" : ""}>Serial print</option>
-                        <option value=5 ${selectedType == 5 ? "selected" : ""}>HTTP</option>
-                        <option value=6 ${selectedType == 6 ? "selected" : ""}>Automation</option>
+                        <option value=1 ${selectedType === 1 ? "selected" : ""}>Set Gpio pin</option>
+                        <option value=2 ${selectedType === 2 ? "selected" : ""}>Send telegram message</option>
+                        <option value=3 ${selectedType === 3 ? "selected" : ""}>Delay</option>
+                        <option value=4 ${selectedType === 4 ? "selected" : ""}>Serial print</option>
+                        <option value=5 ${selectedType === 5 ? "selected" : ""}>HTTP</option>
+                        <option value=6 ${selectedType === 6 ? "selected" : ""}>Automation</option>
                     </select>
-                    <select id="addHTTPMethod${actionNumber}" name="httpType" class="${selectedType == 5 ? "" : "hidden"}">
-                        <option value=1 ${selectedHttpMethod == 1 ? "selected" : ""}>GET</option>
-                        <option value=2 ${selectedHttpMethod == 2 ? "selected" : ""}>POST</option>
+                    <select id="addHTTPMethod${actionNumber}" name="httpType" class="${selectedType === 5 ? "" : "hidden"}">
+                        <option value=1 ${selectedHttpMethod === 1 ? "selected" : ""}>GET</option>
+                        <option value=2 ${selectedHttpMethod === 2 ? "selected" : ""}>POST</option>
                     </select>
-                    <input id="addHTTPAddress${actionNumber}" name="httpAddress" class="${selectedType == 5 ? "" : "hidden"}" placeholder="http://www.placeholder.com/" value="${selectedHttpAddress}">
-                    <input id="addHTTPBody${actionNumber}" name="httpBody" class="${selectedType == 5 ? "" : "hidden"}" placeholder="Body in json format" value="${selectedHttpContent}">
-                    <select id="addGpioAction${actionNumber}" name="gpioAction" class="${selectedType == 1 ? "" : "hidden"}">${gpioActionOptions}</select>
-                    <select id="addSignAction${actionNumber}" name="signAction" class="${selectedType == 1 ? "" : "hidden"}">
-                        <option value=1 ${selectedSign == 1 ? "selected" : ""}>=</option>
-                        <option value=2 ${selectedSign == 2 ? "selected" : ""}>+=</option>
-                        <option value=3 ${selectedSign == 3 ? "selected" : ""}>-=</option>
-                        <option value=4 ${selectedSign == 4 ? "selected" : ""}>*=</option>
+                    <input id="addHTTPAddress${actionNumber}" name="httpAddress" class="${selectedType === 5 ? "" : "hidden"}" placeholder="http://www.placeholder.com/" value="${selectedHttpAddress}">
+                    <input id="addHTTPBody${actionNumber}" name="httpBody" class="${selectedType === 5 ? "" : "hidden"}" placeholder="Body in json format" value="${selectedHttpContent}">
+                    <select id="addGpioAction${actionNumber}" name="gpioAction" class="${selectedType === 1 ? "" : "hidden"}">${gpioActionOptions}</select>
+                    <select id="addSignAction${actionNumber}" name="signAction" class="${selectedType === 1 ? "" : "hidden"}">
+                        <option value=1 ${selectedSign === 1 ? "selected" : ""}>=</option>
+                        <option value=2 ${selectedSign === 2 ? "selected" : ""}>+=</option>
+                        <option value=3 ${selectedSign === 3 ? "selected" : ""}>-=</option>
+                        <option value=4 ${selectedSign === 4 ? "selected" : ""}>*=</option>
                     </select>
-                    <select id="addAutomation${actionNumber}" name="automation" class="${selectedType == 6 ? "" : "hidden"}">${automationOptions}</select>
-                    <input id="addValueAction${actionNumber}" name="valueAction" value="${selectedValue}" class="${selectedType == 5 || selectedType == 6 ? "hidden" : ""}" placeholder="value">
+                    <select id="addAutomation${actionNumber}" name="automation" class="${selectedType === 6 ? "" : "hidden"}">${automationOptions}</select>
+                    <input id="addValueAction${actionNumber}" name="valueAction" value="${selectedValue}" class="${selectedType === 5 || selectedType === 6 ? "hidden" : ""}" placeholder="value">
                     <a onclick="deleteRowEditor(this)" id="deleteAction${actionNumber}" class="btn delete">x</a>`
     actionEditorElement.appendChild(rowElement);
     // Update actions left number
@@ -937,7 +937,7 @@ const updateModeOptions = (pin) => {
     const selectPin = document.getElementById(`setGpioPin-${pin || "new"}`);
     const selectMode = document.getElementById(`setGpioMode-${pin || "new"}`);
 
-    const availableGpioInfos = availableGpios.find(gpio => gpio.pin == selectPin.value);
+    const availableGpioInfos = availableGpios.find((gpio) => +gpio.pin === +selectPin.value);
     if (availableGpioInfos.inputOnly && selectMode.childElementCount === 8) {
         selectMode.removeChild(selectMode.lastChild);
         selectMode.removeChild(selectMode.lastChild);
@@ -959,20 +959,20 @@ const updateModeOptions = (pin) => {
 };
 const updateGpioOptions = (element) => {
     const pin = +element.id.split("-")[1] || "new";
-    const option = document.getElementById(`setGpioMode-${pin}`).value;
+    const option = +document.getElementById(`setGpioMode-${pin}`).value;
     // Led mode
-    if (option == -1) {
+    if (option === -1) {
         document.getElementById("led-options").classList.remove("hidden");
         document.getElementById("setGpioSaveRow").classList.remove("hidden");
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
         // I2C mode
-    } else if (option == -2) {
+    } else if (option === -2) {
         document.getElementById("setGpioSaveRow").classList.add("hidden");
         document.getElementById("led-options").classList.add("hidden");
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
         document.getElementById("i2c-options").classList.remove("hidden");
     } else {
-        if (option == 2) {
+        if (option === 2) {
             document.getElementById("setGpioSaveRow").classList.remove("hidden");
         } else {
             document.getElementById("setGpioSaveRow").classList.add("hidden");
@@ -984,8 +984,8 @@ const updateGpioOptions = (element) => {
     }
 };
 const updateI2cSlaveOptions = (element) => {
-    const selectType = element.value;
-    if (selectType == 1) {
+    const selectType = +element.value;
+    if (selectType === 1) {
         document.getElementById("lcd-slave-options").classList.remove("hidden");
     } else {
         document.getElementById("lcd-slave-options").classList.add("hidden");
@@ -1005,19 +1005,20 @@ const updateAutomationTypes = (id) => {
 };
 const updateActionType = (element) => {
     const rowNumber = +element.id.split("-")[1];
-    if (element.value == 1) {
+    const value = +element.value;
+    if (value === 1) {
         document.getElementById(`addGpioAction-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addSignAction-${rowNumber}`).classList.remove("hidden");
     } else {
         document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
     }
-    if (element.value == 5 || element.value == 6) {
+    if (value === 5 || value === 6) {
         document.getElementById(`addValueAction-${rowNumber}`).classList.add("hidden");
     } else {
         document.getElementById(`addValueAction-${rowNumber}`).classList.remove("hidden");
     }
-    if (element.value == 5) {
+    if (value === 5) {
         document.getElementById(`addHTTPMethod-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addHTTPAddress-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addHTTPBody-${rowNumber}`).classList.remove("hidden");
@@ -1026,7 +1027,7 @@ const updateActionType = (element) => {
         document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addHTTPBody-${rowNumber}`).classList.add("hidden");
     }
-    if ( element.value == 6) {
+    if ( value === 6) {
         document.getElementById(`addAutomation-${rowNumber}`).classList.remove("hidden");
     } else {
         document.getElementById(`addAutomation-${rowNumber}`).classList.add("hidden");
@@ -1034,7 +1035,7 @@ const updateActionType = (element) => {
 };
 const updateConditionValueType = (element) => {
     const rowNumber = +element.id.split("-")[1];
-    const isHourCondition = (element.value == -1);
+    const isHourCondition = (+element.value === -1);
     if (isHourCondition) {
         document.getElementById(`addValueCondition-${rowNumber}`).type = "time";
     } else {
@@ -1058,7 +1059,9 @@ window.onload = async () => {
     });
     slaves.forEach(slave => {
         const gpioRow = document.getElementById(`rowGpio-${slave.mPin}`);
-        gpioRow.appendChild(createI2cSlaveControlRow(slave));
+        if (gpioRow) {
+            gpioRow.appendChild(createI2cSlaveControlRow(slave));
+        }
     });
     document.getElementById("page-loader").remove();
 };
@@ -1071,7 +1074,7 @@ if (!!window.EventSource) {
     }, false);
 
     source.addEventListener("error", (e) => {
-        if (e.target.readyState != EventSource.OPEN) {
+        if (e.target.readyState !== EventSource.OPEN) {
             console.log("Events Disconnected");
         }
     }, false);

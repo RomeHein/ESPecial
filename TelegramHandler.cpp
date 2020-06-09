@@ -72,17 +72,17 @@ String TelegramHandler::generateInlineKeyboardsForGpios(bool inputMode) {
   // Dummy code to create 2 buttons per row in telegram api format
   for (int i = 0; i<GPIO_PIN_COUNT; i++) {
     JsonArray subArray = doc.createNestedArray();
-    Serial.printf("Gpio index %i pin %i, mode %i\n",i,preference.gpios[i].pin,preference.gpios[i].mode);
     if (preference.gpios[i].pin && ((preference.gpios[i].mode == OUTPUT && !inputMode)||(preference.gpios[i].mode == INPUT && inputMode))) {
-        subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
+      Serial.printf("Gpio index %i pin %i, mode %i\n",i,preference.gpios[i].pin,preference.gpios[i].mode);
+      subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
     }
     do
     {
       i++;
     } while (i<GPIO_PIN_COUNT && ((preference.gpios[i].mode != OUTPUT && !inputMode)||(preference.gpios[i].mode != INPUT && inputMode)));
-    Serial.printf("Gpio index %i pin %i, mode %i\n",i,preference.gpios[i].pin,preference.gpios[i].mode);
     if (preference.gpios[i].pin && ((preference.gpios[i].mode == OUTPUT && !inputMode)||(preference.gpios[i].mode == INPUT && inputMode))) {
-        subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
+      Serial.printf("Gpio index %i pin %i, mode %i\n",i,preference.gpios[i].pin,preference.gpios[i].mode);
+      subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
     }
   }
   String output;
