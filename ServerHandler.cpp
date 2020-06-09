@@ -27,8 +27,17 @@ void ServerHandler::begin()
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/style.css", "text/css");
     });
-    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/script.js", "text/js");
+    server.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/main.js", "text/js");
+    });
+    server.on("/gpio.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/gpio.js", "text/js");
+    });
+    server.on("/automation.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/automation.js", "text/js");
+    });
+    server.on("/settings.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/settings.js", "text/js");
     });
     server.onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not found");
