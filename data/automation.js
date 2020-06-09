@@ -1,3 +1,4 @@
+/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner, createGpioControlRow, createI2cSlaveControlRow, createAutomationRow*/
 const deleteRowEditor = (element) => {
     const isCondition = element.id.split("-")[0] === "deleteCondition";
     const rowNumber = +element.id.split("-")[1] || 0;
@@ -205,7 +206,7 @@ const updateConditionValueType = (element) => {
 };
 const openAutomationSetting = (element) => {
     closeAnySettings();
-    const automation = automations.find(automation => automation.id === +element.id.split("-")[1]);
+    const automation = automations.find((automation) => automation.id === +element.id.split("-")[1]);
     const row = document.getElementById("rowAutomation-" + automation.id);
     if (!row.classList.value.includes("open")) {
         row.appendChild(createEditAutomationPanel(automation));

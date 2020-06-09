@@ -6,7 +6,7 @@ var availableGpios = [];
 var automations = [];
 var versionsList = [];
 var isSettingsMenuActivated = false;
-const delay = ((ms) => new Promise(resolve => setTimeout(resolve, ms)));
+const delay = ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
 const request = async (uri, body, post) => {
     const resp = await fetch(`${window.location.href}${uri}`, {
         method: post ? "POST" : "PUT",

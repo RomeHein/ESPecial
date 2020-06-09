@@ -1,3 +1,4 @@
+/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner, createGpioControlRow, createI2cSlaveControlRow, createAutomationRow*/
 const switchPage = () => {
     isSettingsMenuActivated = !isSettingsMenuActivated;
     if (isSettingsMenuActivated) {
