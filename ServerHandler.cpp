@@ -34,7 +34,6 @@ void ServerHandler::begin()
         request->send(404, "text/plain", "Not found");
     });
     
-    // server.on("/install", HTTP_POST, [this](AsyncWebServerRequest *request) { handleUpload(request); }, [this](AsyncWebServerRequest *request) { install(request); });
     server.on("/clear/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { handleClearSettings(request); });
     server.on("/health", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSystemHealth(request); });
     server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { getSettings(request); });
@@ -49,9 +48,9 @@ void ServerHandler::begin()
         request->send(response);
     }, [this](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) { handleUpdate(request, filename, index, data, len, final);});
 
-    AsyncCallbackJsonWebHandler* editMqttHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleMqttEdit(request,json); });
+    AsyncCallbackJsonWebHandler* editMqttHandler = new AsyncCallbackJsonWebHandler("/mqtt",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleMqttEdit(request,json); });
     editMqttHandler->setMethod(HTTP_POST);
-    AsyncCallbackJsonWebHandler* editTelegramHandler = new AsyncCallbackJsonWebHandler("/gpio",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleTelegramEdit(request,json); });
+    AsyncCallbackJsonWebHandler* editTelegramHandler = new AsyncCallbackJsonWebHandler("/telegram",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleTelegramEdit(request,json); });
     editTelegramHandler->setMethod(HTTP_POST);
     server.addHandler(editMqttHandler);
     server.addHandler(editTelegramHandler);
@@ -285,7 +284,7 @@ void ServerHandler::handleGpioNew(AsyncWebServerRequest *request,JsonVariant &js
     const int save = doc["settings"]["save"].as<int>();
     const int invert = doc["settings"]["invert"].as<int>();
     if (pin && label && mode) {
-        request->send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save, invert));
+        request->send(200, "text/json", preference.addGpio(pin,label,mode,sclpin,frequency,resolution,channel,save,invert));
         return;
     }
     request->send(404, "text/plain", "Missing parameters");

@@ -790,8 +790,8 @@ const addConditionEditor = (condition) => {
         selectedValue = `${Math.floor(selectedValue / 100)}:${selectedValue % 100}`;
     }
 
-    let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`
-    gpioConditionOptions += gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, ``);
+    let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`;
+    gpioConditionOptions += gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, "");
 
     const conditionEditorElement = document.getElementById("condition-editor-result");
     const conditionNumber = "-" + conditionEditorElement.childElementCount;
@@ -812,7 +812,7 @@ const addConditionEditor = (condition) => {
                         <option value=2 ${selectedNextSign === 2 ? "selected" : ""}>OR</option>
                         <option value=3 ${selectedNextSign === 3 ? "selected" : ""}>XOR</option>
                     </select>
-                    <a onclick="deleteRowEditor(this)" id="deleteCondition${conditionNumber}" class="btn delete">x</a>`
+                    <a onclick="deleteRowEditor(this)" id="deleteCondition${conditionNumber}" class="btn delete">x</a>`;
     conditionEditorElement.appendChild(rowElement);
     // Update conditions left number
     document.getElementById("condition-editor-title").innerText = `Condition editor (${settings.general.maxConditions - conditionEditorElement.childElementCount})`;
@@ -822,9 +822,9 @@ const addActionEditor = (action) => {
     let selectedValue = 0;
     let selectedPin = 0;
     let selectedSign = 1;
-    selectedHttpMethod = 1;
-    selectedHttpAddress = "";
-    selectedHttpContent = "";
+    let selectedHttpMethod = 1;
+    let selectedHttpAddress = "";
+    let selectedHttpContent = "";
     if (action) {
         selectedType = +action[0];
         selectedValue = +action[1];
@@ -864,7 +864,7 @@ const addActionEditor = (action) => {
                     </select>
                     <select id="addAutomation${actionNumber}" name="automation" class="${selectedType === 6 ? "" : "hidden"}">${automationOptions}</select>
                     <input id="addValueAction${actionNumber}" name="valueAction" value="${selectedValue}" class="${selectedType === 5 || selectedType === 6 ? "hidden" : ""}" placeholder="value">
-                    <a onclick="deleteRowEditor(this)" id="deleteAction${actionNumber}" class="btn delete">x</a>`
+                    <a onclick="deleteRowEditor(this)" id="deleteAction${actionNumber}" class="btn delete">x</a>`;
     actionEditorElement.appendChild(rowElement);
     // Update actions left number
     document.getElementById("action-editor-title").innerText = `Action editor (${settings.general.maxActions - actionEditorElement.childElementCount})`;
