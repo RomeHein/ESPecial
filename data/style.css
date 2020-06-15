@@ -219,6 +219,14 @@ select {
   color: white;
 }
 
+.info {
+  border-radius: 5px;
+  background-color: whitesmoke;
+  text-align: initial;
+  font-size: small;
+  padding: 10px;
+}
+
 .edit:hover {
   color: dodgerblue;
 }

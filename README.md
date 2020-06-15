@@ -6,6 +6,8 @@ This project aim to provide an easy way to control your esp32. You no longer nee
 
 Here is a quick video exemple of what you can do with ESPecial:
 https://www.youtube.com/watch?v=_E-ywkafs94
+And the event driven web interface:
+
 
 ## Features:
 - [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C support), send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
@@ -62,7 +64,7 @@ If you want to use vscode while coding (I strongly recommand it) follow this nic
 
 ### Installing
 
-#### Easy way (work in progress)
+#### Easy way
 
 You'll need [this](https://github.com/RomeHein/ESPInstaller.git) project installed on your esp32. This is a very lightweight project that will enable you to install any project from their github repo if the owner has enabled it. The good thing is that you don't need to install any dependencies or anything to get that project on your esp32. Just make sure to select the right partition scheme when installing ESPInstaller: `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS`
 Once ESPInstaller installed, select the ESPecial from the list of available repo and click install. This will install everything automatically 👌
@@ -75,7 +77,7 @@ Then 6 dependencies need to be added to your Arduino libraries (when you downloa
 - PubSubClient: (install via library manager)  MQTT handling. It's a very robust pubsub client, perfect for iot projects.
 - WifiManager: https://github.com/tzapu/WiFiManager/tree/development
 This library will allow you to easily set your board to your wifi. You'll need to get the development branch to have esp32 support.
-- UniversalTelegramBot: https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/editMessage. Telegram api for arduino. This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
+- ⚠️ UniversalTelegramBot: Make sure to take [this repo](https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/). This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
 - ESPAsyncWebServer
 - AsyncTCP
 

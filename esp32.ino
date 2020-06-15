@@ -41,6 +41,9 @@ long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
 // To trigger event based on time, we check all automatisations everyminutes
 int debounceTimeDelay = 60000;
 int lastCheckedTime = 0;
+// To trigget async events to the web interface. Avoid server spaming
+int debounceEventDelay = 400;
+int lastEvent = 0;
 
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
@@ -193,6 +196,9 @@ void readPins() {
           newState = digitalRead(gpio.pin);
         } else if (gpio.mode == -1) {
           newState = ledcRead(gpio.channel);
+        } else if (gpio.mode == -3) {
+          analogReadResolution(gpio.resolution);
+          newState = analogRead(gpio.pin);
         }
         if (gpio.state != newState) {
           #ifdef __debug
@@ -203,10 +209,11 @@ void readPins() {
           // Notifiy mqtt clients
           mqtthandler->publish(gpio.pin);
           // Notifiy web interface with format "pinNumber-state"
-          if (serverhandler->events.count()>0) {
+          if (serverhandler->events.count()>0 && millis() > debounceEventDelay + lastEvent) {
             char eventMessage[10];
             snprintf(eventMessage,10,"%d-%d",gpio.pin,newState);
             serverhandler->events.send(eventMessage,"pin",millis());
+            lastEvent = millis();
           }
           gpioStateChanged = true;
         }
@@ -298,7 +305,15 @@ void runAutomation(AutomationFlash& automation) {
       // Condition base on pin value
       if (automation.conditions[i][0]>-1) {
         GpioFlash& gpio = preferencehandler->gpios[automation.conditions[i][0]];
-        const int16_t value =  gpio.mode>0 ? digitalRead(gpio.pin) : ledcRead(gpio.channel);
+        int16_t value;
+        if (gpio.mode>0) {
+          value = digitalRead(gpio.pin);
+        } else if(gpio.mode == -1) {
+          value = ledcRead(gpio.channel);
+        } else if (gpio.mode == -3) {
+          analogReadResolution(gpio.resolution);
+          value = analogRead(gpio.pin);
+        }
         if (automation.conditions[i][1] == 1) {
           criteria = (value == automation.conditions[i][2]);
         } else if (automation.conditions[i][1] == 2) {
@@ -367,7 +382,7 @@ void runAutomation(AutomationFlash& automation) {
             }
             if (gpio.mode>0) {
               digitalWrite(pin, newValue);
-            } else {
+            } else if (gpio.mode == -1) {
               ledcWrite(gpio.channel, newValue);
             }
             // Notifiy web clients
@@ -577,6 +592,7 @@ void automation_loop(void *pvParameters) {
         // Run only time scheduled automations
         #ifdef __debug
           Serial.println(F("[AUTO_LOOP] Checking time scheduled automations"));
+          Serial.println(systemInfos().c_str());
         #endif
         runTriggeredEventAutomations(true);
         lastCheckedTime = millis();

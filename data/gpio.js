@@ -11,25 +11,33 @@ const openGpioSetting = (element) => {
         document.getElementById(`setGpioInvertState-${gpio.pin}`).checked = gpio.invert;
     }
 };
+
+const createModeOptions = (gpio) => {
+    let modeOptions = `<option ${+gpio.mode === 1 ? "selected" : ""} value=1>INPUT</option><option ${+gpio.mode === 4 ? "selected" : ""} value=4>PULLUP</option><option ${+gpio.mode === 5 ? "selected" : ""} value=5>INPUT PULLUP</option><option ${+gpio.mode === 8 ? "selected" : ""} value=8>PULLDOWN</option><option ${+gpio.mode === 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>`;
+    let pinOptions = availableGpios.reduce((prev, availableGpio) => {
+        if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.pin) || +availableGpio.pin === +gpio.pin) {
+            // Complete the mode select input while we are here, avoiding another complex loop later on.
+            if (+availableGpio.pin === +gpio.pin && !availableGpio.inputOnly) {
+                modeOptions += `<option ${+gpio.mode === 2 ? "selected" : ""} value=2>OUTPUT (digital)</option>`;
+                modeOptions += `<option ${+gpio.mode === -1 ? "selected" : ""} value=-1>PWM (ledc)</option>`;
+                modeOptions += `<option ${+gpio.mode === -2 ? "selected" : ""} value=-2>I2C</option>`;
+            }
+            if (+availableGpio.pin === +gpio.pin && availableGpio.adc) {
+                modeOptions += `<option ${+gpio.mode === -3 ? "selected" : ""} value=-3>ADC (analog read)</option>`;
+            }
+            prev += `<option ${+availableGpio.pin === +gpio.pin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
+        }
+        return prev;
+    }, []);
+    return {modeOptions, pinOptions};
+}
 const createEditGpioPanel = (gpio) => {
     if (!gpio) {
         gpio = {
             pin: "new"
         };
     }
-    let modeOptions = `<option ${+gpio.mode === 1 ? "selected" : ""} value=1>INPUT</option><option ${+gpio.mode === 4 ? "selected" : ""} value=4>PULLUP</option><option ${+gpio.mode === 5 ? "selected" : ""} value=5>INPUT PULLUP</option><option ${+gpio.mode === 8 ? "selected" : ""} value=8>PULLDOWN</option><option ${+gpio.mode === 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>`;
-    const pinOptions = availableGpios.reduce((prev, availableGpio) => {
-        if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.pin) || +availableGpio.pin === +gpio.pin) {
-            // Complete the mode select input while we are here...
-            if (+availableGpio.pin === +gpio.pin && !availableGpio.inputOnly) {
-                modeOptions += `<option ${+gpio.mode === 2 ? "selected" : ""} value=2>OUTPUT</option>`;
-                modeOptions += `<option ${+gpio.mode === -1 ? "selected" : ""} value=-1>LED CONTROL</option>`;
-                modeOptions += `<option ${+gpio.mode === -2 ? "selected" : ""} value=-2>I2C</option>`;
-            }
-            prev += `<option ${+availableGpio.pin === +gpio.pin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
-        }
-        return prev;
-    }, []);
+    const {modeOptions, pinOptions}  = createModeOptions(gpio);
     const sclPinOptions = availableGpios.reduce((prev, availableGpio) => {
         if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.sclpin) || +availableGpio.pin === +gpio.sclpin) {
             prev += `<option ${+availableGpio.pin === +gpio.sclpin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
@@ -62,8 +70,8 @@ const createEditGpioPanel = (gpio) => {
                     <input id="setGpioFrequency-${gpio.pin}" type="text" name="frequency" value="${gpio.frequency || ""}" placeholder="Default to 50Hz if empty">
                 </div>
                 <div class="row">
-                    <label for="setGpioResolution-${gpio.pin}">Resolution:</label>
-                    <input id="setGpioResolution-${gpio.pin}" type="text" name="resolution" value="${gpio.resolution || ""}" placeholder="Default to 16bits if empty">
+                    <label for="setLedResolution-${gpio.pin}">Resolution:</label>
+                    <input id="setLedResolution-${gpio.pin}" type="text" name="resolution" value="${gpio.resolution || ""}" placeholder="Default to 16bits if empty">
                 </div>
                 <div class="row">
                     <label for="setGpioChannel-${gpio.pin}">Channel:</label>
@@ -80,6 +88,15 @@ const createEditGpioPanel = (gpio) => {
                     <input id="setI2cFrequency-${gpio.pin}" type="text" name="frequency" value="${gpio.frequency || ""}" placeholder="Default to 50Hz if empty">
                 </div>
             </div>
+            <div id="adc-options" class="${+gpio.mode !== -3 ? "hidden" : ""}">
+                <div class="row info">
+                    As ESPecial is using Wifi, ADC2 can't be use. As a result GPIOs 0, 2, 4, 12 - 15 and 25 - 27 won't be available for this mode. Depending on your ESP32 board, other GPIOs that should be available for analog read might not be usable. Read <a href='https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc.html'>this</a> for more info.
+                </div>
+                <div class="row">
+                    <label for="setAdcResolution-${gpio.pin}">Resolution:</label>
+                    <input id="setAdcResolution-${gpio.pin}" type="text" name="resolution" value="${gpio.resolution || ""}" placeholder="Default to 12 bits if empty">
+                </div>
+            </div>
             <div class="row ${gpio.mode < 0 ? "hidden" : ""}" id="setGpioInvertStateRow">
                 <label for="setGpioInvertState-${gpio.pin}">Invert state:</label>
                 <input type="checkbox" name="invert" id="setGpioInvertState-${gpio.pin}" value="${gpio.invert}">
@@ -88,7 +105,7 @@ const createEditGpioPanel = (gpio) => {
                 <label for="setGpioSave-${gpio.pin}">Save state:</label>
                 <input type="checkbox" name="save" id="setGpioSave-${gpio.pin}" value="${gpio.save}">
             </div>
-            </div>
+        </div>
         <div class="set-buttons">
             <a onclick="closeAnySettings()" id="cancelGpio-${gpio.pin}" class="btn cancel">cancel</a>
             ${gpio.pin === "new" ? "" : `<a onclick="deleteGpio(this)" id="deleteGpio-${gpio.pin}" class="btn delete">delete</a>`}
@@ -96,45 +113,39 @@ const createEditGpioPanel = (gpio) => {
         </div>`;
     return child;
 };
+
 // Change the input of available mode for a given pin
 const updateModeOptions = (pin) => {
     const selectPin = document.getElementById(`setGpioPin-${pin || "new"}`);
     const selectMode = document.getElementById(`setGpioMode-${pin || "new"}`);
-
-    const availableGpioInfos = availableGpios.find((gpio) => +gpio.pin === +selectPin.value);
-    if (availableGpioInfos.inputOnly && selectMode.childElementCount === 8) {
-        selectMode.removeChild(selectMode.lastChild);
-        selectMode.removeChild(selectMode.lastChild);
-        selectMode.removeChild(selectMode.lastChild);
-        document.getElementById("led-options").classList.add("hidden");
-        document.getElementById("setGpioSaveRow").classList.add("hidden");
-    } else if (!availableGpioInfos.inputOnly && selectMode.childElementCount === 5) {
-        let outputOption = document.createElement("div");
-        outputOption.innerHTML = "<option value=2>OUTPUT</option>";
-        let ledOption = document.createElement("div");
-        ledOption.innerHTML = "<option value=-1>LED CONTROL</option>";
-        let i2coption = document.createElement("div");
-        i2coption.innerHTML = "<option value=-2>I2C</option>";
-        document.getElementById("setGpioSaveRow").classList.remove("hidden");
-        selectMode.appendChild(outputOption.firstChild);
-        selectMode.appendChild(ledOption.firstChild);
-        selectMode.appendChild(i2coption.firstChild);
-    }
+    let gpio = JSON.parse(JSON.stringify(gpios.find((gpio) => +gpio.pin === +pin) || {}));
+    gpio.pin = selectPin.value;
+    selectMode.innerHTML = createModeOptions(gpio).modeOptions;
 };
+
 const updateGpioOptions = (element) => {
     const pin = +element.id.split("-")[1] || "new";
     const option = +document.getElementById(`setGpioMode-${pin}`).value;
     // Led mode
     if (option === -1) {
-        document.getElementById("led-options").classList.remove("hidden");
         document.getElementById("setGpioSaveRow").classList.remove("hidden");
+        document.getElementById("led-options").classList.remove("hidden");
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
+        document.getElementById("i2c-options").classList.add("hidden");
+        document.getElementById("adc-options").classList.add("hidden");
         // I2C mode
     } else if (option === -2) {
         document.getElementById("setGpioSaveRow").classList.add("hidden");
         document.getElementById("led-options").classList.add("hidden");
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
         document.getElementById("i2c-options").classList.remove("hidden");
+        document.getElementById("adc-options").classList.add("hidden");
+    }  else if (option === -3) {
+        document.getElementById("setGpioSaveRow").classList.add("hidden");
+        document.getElementById("led-options").classList.add("hidden");
+        document.getElementById("setGpioInvertStateRow").classList.add("hidden");
+        document.getElementById("i2c-options").classList.add("hidden");
+        document.getElementById("adc-options").classList.remove("hidden");
     } else {
         if (option === 2) {
             document.getElementById("setGpioSaveRow").classList.remove("hidden");
@@ -183,10 +194,12 @@ const saveGpioSetting = async (element) => {
     req.settings.sclpin = document.getElementById(`setGpioSclPin-${gpioPin}`).value;
     if (+req.settings.mode === -1) {
         req.settings.frequency = document.getElementById(`setGpioFrequency-${gpioPin}`).value;
+        req.settings.resolution = document.getElementById(`setLedResolution-${gpioPin}`).value;
     } else if (+req.settings.mode === -2) {
         req.settings.frequency = document.getElementById(`setI2cFrequency-${gpioPin}`).value;
-    }
-    req.settings.resolution = document.getElementById(`setGpioResolution-${gpioPin}`).value;
+    } else if (+req.settings.mode === -3) {
+        req.settings.resolution = document.getElementById(`setAdcResolution-${gpioPin}`).value;
+    } 
     req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
     req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
     req.settings.invert = document.getElementById(`setGpioInvertState-${gpioPin}`).checked;

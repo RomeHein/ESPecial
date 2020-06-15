@@ -72,7 +72,7 @@ typedef struct
 {
     uint8_t pin;
     char label[MAX_LABEL_TEXT_SIZE];
-    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C
+    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C, -3 is analog read
     uint32_t frequency;
     uint8_t resolution;
     int8_t channel;

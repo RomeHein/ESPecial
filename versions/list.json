@@ -1,4 +1,11 @@
 [{
+    "version": 0.4,
+    "build": 1,
+    "current": true,
+    "partitionScheme":"min_spiffs",
+    "description": "Add analog read",
+    "compatibility": [0.2]
+},{
     "version": 0.3,
     "build": 2,
     "current": true,

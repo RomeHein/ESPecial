@@ -27,9 +27,6 @@ void ServerHandler::begin()
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/style.css", "text/css");
     });
-    server.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(SPIFFS, "/main.js", "text/js");
-    });
     server.on("/gpio.js", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/gpio.js", "text/js");
     });
@@ -313,12 +310,13 @@ void ServerHandler::handleGpioRemove(AsyncWebServerRequest *request)
 }
 
 void ServerHandler::handleAvailableGpios(AsyncWebServerRequest *request) {
-    const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(2)+20);
+    const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(3)+20);
     StaticJsonDocument<capacity> doc;
     for (int i = 0; i<GPIO_PIN_COUNT; i++) {
         JsonObject object = doc.createNestedObject();
         object["pin"] = i;
         object["inputOnly"] = !GPIO_IS_VALID_OUTPUT_GPIO(i);
+        object["adc"] = (i>=32); // Only GPIOs 32 to 39 are working correctly for adc mode when wifi is active.
     }
     String output;
     serializeJson(doc, output);
@@ -344,8 +342,11 @@ void ServerHandler::handleGpioState(AsyncWebServerRequest *request)
         if (gpio.pin == pin) {
             if (gpio.mode>0) {
                 state = digitalRead(pin);
-            } else {
+            } else if (gpio.mode == -1) {
                 state = ledcRead(gpio.channel);
+            } else if (gpio.mode == -3) {
+                analogReadResolution(gpio.resolution);
+                state = analogRead(pin);
             }
         }
         char json[50];

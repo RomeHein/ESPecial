@@ -181,6 +181,8 @@ bool PreferenceHandler::attach(GpioFlash& gpio) {
         i2cHandlers[gpio.pin] = new TwoWire(gpio.pin);
         i2cHandlers[gpio.pin]->begin(gpio.pin,gpio.sclpin,gpio.frequency);
         return true;
+    } else if (gpio.mode == -3) {
+        adcAttachPin(gpio.pin);
     }
     
     return false;
@@ -188,8 +190,7 @@ bool PreferenceHandler::attach(GpioFlash& gpio) {
 
 bool PreferenceHandler::detach(GpioFlash& gpio) {
     if (gpio.mode > 0) {
-        pinMode(gpio.pin, OUTPUT);
-        digitalWrite(gpio.pin, 0);
+        gpio_reset_pin(gpio_num_t(gpio.pin));
     // Detach analog
     } else if (gpio.mode == -1) {
         if (gpio.channel == CHANNEL_NOT_ATTACHED) {
