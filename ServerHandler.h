@@ -7,7 +7,7 @@
 #include "ESPAsyncWebServer.h"
 #include "PreferenceHandler.h"
 
-#define FIRMWARE_VERSION 0.3
+#define FIRMWARE_VERSION 0.4
 
 class ServerHandler {
 private:

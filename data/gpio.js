@@ -11,7 +11,6 @@ const openGpioSetting = (element) => {
         document.getElementById(`setGpioInvertState-${gpio.pin}`).checked = gpio.invert;
     }
 };
-
 const createModeOptions = (gpio) => {
     let modeOptions = `<option ${+gpio.mode === 1 ? "selected" : ""} value=1>INPUT</option><option ${+gpio.mode === 4 ? "selected" : ""} value=4>PULLUP</option><option ${+gpio.mode === 5 ? "selected" : ""} value=5>INPUT PULLUP</option><option ${+gpio.mode === 8 ? "selected" : ""} value=8>PULLDOWN</option><option ${+gpio.mode === 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>`;
     let pinOptions = availableGpios.reduce((prev, availableGpio) => {
@@ -30,7 +29,7 @@ const createModeOptions = (gpio) => {
         return prev;
     }, []);
     return {modeOptions, pinOptions};
-}
+};
 const createEditGpioPanel = (gpio) => {
     if (!gpio) {
         gpio = {
