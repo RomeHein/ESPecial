@@ -57,15 +57,15 @@ const addActionEditor = (action) => {
     let selectedHttpContent = "";
     if (action) {
         selectedType = +action[0];
-        selectedValue = +action[1];
-        selectedPin = action[2];
+        selectedValue = action[1];
+        selectedPin = +action[2];
         selectedSign = action[3];
         selectedHttpMethod = action[1];
         selectedHttpAddress = action[2];
         selectedHttpContent = action[3];
     }
     let gpioActionOptions = gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedPin === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, "");
-    let automationOptions = automations.reduce((acc, automation) => acc + `<option value=${automation.id} ${selectedValue === +automation.id ? "selected" : ""}>${automation.label}</option>`, "");
+    let automationOptions = automations.reduce((acc, automation) => acc + `<option value=${automation.id} ${+selectedValue === +automation.id ? "selected" : ""}>${automation.label}</option>`, "");
     const actionEditorElement = document.getElementById("action-editor-result");
     const actionNumber = "-" + actionEditorElement.childElementCount;
     const rowElement = document.createElement("div");

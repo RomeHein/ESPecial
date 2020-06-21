@@ -58,7 +58,7 @@ typedef struct
 
     // Array of actions to execute once conditions are fullfilled
     // Each action is represented by an array of char
-    // index 0: action type: 1 is set gpio pin to a value, 2 is sending a message to telegram, 3 is displaying a message on serial, 4 is a delay, 5 http request, 6 automation
+    // index 0: action type: 1 is set gpio pin to a value, 2 is sending a message to telegram, 3 is displaying a message on serial, 4 is a delay, 5 http request, 6  nested automation
     // index 1: action value OR http method OR automation id
     // index 2: pin to control if type is 1 OR http address
     // index 3: assignement operation type on value: 1 is =, 2 is +=, 3 is -=, 4 is *= OR http body

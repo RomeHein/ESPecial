@@ -142,7 +142,10 @@ You can choose between three types of actions:
 - Print message on serial
 - Deep sleep: coming soone
 
-For telegram message and http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text.
+For Gpio value, telegram message, http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text. 
+You can for instance:
+- send a message to your telegram chat with a value coming from any I/O pins
+- pass an I/O pin value to another. With this feature, you can control a servo motor directly from an ADC pin (if you set the right resolution of course).
 
 ⚠️ Important note: In order to keep the heap memory consumption low, fields are restreigned to 100 characters. This means that any sentence/http address/json longer that 100 char will be ignored. This limit can be increased by changing the variable `MAX_MESSAGE_TEXT_SIZE` in the `PreferenceHandler.h`
 

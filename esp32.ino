@@ -367,7 +367,10 @@ void runAutomation(AutomationFlash& automation) {
           // We deal with a gpio action
           if (type == 1 && automation.actions[i][2] && strnlen(automation.actions[i][2],MAX_MESSAGE_TEXT_SIZE)!=0) {
             int pin = atoi(automation.actions[i][2]);
-            int16_t value = atoi(automation.actions[i][1]);
+            String valueCommand = String(automation.actions[i][1]);
+            // Check if the value passed contains a pin command. In that case, the function will replace the pin command with its value
+            addPinValueToActionString(valueCommand,0);
+            int16_t value = valueCommand.toInt();
             int8_t assignmentType = atoi(automation.actions[i][3]);
             int16_t newValue = value;
             GpioFlash& gpio = preferencehandler->gpios[pin];
@@ -398,6 +401,7 @@ void runAutomation(AutomationFlash& automation) {
             telegramhandler->queueMessage(value.c_str());
           // Delay type action
           } else if (type == 3) {
+            // TODO: find a better solution to handle delay
             delay(atoi(automation.actions[i][1]));
           // Http request
           } else if (type == 4) {
@@ -419,7 +423,7 @@ void runAutomation(AutomationFlash& automation) {
             }
             #ifdef __debug
               if (httpResponseCode>0) {
-                Serial.print("[Action HTTP] HTTP Response code: ");
+                Serial.print("[ACTION HTTP] HTTP Response code: ");
                 Serial.println(httpResponseCode);
                 String payload = http.getString();
                 Serial.println(payload);
@@ -462,6 +466,7 @@ void parseActionString(String& toParse) {
   addPinValueToActionString(toParse, 0);
 }
 
+// Detect and replace the pin number with its actual value
 void addPinValueToActionString(String& toParse, int fromIndex) {
   int size = toParse.length();
   int foundIndex = 0;
@@ -482,8 +487,10 @@ void addPinValueToActionString(String& toParse, int fromIndex) {
         if (gpio.pin == pinNumber) {
             if (gpio.mode>0) {
                 state = digitalRead(pinNumber);
-            } else {
+            } else if (gpio.mode == -1) {
                 state = ledcRead(gpio.channel);
+            } else if (gpio.mode == -3) {
+                state = analogRead(pinNumber);
             }
         }
         String subStringToReplace = String("${") + pinNumber + '}';
