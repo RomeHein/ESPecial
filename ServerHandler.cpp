@@ -333,7 +333,7 @@ void ServerHandler::handleGpioState(AsyncWebServerRequest *request)
         {
             state = request->getParam(valueParamName)->value().toInt();
             #ifdef __debug
-                Serial.printf("Server: handle set gpio %i state %i\n",pin, state);
+                Serial.printf("[SERVER] handle set gpio %i state %i\n",pin, state);
             #endif
             // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
             preference.setGpioState(pin, state);

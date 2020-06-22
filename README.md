@@ -5,8 +5,13 @@
 This project aim to provide an easy way to control your esp32. You no longer need programming skills to set complex tasks. This can be a very nice approach for small projects, home automation and/or educational purposes.
 
 Here is a quick video exemple of what you can do with ESPecial:
-https://www.youtube.com/watch?v=_E-ywkafs94
-And the event driven web interface:
+https://youtu.be/_E-ywkafs94
+
+The event driven web interface:
+https://youtu.be/yFqBmNJR02w
+
+An exemple of how you can set the interface to control servo motors with a potentiometer:
+https://youtu.be/_ucSs9OT7Eg
 
 
 ## Features:
@@ -111,7 +116,7 @@ A new line should appear:
 <p align="center">
     <img src="images/gpios-new-line.png" width="400">
 </p>
-You can now control the state of your pin by pressing the 'on/off' button if it's mode is set to OUTPUT. If its mode is set to INPUT, it will only display its value. On LedControl mode, you'll be able to set/get the pulse value.
+You can now control the state of your pin by pressing the 'on/off' button if its mode is set to OUTPUT. If its mode is set to INPUT, it will only display its value. On LedControl mode, you'll be able to set/get the pulse value.
 <br>
 
 ### Automation!
@@ -145,7 +150,7 @@ You can choose between three types of actions:
 For Gpio value, telegram message, http request type, you can have access to pins value and system information by using the special syntax `${pinNumber}`or `${info}` directly in your text. 
 You can for instance:
 - send a message to your telegram chat with a value coming from any I/O pins
-- pass an I/O pin value to another. With this feature, you can control a servo motor directly from an ADC pin (if you set the right resolution of course).
+- pass an I/O pin value to another. With this feature, you can control a servo motor directly from an ADC pin (if you set the right resolution of course). Have a look to [this video](https://youtu.be/_ucSs9OT7Eg).
 
 ⚠️ Important note: In order to keep the heap memory consumption low, fields are restreigned to 100 characters. This means that any sentence/http address/json longer that 100 char will be ignored. This limit can be increased by changing the variable `MAX_MESSAGE_TEXT_SIZE` in the `PreferenceHandler.h`
 
