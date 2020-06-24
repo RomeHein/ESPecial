@@ -116,8 +116,8 @@ const submitTelegram = async (e) => {
     const users = document.getElementById("telegram-users").value.split(",").map((id) => +id);
     if (token !== settings.telegram.token || active !== +settings.telegram.active || (settings.telegram.users && JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
         try {
-            await request("telegram",{ active, token },true);
-            settings.telegram = { active, token };
+            await request("telegram",{ active, token, users },true);
+            settings.telegram = { active, token, users };
             await displayNotification("Telegram parameters saved", "success");
         } catch (err) {
             await displayNotification(err, "error");
