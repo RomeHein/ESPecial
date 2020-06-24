@@ -17,7 +17,9 @@ const addConditionEditor = (condition) => {
     }
     // If time type is selected, put the value in HH:MM format
     if (selectedGpio === -1) {
-        selectedValue = `${Math.floor(selectedValue / 100)}:${selectedValue % 100}`;
+        const hours = Math.floor(selectedValue / 100);
+        const minutes = selectedValue % 100;
+        selectedValue = hours + ":" + (minutes < 10 ? "0"+minutes : minutes);
     }
 
     let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`;

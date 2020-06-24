@@ -424,9 +424,11 @@
             if (gpioRow.type === "number") {
                 gpioRow.value = state;
             } else {
-                gpioRow.classList.remove(+state ? "off" : "on");
-                gpioRow.classList.add(+state ? "on" : "off");
-                gpioRow.textContent = +state ? "on" : "off";
+                const gpio = gpios.find((gpio) => gpio.pin === +pin);
+                const classState = (+state && !gpio.invert) || (!+state && gpio.invert) ? "off" : "on";
+                gpioRow.classList.remove(classState);
+                gpioRow.classList.add(classState);
+                gpioRow.textContent = classState;
             }
         }, false);
 
