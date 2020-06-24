@@ -163,7 +163,7 @@
             body: JSON.stringify(body)
         });
         var contentType = resp.headers.get("content-type");
-        if(contentType && contentType.indexOf("application/json") !== -1) {
+        if(contentType && contentType.indexOf("text/json") !== -1) {
             return resp.json();
         }
     };
