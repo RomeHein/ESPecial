@@ -401,7 +401,7 @@
                 option.innerHTML = `<option value="${info.version}">v${info.version}</option>`;
                 versionSelector.appendChild(option.firstChild);
                 if (info.version > settings.general.firmwareVersion) {
-                    await displayNotification(`"New firmware(${info.version}) available`, "success");
+                    await displayNotification(`New firmware(${info.version}) available`, "success");
                 }
             }
         }, false);
