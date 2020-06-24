@@ -1,4 +1,3 @@
-#include <WiFiManager.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
@@ -22,16 +21,11 @@ MqttHandler *mqtthandler;
 WiFiClientSecure client;
 WiFiClient clientNotSecure;
 
-// ESP32 access point mode
-const char *APName = "ESP32";
-const char *APPassword = "p@ssword2000";
-
 // Notify client esp has just restarted
 bool hasJustRestarted = true;
 
-// Delay between each tft display refresh 
-int delayBetweenScreenUpdate = 3000;
-long screenRefreshLastTime;
+long lastWifiConnectTime = 0;
+int timeoutWifiConnectDelay = 5000;
 
 // Debounce inputs delay
 long lastDebouncedInputTime = 0;
@@ -39,11 +33,11 @@ int debounceInputDelay = 50;
 // Keep tracks of last time for each automation run 
 long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
 // To trigger event based on time, we check all automatisations everyminutes
-int debounceTimeDelay = 60000;
 int lastCheckedTime = 0;
+int debounceTimeDelay = 60000;
 // To trigget async events to the web interface. Avoid server spaming
-int debounceEventDelay = 400;
 int lastEvent = 0;
+int debounceEventDelay = 400;
 
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 3600;
@@ -506,25 +500,43 @@ void addPinValueToActionString(String& toParse, int fromIndex) {
 void setup(void)
 {
   Serial.begin(115200);
-  Serial.println(F("[SETUP] Access point set.\nWifi network: ESP32"));
-  WiFi.mode(WIFI_STA);
-  WiFiManager wm;
-  wm.setConnectTimeout(10);
-  bool res = wm.autoConnect(APName,APPassword);
-  if(!res) {
-        Serial.println(F("[SETUP] Failed to connect"));
+  delay(10);
+
+  preferencehandler = new PreferenceHandler();
+  preferencehandler->begin();
+
+  if (preferencehandler->wifi.staEnable && preferencehandler->wifi.staSsid) {
+    #ifdef __debug
+      Serial.printf("[WIFI] Station mode detected. SSID: %s PSW: %s\n",preferencehandler->wifi.staSsid, preferencehandler->wifi.staPsw);
+    #endif
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(preferencehandler->wifi.staSsid, preferencehandler->wifi.staPsw);
+    int connectionAttempt = 0;
+    while (WiFi.status() != WL_CONNECTED && connectionAttempt<20) {
+        delay(500);
+        #ifdef __debug
+          Serial.println("[WIFI] .");
+        #endif
+        connectionAttempt++;
+    }
+  }
+
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.mode(WIFI_AP);
+    #ifdef __debug
+      Serial.println("[WIFI] Failed to connect in station mode. Starting access point");
+    #endif
+    WiFi.softAP(preferencehandler->wifi.apSsid, preferencehandler->wifi.apPsw);
+    Serial.print("[WIFI] AP IP address: ");
+    Serial.println(WiFi.softAPIP());
   } else {
-    // Set all handlers.
-    preferencehandler = new PreferenceHandler();
-    preferencehandler->begin();
-    serverhandler = new ServerHandler(*preferencehandler);
-    serverhandler->begin();
-    telegramhandler = new TelegramHandler(*preferencehandler, client);
-    mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
-     //init and get the time
+    #ifdef __debug
+      Serial.print("[WIFI] connected. ");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
+    #endif
+    //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    // Set input reading on a different thread
-    xTaskCreatePinnedToCore(automation_loop, "automation", 12288, NULL, 0, NULL, 0);
     // Get local time
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){
@@ -535,6 +547,15 @@ void setup(void)
       lastCheckedTime = millis();
     }
   }
+
+  // Set all handlers.
+  serverhandler = new ServerHandler(*preferencehandler);
+  serverhandler->begin();
+  telegramhandler = new TelegramHandler(*preferencehandler, client);
+  mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
+  
+  // Set input reading on a different thread
+  xTaskCreatePinnedToCore(automation_loop, "automation", 12288, NULL, 0, NULL, 0);
 }
 
 void loop(void) {
@@ -552,7 +573,7 @@ void loop(void) {
   if (strcmp(serverhandler->shouldOTAFirmwareVersion,"")>0) {
     // Reset shouldOTAFirmwareVersion to avoid multiple OTA from main loop
     #ifdef __debug
-      Serial.printf("OTA version %s detected\n", serverhandler->shouldOTAFirmwareVersion);
+      Serial.printf("[OTA] version %s detected\n", serverhandler->shouldOTAFirmwareVersion);
     #endif
     char version[10];
     strcpy(version,serverhandler->shouldOTAFirmwareVersion);
@@ -564,10 +585,11 @@ void loop(void) {
     serverhandler->events.send("rebooted","shouldRefresh",millis());
     hasJustRestarted = false;
   }
-  if ( WiFi.status() ==  WL_CONNECTED ) {
+  // The following handlers can only work in STA mode
+  if (WiFi.status() ==  WL_CONNECTED) {
     mqtthandler->handle();
     telegramhandler->handle();
-  } else {
+  } else if (WiFi.getMode() != WIFI_AP) {
     // wifi down, reconnect here
     WiFi.begin();
     int count = 0;
@@ -588,23 +610,21 @@ void loop(void) {
 
 void automation_loop(void *pvParameters) {
   while(1) {
-    if (WiFi.status() ==  WL_CONNECTED) {
-      readPins();
-      pickUpQueuedAutomations();
-      if (millis() > debounceTimeDelay + lastCheckedTime) {
-        // If this is the first time this run, we are now sure it will run every minutes, so set back debounceTimeDelay to 60s.
-        if (debounceTimeDelay != 60000) {
-          debounceTimeDelay = 60000;
-        }
-        // Run only time scheduled automations
-        #ifdef __debug
-          Serial.println(F("[AUTO_LOOP] Checking time scheduled automations"));
-          Serial.println(systemInfos().c_str());
-        #endif
-        runTriggeredEventAutomations(true);
-        lastCheckedTime = millis();
+    readPins();
+    pickUpQueuedAutomations();
+    if (millis() > debounceTimeDelay + lastCheckedTime) {
+      // If this is the first time this run, we are now sure it will run every minutes, so set back debounceTimeDelay to 60s.
+      if (debounceTimeDelay != 60000) {
+        debounceTimeDelay = 60000;
       }
-      vTaskDelay(10);
+      // Run only time scheduled automations
+      #ifdef __debug
+        Serial.println(F("[AUTO_LOOP] Checking time scheduled automations"));
+        Serial.println(systemInfos().c_str());
+      #endif
+      runTriggeredEventAutomations(true);
+      lastCheckedTime = millis();
     }
+    vTaskDelay(10);
   }
 }

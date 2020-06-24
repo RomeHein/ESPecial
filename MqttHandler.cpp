@@ -15,7 +15,7 @@ void MqttHandler::begin()
 {
     if (!isInit && preference.mqtt.host && preference.mqtt.port && preference.mqtt.topic && preference.mqtt.fn) {
         #ifdef __debug  
-            Serial.println("MQTT: init server");
+            Serial.println("[MQTT] init");
 	    #endif
         mqtt_client = new PubSubClient(client);
         mqtt_client->setServer(preference.mqtt.host, preference.mqtt.port);
@@ -56,14 +56,14 @@ void MqttHandler::connect() {
     while (!mqtt_client->connected()) {
         preference.health.mqtt = 0;
         #ifdef __debug  
-            Serial.printf("MQTT: Connection attempt(%i)\n", attempts);
+            Serial.printf("[MQTT] Connection attempt(%i)\n", attempts);
         #endif
         // Attempt to connect
         mqtt_client->connect(getId().c_str(), preference.mqtt.user, preference.mqtt.password);
         // If state < 0 (MQTT_CONNECTED) => network problem we retry RETRY_ATTEMPT times and then waiting for MQTT_RETRY_INTERVAL_MS and retry reapeatly
         if (mqtt_client->state() < MQTT_CONNECTED) {
             #ifdef __debug  
-                Serial.println("MQTT: Failed ");
+                Serial.println("[MQTT] Failed ");
             #endif
             if (attempts == RETRY_ATTEMPT) {
                 // Set health to -1 to block any new attempt. This value can be remotely reset to 0 by calling mqtt/retry via the api
@@ -77,7 +77,7 @@ void MqttHandler::connect() {
         // If state > 0 (MQTT_CONNECTED) => config or server problem we stop retry
         else if (mqtt_client->state() > MQTT_CONNECTED) {
             #ifdef __debug  
-                Serial.println("MQTT: server connected");
+                Serial.println("[MQTT] server connected");
             #endif
             preference.health.mqtt = 1;
             return;
@@ -85,7 +85,7 @@ void MqttHandler::connect() {
         // We are connected
         else if (topic.gpio) {
             #ifdef __debug  
-                Serial.println("MQTT: server subscribed");
+                Serial.println("[MQTT] server subscribed");
             #endif
             char gpiosTopic[strnlen(topic.gpio,TOPIC_MAX_SIZE)+3];
             sprintf(gpiosTopic, "%s/+\0",topic.gpio);
@@ -103,7 +103,7 @@ void MqttHandler::connect() {
 void MqttHandler::disconnect() {
     if (mqtt_client->state() == MQTT_CONNECTED) {
         #ifdef __debug  
-            Serial.println("MQTT: disconnected");
+            Serial.println("[MQTT] disconnected");
         #endif
       mqtt_client->disconnect();
       preference.health.mqtt = 0;
@@ -112,7 +112,7 @@ void MqttHandler::disconnect() {
 
 void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
     #ifdef __debug  
-        Serial.printf("MQTT: callback data on topic %s\n", topic);
+        Serial.printf("[MQTT] callback data on topic %s\n", topic);
     #endif
     // Copy payload into message buffer
     char message[length + 1];
@@ -130,14 +130,14 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
         int pin = atoi(pin_c);
         int state = atoi(message);
         #ifdef __debug
-            Serial.printf("MQTT: message %s for pin %i\n", message, pin);
+            Serial.printf("[MQTT] message %s for pin %i\n", message, pin);
         #endif
         if (pin && digitalRead(pin) != state) {
             // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
             preference.setGpioState(pin, state);
         } else {
             #ifdef __debug
-                Serial.print("MQTT: state unchanged. Message dissmissed\n");
+                Serial.print("[MQTT] state unchanged. Message dissmissed\n");
             #endif
         }
     } else if (strstr(topic,this->topic.automation)) {
@@ -148,7 +148,7 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
         int id = atoi(id_c);
         int state = atoi(message);
         #ifdef __debug
-            Serial.printf("MQTT: message %s for automation id %i\n", message, id);
+            Serial.printf("[MQTT] message %s for automation id %i\n", message, id);
         #endif
         if (state) {
             // queue automation id, to be picked up by esp32.ino script
@@ -169,11 +169,11 @@ void MqttHandler::publish(int pin){
         char state[2];
         snprintf(state,sizeof(state), "%i\0",digitalRead(pin));
         #ifdef __debug  
-            Serial.printf("MQTT: publishing pin %i state %s on topic: %s\n", pin, state, pinTopic);
+            Serial.printf("[MQTT] publishing pin %i state %s on topic: %s\n", pin, state, pinTopic);
         #endif
         if (!mqtt_client->publish(pinTopic, state, true)) {
             #ifdef __debug
-                Serial.println("MQTT: failed to publish");
+                Serial.println("[MQTT] failed to publish");
             #endif
             mqtt_client->publish(topic.debug, (char*)(F("Failed to publish gpios list change")));
         }

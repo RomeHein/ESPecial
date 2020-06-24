@@ -11,7 +11,7 @@ long Bot_lasttime;   //last time messages' scan has been done
 void TelegramHandler::begin() {
     if (!isInit && preference.telegram.active && preference.telegram.token) {
       #ifdef __debug  
-        Serial.println("Telegram: init");
+        Serial.println("[TELEGRAM] init");
       #endif
       bot = new UniversalTelegramBot(preference.telegram.token, client);
       isInit = true;
@@ -25,7 +25,7 @@ void TelegramHandler::handle()
       int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
       while(numNewMessages) {
         #ifdef __debug  
-          Serial.printf("Telegram: got %i new messages\n", numNewMessages);
+          Serial.printf("[TELEGRAM] got %i new messages\n", numNewMessages);
         #endif
         handleNewMessages(numNewMessages);
         numNewMessages = bot->getUpdates(bot->last_message_received + 1);
@@ -49,7 +49,6 @@ String TelegramHandler::generateButtonFormat(GpioFlash& gpio) {
   doc["callback_data"] = callback;
   String output;
   serializeJson(doc, output);
-  Serial.printf("Inline keyboard: %s\n",output.c_str());
   return output;
 }
 
@@ -62,7 +61,6 @@ String TelegramHandler::generateButtonFormat(AutomationFlash& a) {
   doc["callback_data"] = callback;
   String output;
   serializeJson(doc, output);
-  Serial.printf("Inline keyboard: %s\n",output.c_str());
   return output;
 }
 
@@ -73,7 +71,6 @@ String TelegramHandler::generateInlineKeyboardsForGpios(bool inputMode) {
   for (int i = 0; i<GPIO_PIN_COUNT; i++) {
     JsonArray subArray = doc.createNestedArray();
     if (preference.gpios[i].pin && ((preference.gpios[i].mode == OUTPUT && !inputMode)||(preference.gpios[i].mode == INPUT && inputMode))) {
-      Serial.printf("Gpio index %i pin %i, mode %i\n",i,preference.gpios[i].pin,preference.gpios[i].mode);
       subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
     }
     do
@@ -81,13 +78,11 @@ String TelegramHandler::generateInlineKeyboardsForGpios(bool inputMode) {
       i++;
     } while (i<GPIO_PIN_COUNT && ((preference.gpios[i].mode != OUTPUT && !inputMode)||(preference.gpios[i].mode != INPUT && inputMode)));
     if (preference.gpios[i].pin && ((preference.gpios[i].mode == OUTPUT && !inputMode)||(preference.gpios[i].mode == INPUT && inputMode))) {
-      Serial.printf("Gpio index %i pin %i, mode %i\n",i,preference.gpios[i].pin,preference.gpios[i].mode);
       subArray.add(serialized(generateButtonFormat(preference.gpios[i])));
     }
   }
   String output;
   serializeJson(doc, output);
-  Serial.printf("Inline keyboard: %s\n",output.c_str());
   return output;
 }
 
@@ -131,7 +126,7 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
       strncpy(id_c, cmd+2, strnlen(cmd,MAX_MESSAGE_TEXT_SIZE)-1);
       int id = atoi(id_c);
       #ifdef __debug  
-        Serial.printf("Telegram: command: %c, id: %i\n",cmd[0], id);
+        Serial.printf("[TELEGRAM] command: %c, id: %i\n",cmd[0], id);
       #endif
       // 'g' is a command for gpios
       if (cmd[0] == 'g') {
@@ -186,14 +181,14 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
 void TelegramHandler::queueMessage(const char* message) {
   if (isInit && preference.telegram.token && preference.telegram.active) {
     #ifdef __debug  
-      Serial.printf("Telegram: queued message: %s\n",message);
+      Serial.printf("[TELEGRAM] queued message: %s\n",message);
     #endif
     if (lastMessageQueuedPosition<MAX_QUEUED_MESSAGE_NUMBER) {
       strcpy(messagesQueue[lastMessageQueuedPosition],message);
       lastMessageQueuedPosition++;
     } else {
       #ifdef __debug  
-        Serial.printf("Telegram: reach message queued maximum: %i\n",MAX_QUEUED_MESSAGE_NUMBER);
+        Serial.printf("[TELEGRAM] reach message queued maximum: %i\n",MAX_QUEUED_MESSAGE_NUMBER);
       #endif
     }
   }
@@ -207,7 +202,7 @@ void TelegramHandler::sendQueuedMessages() {
       // Check if we have a chatId corresponding to a telegram user
       if (preference.telegram.users[i] && preference.telegram.chatIds[i]) {
         #ifdef __debug  
-          Serial.printf("Telegram: sending message: %s\n", messagesQueue[i]);
+          Serial.printf("[TELEGRAM] sending message: %s\n", messagesQueue[i]);
         #endif
         bot->sendMessage(String(preference.telegram.chatIds[i]), messagesQueue[i]);
         didSentMessage = true;
@@ -216,12 +211,12 @@ void TelegramHandler::sendQueuedMessages() {
   }
   if (!didSentMessage && lastMessageQueuedPosition != 0) {
     #ifdef __debug  
-      Serial.println("Telegram: could not send messages: %s\nReason: no chatids defined, send a message first to the bot before using it.");
+      Serial.println("[TELEGRAM] could not send messages: %s\nReason: no chatids defined, send a message first to the bot before using it.");
     #endif
   }
   // Empty queue
   if (didSentMessage) {
-    Serial.print("Telegram: empty queued messages\n");
+    Serial.print("[TELEGRAM] empty queued messages\n");
     memset(messagesQueue, 0, sizeof(messagesQueue));
     lastMessageQueuedPosition = 0; 
   }

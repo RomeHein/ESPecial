@@ -13,6 +13,7 @@
 #define PREFERENCES_AUTOMATION "automation"
 #define PREFERENCES_MQTT "mqtt"
 #define PREFERENCES_TELEGRAM "telegram"
+#define PREFERENCES_WIFI "wifi"
 
 #define CHANNEL_NOT_ATTACHED -1
 #define PIN_NOT_ATTACHED -1
@@ -112,6 +113,18 @@ typedef struct
     int32_t chatIds[MAX_TELEGRAM_USERS_NUMBER]; // Keep in memory the chatId of each users.
     int32_t users[MAX_TELEGRAM_USERS_NUMBER];
 }  TelegramFlash;
+
+typedef struct
+{
+    char apSsid[33]; //ssid can be up to 32chars, => plus null term
+    char apPsw[200];
+    char apDns[200];
+    int8_t staEnable;
+    char staSsid[33];
+    char staPsw[200];
+    char staDns[200];
+}  WifiFlash;
+
  
 class PreferenceHandler
 {
@@ -158,5 +171,8 @@ public:
     // Telegram
     TelegramFlash telegram;
     bool editTelegram(const char* token,const int* newUsers,int active);
+    // Wifi
+    WifiFlash wifi;
+    bool editWifi(const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw);
 };
 #endif

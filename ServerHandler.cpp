@@ -15,11 +15,11 @@ const char *valueParamName = "value";
 void ServerHandler::begin()
 {
     if(!SPIFFS.begin()){
-        Serial.println("Server: An Error has occurred while mounting SPIFFS");
+        Serial.println("[SERVER] An Error has occurred while mounting SPIFFS");
         return;
     }
     #ifdef __debug  
-        Serial.println("Server: init");
+        Serial.println("[SERVER] init");
     #endif
     server.on("/",HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/index.html", "text/html");
@@ -40,7 +40,7 @@ void ServerHandler::begin()
         request->send(404, "text/plain", "Not found");
     });
     
-    server.on("/clear/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { handleClearSettings(request); });
+    server.on("/settings/reset", HTTP_GET, [this](AsyncWebServerRequest *request) { handleClearSettings(request); });
     server.on("/health", HTTP_GET, [this](AsyncWebServerRequest *request) { handleSystemHealth(request); });
     server.on("/settings", HTTP_GET, [this](AsyncWebServerRequest *request) { getSettings(request); });
     server.on("/restart", HTTP_GET, [this](AsyncWebServerRequest *request) { handleRestart(request); });
@@ -58,8 +58,14 @@ void ServerHandler::begin()
     editMqttHandler->setMethod(HTTP_POST);
     AsyncCallbackJsonWebHandler* editTelegramHandler = new AsyncCallbackJsonWebHandler("/telegram",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleTelegramEdit(request,json); });
     editTelegramHandler->setMethod(HTTP_POST);
+    AsyncCallbackJsonWebHandler* editWifiHandler = new AsyncCallbackJsonWebHandler("/wifi",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleWifiEdit(request,json); });
+    editWifiHandler->setMethod(HTTP_POST);
+    AsyncCallbackJsonWebHandler* importBackupHandler = new AsyncCallbackJsonWebHandler("/import/backup",[this](AsyncWebServerRequest *request,JsonVariant &json) { handleImportBackup(request,json); });
+    importBackupHandler->setMethod(HTTP_POST);
     server.addHandler(editMqttHandler);
     server.addHandler(editTelegramHandler);
+    server.addHandler(editWifiHandler);
+    server.addHandler(importBackupHandler);
 
     // Gpio related endpoints
     server.on("/gpio/value", HTTP_GET, [this](AsyncWebServerRequest *request) { handleGpioState(request); });
@@ -170,6 +176,14 @@ void ServerHandler::getSettings(AsyncWebServerRequest *request) {
     mqtt["user"] = preference.mqtt.user;
     mqtt["password"] = preference.mqtt.password;
     mqtt["topic"] = preference.mqtt.topic;
+    JsonObject wifi = doc.createNestedObject("wifi");
+    wifi["apSsid"] = preference.wifi.apSsid;
+    wifi["apPsw"] = preference.wifi.apPsw;
+    wifi["apDns"] = preference.wifi.apDns;
+    wifi["staEnable"] = preference.wifi.staEnable;
+    wifi["staSsid"] = preference.wifi.staSsid;
+    wifi["staPsw"] = preference.wifi.staPsw;
+    wifi["staDns"] = preference.wifi.staDns;
     JsonObject general = doc.createNestedObject("general");
     general["maxAutomations"] = MAX_AUTOMATIONS_NUMBER;
     general["maxConditions"] = MAX_AUTOMATIONS_CONDITIONS_NUMBER;
@@ -219,6 +233,14 @@ void ServerHandler::handleUpdateToVersion(AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "Downloading");
 }
 
+void ServerHandler::handleImportBackup(AsyncWebServerRequest *request, JsonVariant &json) {
+    JsonObject doc = json.as<JsonObject>();
+    JsonObject settings = doc["settings"].as<JsonObject>();
+    const char* apSsid = doc["apSsid"].as<char*>();
+    Serial.printf("Test %s\n",apSsid);
+    request->send(200, "text/plain", "ok");
+}
+
 void ServerHandler::handleMqttEdit (AsyncWebServerRequest *request,JsonVariant &json) {
     JsonObject doc = json.as<JsonObject>();
     const int active = doc["active"].as<int>();
@@ -230,7 +252,7 @@ void ServerHandler::handleMqttEdit (AsyncWebServerRequest *request,JsonVariant &
     const char* topic = doc["topic"].as<char*>();
     if (fn && host && port && user && password && topic) {
         preference.editMqtt(active,fn,host,port,user,password,topic);
-        request->send(200, "text/json", request->pathArg(0));
+        request->send(200, "text/plain", "ok");
         return;
     }
     request->send(404, "text/plain", "Missing parameters");
@@ -253,10 +275,26 @@ void ServerHandler::handleTelegramEdit (AsyncWebServerRequest *request,JsonVaria
     }
     if (token) {
         preference.editTelegram(token,users,active);
-        request->send(200, "text/json", request->pathArg(0));
+        request->send(200, "text/plain", "ok");
         return;
     }
     request->send(404, "text/plain", "Missing parameters");
+}
+
+void ServerHandler::handleWifiEdit(AsyncWebServerRequest *request,JsonVariant &json) {
+    JsonObject doc = json.as<JsonObject>();
+    const char* apSsid = doc["apSsid"].as<char*>();
+    const char* apPsw = doc["apPsw"].as<char*>();
+    const int staActive = doc["staEnable"].as<int>();
+    const char* staSsid = doc["staSsid"].as<char*>();
+    const char* staPsw = doc["staPsw"].as<char*>();
+    
+    if (apSsid || staSsid) {
+        preference.editWifi(apSsid,apPsw,staActive,staSsid,staPsw);
+        request->send(200, "text/plain", "ok");
+        return;
+    }
+    request->send(404, "text/json", "Missing parameters");
 }
 
 // Gpio hanlding

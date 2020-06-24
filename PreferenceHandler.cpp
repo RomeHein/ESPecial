@@ -12,7 +12,7 @@ void PreferenceHandler::begin()
     preferences.begin(PREFERENCES_NAME, false);
 
     #ifdef __debug
-        Serial.println("Preferences: init");
+        Serial.println("[PREF] init");
     #endif
     // Init gpios preferences
     {
@@ -56,6 +56,21 @@ void PreferenceHandler::begin()
         preferences.getBytes(PREFERENCES_MQTT, buffer, schLen);
         memcpy(&mqtt, buffer, schLen);
     }
+
+    // Init wifi preferences
+    {
+        size_t schLen = preferences.getBytes(PREFERENCES_WIFI, NULL, NULL);
+        char buffer[schLen];
+        preferences.getBytes(PREFERENCES_WIFI, buffer, schLen);
+        memcpy(&wifi, buffer, schLen);
+        // Wifi settings are empty, fill with default ap settings
+        if (strlen(wifi.apSsid) == 0) {
+            Serial.println("here");
+            strcpy(wifi.apSsid, "ESP32");
+            strcpy(wifi.apPsw,"p@ssword2000");
+            strcpy(wifi.apDns,"especial");
+        }
+    }
     preferences.end();
 
     initGpios();
@@ -88,6 +103,8 @@ void PreferenceHandler::save(char* preference) {
         preferences.putBytes(PREFERENCES_MQTT, &mqtt, sizeof(mqtt));
     }else if (strcmp(preference, PREFERENCES_TELEGRAM) == 0) {
         preferences.putBytes(PREFERENCES_TELEGRAM, &telegram, sizeof(telegram));
+    }else if (strcmp(preference, PREFERENCES_WIFI) == 0) {
+        preferences.putBytes(PREFERENCES_WIFI, &wifi, sizeof(wifi));
     }
     preferences.end();
 }
@@ -595,6 +612,34 @@ bool PreferenceHandler::editTelegram(const char* newToken,const int* newUsers, i
     }
     if (hasChanged) {
         save(PREFERENCES_TELEGRAM);
+    }
+    return hasChanged;
+}
+
+bool PreferenceHandler:: editWifi(const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw) {
+    bool hasChanged = false;
+    if (apSsid && strcmp(wifi.apSsid, apSsid) != 0) {
+        strcpy(wifi.apSsid, apSsid);
+        hasChanged = true;
+    }
+    if (apPsw && strcmp(wifi.apPsw, apPsw) != 0) {
+        strcpy(wifi.apPsw, apPsw);
+        hasChanged = true;
+    }
+    if (wifi.staEnable != staEnable) {
+        wifi.staEnable = staEnable;
+        hasChanged = true;
+    }
+    if (staSsid && strcmp(wifi.staSsid, staSsid) != 0) {
+        strcpy(wifi.staSsid, staSsid);
+        hasChanged = true;
+    }
+    if (staPsw && strcmp(wifi.staPsw, staPsw) != 0) {
+        strcpy(wifi.staPsw, staPsw);
+        hasChanged = true;
+    }
+    if (hasChanged) {
+        save(PREFERENCES_WIFI);
     }
     return hasChanged;
 }

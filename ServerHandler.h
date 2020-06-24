@@ -7,7 +7,7 @@
 #include "ESPAsyncWebServer.h"
 #include "PreferenceHandler.h"
 
-#define FIRMWARE_VERSION 0.4
+#define FIRMWARE_VERSION 0.5
 
 class ServerHandler {
 private:
@@ -20,10 +20,12 @@ private:
     void handleRestart(AsyncWebServerRequest *request);
     void handleUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final);
     void handleUpdateToVersion(AsyncWebServerRequest *request);
+    void handleImportBackup(AsyncWebServerRequest *request, JsonVariant &json);
 
     void handleMqttEdit(AsyncWebServerRequest *request,JsonVariant &json);
     void handleMqttRetry(AsyncWebServerRequest *request);
     void handleTelegramEdit(AsyncWebServerRequest *request,JsonVariant &json);
+    void handleWifiEdit(AsyncWebServerRequest *request,JsonVariant &json);
 
     void getGpios(AsyncWebServerRequest *request);
     void handleAvailableGpios(AsyncWebServerRequest *request);

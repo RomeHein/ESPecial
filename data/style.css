@@ -70,12 +70,12 @@ form {
   padding-left: 9px;
 }
 
-#file-update-label {
+label.file-upload-label {
   background-color: white;
   border-radius: 5px;
   padding: 5px;
   height: 30px;
-  width: 65%;
+  width: 60%;
 }
 
 .row {
@@ -219,12 +219,33 @@ select {
   color: white;
 }
 
+.checkbox-container {
+  width: 65%;
+  display: flex;
+  padding-left: 9px;
+}
+
+.checkbox-container>input {
+  width: auto;
+}
+
 .info {
   border-radius: 5px;
   background-color: whitesmoke;
   text-align: initial;
   font-size: small;
   padding: 10px;
+}
+
+#wifi .info {
+  border: 1px solid darkgray;
+  border-radius: 5px;
+  padding: 5px;
+  text-align: justify;
+  margin: 5px;
+  background: white;
+  color: gray;
+  font-size: smaller;
 }
 
 .edit:hover {

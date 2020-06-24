@@ -41,13 +41,9 @@ https://youtu.be/_ucSs9OT7Eg
 
 - [x] OTA: Update firmware from the web interface. Get notifiy when a new version is available from github and install it directly from it.
 
-- [ ] Unit/integration tests!
-
 - [ ] Plateform.io/Makefile/bash script: simplify the installation process.
 
 - [ ] Compatibility with single cored boards.
-
-- [ ] Use async MQTT client: https://github.com/marvinroger/async-mqtt-client.
 
 ## Work in progress:
 Have a look to [this page](https://github.com/RomeHein/ESPecial/projects/1) to track current work.
@@ -210,6 +206,13 @@ mqtt://your.broker.address:port/yourTopic/friendlyName/gpios/pinNumber
 ```
 
 It will also publish any state update on the same logic.
+
+## OTA
+
+ESPecial will notify you when a new version is available. It will check the version you have against the version available on this repo.
+You can then go in the setting panel and select the new version.
+The update may take around 2 minutes. Once completed, the esp32 will reboot automatically.
+Note: once the update performed, as we are still not on a stable version, you may encounter issues when saving new parameters etc. Before opening an issue, try to reset your settings by clicking "reset settings" in the settings panel. Unfortunetely this will erase all your gpios/automations but will reformat the memory and remove possible colisions with the previous versions of ESPecial.
 
 ## Contributing
 

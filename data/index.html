@@ -44,7 +44,7 @@
                     <div class='set-inputs'>
                         <div class='row'>
                             <div>From file:</div>
-                            <label for='firmware-file' id='file-update-label'>Choose file</label>
+                            <label for='firmware-file' id="firmware-file-label" class='file-upload-label'>Choose file</label>
                             <input type='file' name='update' id='firmware-file' onchange='fillUpdateInput(this)' style=display:none>
                         </div>
                         <div class='row'>
@@ -59,11 +59,32 @@
                     </div>
                 </div>
             </div>
+            <div id="wifi" class="setting-container">
+                <p>WIFI</p>
+                <form onsubmit='submitWifi(event)' id='wifi-ap-form'>
+                    <label for='wifi-sta-enable'>Enable Station (STA) mode:</label>
+                    <div class="checkbox-container">
+                        <input type='checkbox' name='enable' id='wifi-sta-enable'>
+                    </div>
+                    <label for='wifi-sta-ssid'>STA SSID:</label>
+                    <input type='text' name='ssid' id='wifi-sta-ssid'>
+                    <label for='wifi-sta-psw'>STA Password</label>
+                    <input type='text' name='pws' id='wifi-sta-psw'>
+                    <div class="info">When station mode is disabled or when network connection failed, the esp32 will automatically trigger the access point (AP) mode.</div>
+                    <label for='wifi-ap-ssid'>AP SSID:</label>
+                    <input type='text' name='ssid' id='wifi-ap-ssid'>
+                    <label for='wifi-ap-psw'>AP Password</label>
+                    <input type='text' name='pws' id='wifi-ap-psw'>
+                    <input id='submit-wifi' type='submit'class='btn save' value='Save'>
+                </form>
+            </div>
             <div id='mqtt' class='setting-container'>
                 <p>MQTT</p>
                 <form onsubmit='submitMqtt(event)' id='mqtt-form'>
                     <label for='mqtt-active'>Active:</label>
-                    <input type='checkbox' name='active' id='mqtt-active'>
+                    <div class="checkbox-container">
+                        <input type='checkbox' name='active' id='mqtt-active'>
+                    </div>
                     <label for='mqtt-fn'>Friendly name:</label>
                     <input type='text' name='fn' id='mqtt-fn'>
                     <label for='mqtt-host'>Host:</label>
@@ -87,13 +108,29 @@
                 <p>Telegram</p>
                 <form onsubmit='submitTelegram(event)' id='telegram-form'>
                     <label for='telegram-active'>Active:</label>
-                    <input type='checkbox' name='active' id='telegram-active'>
+                    <div class="checkbox-container">
+                        <input type='checkbox' name='active' id='telegram-active'>
+                    </div>
                     <label for='telegram-token'>Token:</label>
                     <input type='text' name='token' id='telegram-token'>
                     <label for='telegram-users'>Authorised users: (empty if public)</label>
                     <input type='text' name='users' id='telegram-users' placeholder="telegram user ids, separeted by a comma.">
                     <input id='submit-telegram-pref' type='submit'class='btn save' value='Save'>
                 </form>
+            </div>
+            <div id='telegram' class='setting-container'>
+                <p>Backup</p>
+                <div class="info">Download a json file containing all your current settings. Make sure to use this functionnality before any firmware update.</div>
+                <a id='backup-settings' onclick='backupSettings()' class='btn save'>Backup settings</a>
+                <a id="downloadAnchorElem" style="display:none"></a>
+                <div class="info">[WORK IN PROGRESS] Import settings. Select the "settings.json" file previously backed up.</div>
+                <div class='row'>
+                    <label for='backup-file' id="backup-file-label" class='file-upload-label'>Choose file</label>
+                    <input type='file' name='update' id='backup-file' onchange='fillBackupInput(this)' style=display:none>
+                    <a id='import-backup' onclick='importBackup()' class='btn save disable'>Import settings</a>
+                </div>
+                <div class="info">Clicking below will reset all settings. All your gpios, automations, wifi, mqtt and telegram settings will be permanently erased. If you encounter issues after a firmware update, use this functionnality and the import your backup.</div>
+                <a id='reset-settings' onclick='resetSettings()' class='btn delete'>Reset settings</a>
             </div>
         </div>
     </div>
@@ -125,7 +162,10 @@
             },
             body: JSON.stringify(body)
         });
-        return resp.json();
+        var contentType = resp.headers.get("content-type");
+        if(contentType && contentType.indexOf("application/json") !== -1) {
+            return resp.json();
+        }
     };
     const displayNotification = async (message, type) => {
         const blocker = document.getElementById("blocker");
@@ -307,6 +347,11 @@
                 // Save settings
                 settings = s;
                 // Add them to the dom
+                document.getElementById("wifi-ap-ssid").value = settings.wifi.apSsid;
+                document.getElementById("wifi-ap-psw").value = settings.wifi.apPsw;
+                document.getElementById("wifi-sta-enable").checked = settings.wifi.staEnable;
+                document.getElementById("wifi-sta-ssid").value = settings.wifi.staSsid;
+                document.getElementById("wifi-sta-psw").value = settings.wifi.staPsw;
                 document.getElementById("telegram-active").checked = settings.telegram.active;
                 document.getElementById("telegram-token").value = settings.telegram.token;
                 document.getElementById("telegram-users").value = settings.telegram.users.filter(userId => userId !== 0).join(",");

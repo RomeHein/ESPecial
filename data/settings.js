@@ -18,7 +18,7 @@ const switchPage = () => {
 // Update software
 const fillUpdateInput = (element) => {
     const fileName = element.value.split("\\");
-    document.getElementById("file-update-label").innerHTML = fileName[fileName.length - 1];
+    document.getElementById("firmware-file-label").innerHTML = fileName[fileName.length - 1];
     document.getElementById("submit-update-file").classList.remove("disable");
 };
 const selectFirmwareVersion = (element) => {
@@ -100,11 +100,7 @@ const submitMqtt = async (e) => {
     const password = document.getElementById("mqtt-password").value;
     const topic = document.getElementById("mqtt-topic").value;
     try {
-        await fetch(window.location.href + "mqtt", {
-            method: "POST",
-            headers: { contentType: false, processData: false },
-            body: JSON.stringify({ active, fn, host, port, user, password, topic })
-        });
+        await request("mqtt",{ active, fn, host, port, user, password, topic },true);
         settings.mqtt = { active, fn, host, port, user, password, topic };
         await displayNotification("Mqtt parameters saved", "success");
         await mqttConnect();
@@ -120,15 +116,73 @@ const submitTelegram = async (e) => {
     const users = document.getElementById("telegram-users").value.split(",").map((id) => +id);
     if (token !== settings.telegram.token || active !== +settings.telegram.active || (JSON.stringify(users.sort()) !== JSON.stringify(settings.telegram.users.sort()))) {
         try {
-            const res = await fetch(window.location.href + "telegram", {
-                method: "POST",
-                headers: { contentType: false, processData: false },
-                body: JSON.stringify({ token, active, users })
-            });
+            await request("telegram",{ active, token },true);
             settings.telegram = { active, token };
             await displayNotification("Telegram parameters saved", "success");
         } catch (err) {
             await displayNotification(err, "error");
         }
     }
+};
+// WIFI
+const submitWifi= async (e) => {
+    e.preventDefault();
+    const apSsid = document.getElementById("wifi-ap-ssid").value;
+    const apPsw = document.getElementById("wifi-ap-psw").value;
+    const staEnable = +document.getElementById("wifi-sta-enable").checked;
+    const staSsid = document.getElementById("wifi-sta-ssid").value;
+    const staPsw = document.getElementById("wifi-sta-psw").value;
+    if (apSsid !== +settings.wifi.apSsid || apPsw !== +settings.wifi.apPsw || staEnable !== +settings.wifi.staEnable || staSsid !== +settings.wifi.staSsid || staPsw !== +settings.wifi.staPsw) {
+        try {
+            if (!apSsid) {
+                throw new Error("Missing wifi ssid/password for AP mode");
+            }
+            if (staEnable && (!staSsid || !staPsw)) {
+                throw new Error("Missing wifi ssid/password STA mode");
+            }
+            await request("wifi",{apSsid, apPsw, staEnable, staSsid, staPsw },true);
+            settings.wifi = {apSsid, apPsw, staEnable, staSsid, staPsw };
+            await displayNotification("Wifi parameters saved. ESP32 restarting", "success");
+            await restart();
+        } catch (err) {
+            await displayNotification(err, "error");
+        }
+    }
+};
+const resetSettings = async () => {
+    try {
+        await fetch(window.location.href + `settings/reset`);
+        await restart();
+    } catch (err) {
+        await displayNotification(err, "error");
+    }
+}
+const backupSettings = async () => {
+    let backup = { gpios, automations, slaves, settings};
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
+    var dlAnchorElem = document.getElementById('downloadAnchorElem');
+    dlAnchorElem.setAttribute("href",dataStr);
+    dlAnchorElem.setAttribute("download", "backup.json");
+    dlAnchorElem.click();
+}
+const importBackup = async () => {
+    document.getElementById("blocker-title").innerText = "Importing backup, please wait...";
+    const backupFile = document.getElementById("backup-file");
+    var reader = new FileReader();
+    reader.onload = async (event) => {
+        try {
+            await request("import/backup",JSON.parse(event.target.result),true);
+            document.getElementById("blocker-title").innerText = "Restarting device, please wait...";
+            await restart();
+        } catch (err) {
+            blocker.classList.add("hidden");
+            await displayNotification(err, "error");
+        }
+    };
+    reader.readAsText(backupFile.files[0]);
+}
+const fillBackupInput = (element) => {
+    const fileName = element.value.split("\\");
+    document.getElementById("backup-file-label").innerHTML = fileName[fileName.length - 1];
+    document.getElementById("import-backup").classList.remove("disable");
 };
