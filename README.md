@@ -73,11 +73,9 @@ Once ESPInstaller installed, select the ESPecial from the list of available repo
 #### Manual way
 
 First copy this repo to your local directory. Use the `download as zip` or `git clone` method.
-Then 6 dependencies need to be added to your Arduino libraries (when you download these dependencies, make sure to remove the '-master' part of the folder name):
+Then 5 dependencies need to be added to your Arduino libraries (when you download these dependencies, make sure to remove the '-master' part of the folder name):
 - ArduinoJSON v6 (install via library manager) Handle json in a very effective way.
 - PubSubClient: (install via library manager)  MQTT handling. It's a very robust pubsub client, perfect for iot projects.
-- WifiManager: https://github.com/tzapu/WiFiManager/tree/development
-This library will allow you to easily set your board to your wifi. You'll need to get the development branch to have esp32 support.
 - ⚠️ UniversalTelegramBot: Make sure to take [this repo](https://github.com/RomeHein/Universal-Arduino-Telegram-Bot/tree/). This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
 - ESPAsyncWebServer
 - AsyncTCP
@@ -216,7 +214,9 @@ Note: once the update performed, as we are still not on a stable version, you ma
 
 ## Contributing
 
-All kind of contributions are welcome. I'm very new to arduino world, so don't hesitate to give any advices
+Honestly, at first this project was just about having an API that could trigger pins in digital mode. So that I could control my 8 channels relay via Siri. 
+Now... well it's slightly bigger and the possibilities become interesting for anyone who want to build small (and even complex) projects. 
+I know the project organisation is not perfect, it's my first arduino/c++ project. I've a lot to learn. That's why any contributions are welcome. Don't hesitate to make pullrequests, join the Telegram channel, open issues. 
 
 ## Authors
 

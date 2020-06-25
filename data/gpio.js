@@ -233,6 +233,7 @@ const deleteGpio = async (element) => {
     try {
         await fetch(`${window.location.href}gpio?pin=${gpioPin}`, { method: "DELETE" });
         gpios = gpios.filter((gpio) => +gpio.pin !== +gpioPin);
+        slaves = slaves.filter((slave) => +slave.mPin !== +gpioPin);
         closeAnySettings();
         document.getElementById("rowGpio-" + gpioPin).remove();
         await displayNotification("Gpio removed", "success");

@@ -219,6 +219,13 @@ bool PreferenceHandler::detach(GpioFlash& gpio) {
         ledcDetachPin(gpio.pin);
     // Detach i2c. Releasing Wire instance should call the destroy from Wire and therfor free the pin
     } else if (gpio.mode == -2 && gpio.frequency && gpio.sclpin) {
+        // Remove all slaves attached to this pin
+        for(I2cSlaveFlash slave: i2cSlaves) {
+            if (slave.mPin == gpio.pin) {
+                slave = {};
+            }
+        }
+        save(PREFERENCES_I2C_SLAVE);
         delete i2cHandlers[gpio.pin];
         return true;
     }
