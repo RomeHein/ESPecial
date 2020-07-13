@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -546,6 +547,13 @@ void setup(void)
       debounceTimeDelay -= timeinfo.tm_sec; 
       lastCheckedTime = millis();
     }
+  }
+
+  // Configure DNS
+  if (MDNS.begin(preferencehandler->wifi.dns)) {
+    #ifdef __debug
+      Serial.printf("[SETUP] Web interface available on: %s or ",preferencehandler->wifi.dns);
+    #endif
   }
 
   // Set all handlers.

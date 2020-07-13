@@ -127,12 +127,13 @@ const submitTelegram = async (e) => {
 // WIFI
 const submitWifi= async (e) => {
     e.preventDefault();
+    const dns = document.getElementById("wifi-dns").value;
     const apSsid = document.getElementById("wifi-ap-ssid").value;
     const apPsw = document.getElementById("wifi-ap-psw").value;
     const staEnable = +document.getElementById("wifi-sta-enable").checked;
     const staSsid = document.getElementById("wifi-sta-ssid").value;
     const staPsw = document.getElementById("wifi-sta-psw").value;
-    if (apSsid !== +settings.wifi.apSsid || apPsw !== +settings.wifi.apPsw || staEnable !== +settings.wifi.staEnable || staSsid !== +settings.wifi.staSsid || staPsw !== +settings.wifi.staPsw) {
+    if (dns !== +settings.wifi.dns || apSsid !== +settings.wifi.apSsid || apPsw !== +settings.wifi.apPsw || staEnable !== +settings.wifi.staEnable || staSsid !== +settings.wifi.staSsid || staPsw !== +settings.wifi.staPsw) {
         try {
             if (!apSsid) {
                 throw new Error("Missing wifi ssid/password for AP mode");
@@ -140,8 +141,8 @@ const submitWifi= async (e) => {
             if (staEnable && (!staSsid || !staPsw)) {
                 throw new Error("Missing wifi ssid/password STA mode");
             }
-            await request("wifi",{apSsid, apPsw, staEnable, staSsid, staPsw },true);
-            settings.wifi = {apSsid, apPsw, staEnable, staSsid, staPsw };
+            await request("wifi",{dns, apSsid, apPsw, staEnable, staSsid, staPsw },true);
+            settings.wifi = {dns, apSsid, apPsw, staEnable, staSsid, staPsw };
             await displayNotification("Wifi parameters saved. ESP32 restarting", "success");
             await restart();
         } catch (err) {

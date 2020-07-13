@@ -118,11 +118,10 @@ typedef struct
 {
     char apSsid[33]; //ssid can be up to 32chars, => plus null term
     char apPsw[200];
-    char apDns[200];
     int8_t staEnable;
     char staSsid[33];
     char staPsw[200];
-    char staDns[200];
+    char dns[200];
 }  WifiFlash;
 
  
@@ -173,6 +172,6 @@ public:
     bool editTelegram(const char* token,const int* newUsers,int active);
     // Wifi
     WifiFlash wifi;
-    bool editWifi(const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw);
+    bool editWifi(const char* dns, const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw);
 };
 #endif

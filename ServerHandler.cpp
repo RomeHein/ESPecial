@@ -158,7 +158,7 @@ void ServerHandler::handleRestart(AsyncWebServerRequest *request) {
 // Settings
 
 void ServerHandler::getSettings(AsyncWebServerRequest *request) {
-    const size_t capacity = JSON_OBJECT_SIZE(8) + JSON_ARRAY_SIZE(MAX_TELEGRAM_USERS_NUMBER) + 300;
+    const size_t capacity = JSON_OBJECT_SIZE(22) + JSON_ARRAY_SIZE(MAX_TELEGRAM_USERS_NUMBER) + 300;
     StaticJsonDocument<(capacity)> doc;
     JsonObject telegram = doc.createNestedObject("telegram");
     telegram["active"] = preference.telegram.active;
@@ -179,11 +179,10 @@ void ServerHandler::getSettings(AsyncWebServerRequest *request) {
     JsonObject wifi = doc.createNestedObject("wifi");
     wifi["apSsid"] = preference.wifi.apSsid;
     wifi["apPsw"] = preference.wifi.apPsw;
-    wifi["apDns"] = preference.wifi.apDns;
     wifi["staEnable"] = preference.wifi.staEnable;
     wifi["staSsid"] = preference.wifi.staSsid;
     wifi["staPsw"] = preference.wifi.staPsw;
-    wifi["staDns"] = preference.wifi.staDns;
+    wifi["dns"] = preference.wifi.dns;
     JsonObject general = doc.createNestedObject("general");
     general["maxAutomations"] = MAX_AUTOMATIONS_NUMBER;
     general["maxConditions"] = MAX_AUTOMATIONS_CONDITIONS_NUMBER;
@@ -283,6 +282,7 @@ void ServerHandler::handleTelegramEdit (AsyncWebServerRequest *request,JsonVaria
 
 void ServerHandler::handleWifiEdit(AsyncWebServerRequest *request,JsonVariant &json) {
     JsonObject doc = json.as<JsonObject>();
+    const char* dns = doc["dns"].as<char*>();
     const char* apSsid = doc["apSsid"].as<char*>();
     const char* apPsw = doc["apPsw"].as<char*>();
     const int staActive = doc["staEnable"].as<int>();
@@ -290,7 +290,7 @@ void ServerHandler::handleWifiEdit(AsyncWebServerRequest *request,JsonVariant &j
     const char* staPsw = doc["staPsw"].as<char*>();
     
     if (apSsid || staSsid) {
-        preference.editWifi(apSsid,apPsw,staActive,staSsid,staPsw);
+        preference.editWifi(dns,apSsid,apPsw,staActive,staSsid,staPsw);
         request->send(200, "text/plain", "ok");
         return;
     }

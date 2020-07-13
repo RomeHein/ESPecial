@@ -10,7 +10,6 @@ Preferences preferences;
 void PreferenceHandler::begin()
 {
     preferences.begin(PREFERENCES_NAME, false);
-
     #ifdef __debug
         Serial.println("[PREF] init");
     #endif
@@ -65,10 +64,9 @@ void PreferenceHandler::begin()
         memcpy(&wifi, buffer, schLen);
         // Wifi settings are empty, fill with default ap settings
         if (strlen(wifi.apSsid) == 0) {
-            Serial.println("here");
             strcpy(wifi.apSsid, "ESP32");
             strcpy(wifi.apPsw,"p@ssword2000");
-            strcpy(wifi.apDns,"especial");
+            strcpy(wifi.dns,"especial");
         }
     }
     preferences.end();
@@ -623,8 +621,12 @@ bool PreferenceHandler::editTelegram(const char* newToken,const int* newUsers, i
     return hasChanged;
 }
 
-bool PreferenceHandler:: editWifi(const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw) {
+bool PreferenceHandler:: editWifi(const char* dns, const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw) {
     bool hasChanged = false;
+    if (dns && strcmp(wifi.dns, dns) != 0) {
+        strcpy(wifi.dns, dns);
+        hasChanged = true;
+    }
     if (apSsid && strcmp(wifi.apSsid, apSsid) != 0) {
         strcpy(wifi.apSsid, apSsid);
         hasChanged = true;

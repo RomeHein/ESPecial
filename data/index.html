@@ -62,6 +62,8 @@
             <div id="wifi" class="setting-container">
                 <p>WIFI</p>
                 <form onsubmit='submitWifi(event)' id='wifi-ap-form'>
+                    <label for='wifi-dns'>DNS name:</label>
+                    <input type='text' name='dns' id='wifi-dns' value="especial">
                     <label for='wifi-sta-enable'>Enable Station (STA) mode:</label>
                     <div class="checkbox-container">
                         <input type='checkbox' name='enable' id='wifi-sta-enable'>
@@ -162,7 +164,7 @@
             },
             body: JSON.stringify(body)
         });
-        var contentType = resp.headers.get("content-type");
+        let contentType = resp.headers.get("content-type");
         if(contentType && contentType.indexOf("text/json") !== -1) {
             return resp.json();
         }
@@ -347,6 +349,7 @@
                 // Save settings
                 settings = s;
                 // Add them to the dom
+                document.getElementById("wifi-dns").value = settings.wifi.dns;
                 document.getElementById("wifi-ap-ssid").value = settings.wifi.apSsid;
                 document.getElementById("wifi-ap-psw").value = settings.wifi.apPsw;
                 document.getElementById("wifi-sta-enable").checked = settings.wifi.staEnable;
