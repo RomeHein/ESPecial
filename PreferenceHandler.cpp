@@ -107,6 +107,19 @@ void PreferenceHandler::save(char* preference) {
     preferences.end();
 }
 
+int PreferenceHandler::touchSensor(int pin) {
+    if (pin == 0) return T1;
+    if (pin == 2) return T0;
+    if (pin == 4) return T2;
+    if (pin == 12) return T5;
+    if (pin == 13) return T4;
+    if (pin == 14) return T6;
+    if (pin == 15) return T3;
+    if (pin == 27) return T7;
+    if (pin == 32) return T9;
+    if (pin == 33) return T8;
+}
+
 // Returns the first empty slot of a given array
 int PreferenceHandler::firstEmptySlot(char* preference) {
     int i = 0;
@@ -154,8 +167,9 @@ void  PreferenceHandler::initGpios()
             // Only write saved state if we have analog mode
             if (gpio.mode == -1) {
                 ledcWrite(gpio.channel, gpio.state);
-            } else if (gpio.mode > 0) {
-                digitalWrite(gpio.pin, gpio.state);
+            } else if (gpio.mode == 2) {
+                // Default OUTPIN IO to low
+                digitalWrite(gpio.pin, gpio.save ? gpio.state || 0);
             }
         } else {
             detach(gpio);
@@ -424,6 +438,11 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin
         newGpio.state = saveState ? digitalRead(pin) : 0;
     } else if (newGpio.mode == -1) {
         newGpio.state = ledcRead(newGpio.channel);
+    } else if (newGpio.mode == -3) {
+        analogReadResolution(newGpio.resolution);
+        newGpio.state = analogRead(newGpio.pin);
+    } else if (newGpio.mode == -4) {
+        newGpio.state = touchRead(touchSensor(pin));
     }
     save(PREFERENCES_GPIOS);
     return gpioToJson(newGpio);
@@ -437,14 +456,10 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
             detach(gpio);
         }
         // Set new mode
-        attach(gpio);
-        // If we are in analog mode, read the current state
-        if (gpio.mode == -1) {
-            gpio.state = ledcRead(gpio.channel);
-        } else if (gpio.mode > 0) {
-            gpio.state = gpio.save ? digitalRead(gpio.pin) : 0;
-        }
         gpio.mode = newMode;
+        attach(gpio);
+        // Get new state depending on the new mode
+        gpio.state = getGpioState(gpio.pin);
         hasChanged = true;
     }
     if (newChannel && gpio.channel != newChannel) {
@@ -481,6 +496,7 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         gpio.invert = newInvert;
         hasChanged = true;
     }
+    // As we use the pin as an id, we need to copy the current gpio setting to the new memory address (at the pin id of the array)
     if (newPin && gpio.pin != newPin) {
         detach(gpio);
         memcpy(&gpios[newPin], &gpio, sizeof(gpio));
@@ -496,8 +512,13 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         // In case we don't want to save state, we still want to get the right value.
         if (newGpio.mode>0) {
             newGpio.state = digitalRead(newGpio.pin);
-        } else {
+        } else if (newGpio.mode == -1) {
             newGpio.state = ledcRead(newGpio.channel);
+        } else if (newGpio.mode == -3) {
+            analogReadResolution(newGpio.resolution);
+            newGpio.state = analogRead(newGpio.pin);
+        } else if (newGpio.mode == -4) {
+            newGpio.state = touchRead(touchSensor(newGpio.pin));
         }
     }
     return gpioToJson(newPin ? gpios[newPin] : gpio);
@@ -512,7 +533,6 @@ void PreferenceHandler::setGpioState(int pin, int value, bool persist) {
         if (gpio.mode==2) {
             digitalWrite(pin, newValue);
         } else if (gpio.mode==-1 && gpio.channel!=CHANNEL_NOT_ATTACHED) {
-            gpio.state = value;
             ledcWrite(gpio.channel, newValue);
         }
         // Persist state in flash only if we have digital input in output or analog mode
@@ -524,6 +544,20 @@ void PreferenceHandler::setGpioState(int pin, int value, bool persist) {
             }
         }
         return;
+    }
+}
+
+int PreferenceHandler::getGpioState(int pin) {
+    GpioFlash& gpio = gpios[pin];
+    if (gpio.mode>0) {
+        return digitalRead(gpio.pin);
+    } else if (gpio.mode == -1) {
+        return ledcRead(gpio.channel);
+    } else if (gpio.mode == -3) {
+        analogReadResolution(gpio.resolution);
+        return analogRead(gpio.pin);
+    } else if (gpio.mode == -4) {
+        return touchRead(touchSensor(gpio.pin));
     }
 }
 
@@ -558,8 +592,15 @@ String PreferenceHandler::getGpiosJson() {
 
 // mqtt
 
-bool PreferenceHandler::editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic) {
+bool PreferenceHandler::editMqtt(JsonObject &json) {
     bool hasChanged = false;
+    const int newActive = json["active"].as<int>();
+    const char* newFn = json["fn"].as<char*>();
+    const char* newHost = json["host"].as<char*>();
+    const int newPort = json["port"].as<int>();
+    const char* newUser = json["user"].as<char*>();
+    const char* newPassword = json["password"].as<char*>();
+    const char* newTopic = json["topic"].as<char*>();
     if (newFn && strcmp(mqtt.fn, newFn) != 0) {
         strcpy(mqtt.fn, newFn);
         hasChanged = true;

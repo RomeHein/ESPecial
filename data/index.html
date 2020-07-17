@@ -204,8 +204,8 @@
         } else if (+gpio.mode === -2) {
             // For I2C mode
             additionnalButton = `<a onclick="scan(this)" id="i2cScan-${gpio.pin}" class="btn on">scan</a>`;
-        } else if (+gpio.mode === -3) {
-            // For ADC mode
+        } else if (+gpio.mode === -3 || +gpio.mode === -4) {
+            // For ADC or Touch mode
             additionnalButton = `<input type="number" id="stateGpio-${gpio.pin}" value="${gpio.state}">`;
         }
         child.innerHTML = `<div class="row" id="rowGpio-${gpio.pin}">

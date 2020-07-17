@@ -186,15 +186,7 @@ void readPins() {
     bool gpioStateChanged = false;
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
-        int newState;
-        if (gpio.mode>0) {
-          newState = digitalRead(gpio.pin);
-        } else if (gpio.mode == -1) {
-          newState = ledcRead(gpio.channel);
-        } else if (gpio.mode == -3) {
-          analogReadResolution(gpio.resolution);
-          newState = analogRead(gpio.pin);
-        }
+        int newState = preferencehandler->getGpioState(gpio.pin);
         if (gpio.state != newState) {
           #ifdef __debug
             Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
@@ -300,15 +292,7 @@ void runAutomation(AutomationFlash& automation) {
       // Condition base on pin value
       if (automation.conditions[i][0]>-1) {
         GpioFlash& gpio = preferencehandler->gpios[automation.conditions[i][0]];
-        int16_t value;
-        if (gpio.mode>0) {
-          value = digitalRead(gpio.pin);
-        } else if(gpio.mode == -1) {
-          value = ledcRead(gpio.channel);
-        } else if (gpio.mode == -3) {
-          analogReadResolution(gpio.resolution);
-          value = analogRead(gpio.pin);
-        }
+        int16_t value = preferencehandler->getGpioState(gpio.pin);
         if (automation.conditions[i][1] == 1) {
           criteria = (value == automation.conditions[i][2]);
         } else if (automation.conditions[i][1] == 2) {
@@ -369,7 +353,7 @@ void runAutomation(AutomationFlash& automation) {
             int8_t assignmentType = atoi(automation.actions[i][3]);
             int16_t newValue = value;
             GpioFlash& gpio = preferencehandler->gpios[pin];
-            int16_t currentValue = (gpio.mode>0 ? digitalRead(pin) : ledcRead(gpio.channel));
+            int16_t currentValue = preferencehandler->getGpioState(pin);
             // Value assignement depending on the type of operator choosen
             if (assignmentType == 2) {
               newValue =  currentValue + value;
@@ -480,13 +464,7 @@ void addPinValueToActionString(String& toParse, int fromIndex) {
         int state;
         GpioFlash& gpio = preferencehandler->gpios[pinNumber];
         if (gpio.pin == pinNumber) {
-            if (gpio.mode>0) {
-                state = digitalRead(pinNumber);
-            } else if (gpio.mode == -1) {
-                state = ledcRead(gpio.channel);
-            } else if (gpio.mode == -3) {
-                state = analogRead(pinNumber);
-            }
+            state = preferencehandler->getGpioState(pinNumber);
         }
         String subStringToReplace = String("${") + pinNumber + '}';
         toParse.replace(subStringToReplace, String(state));

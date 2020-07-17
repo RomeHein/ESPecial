@@ -24,6 +24,9 @@ const createModeOptions = (gpio) => {
             if (+availableGpio.pin === +gpio.pin && availableGpio.adc) {
                 modeOptions += `<option ${+gpio.mode === -3 ? "selected" : ""} value=-3>ADC (analog read)</option>`;
             }
+            if (+availableGpio.pin === +gpio.pin && availableGpio.touch) {
+                modeOptions += `<option ${+gpio.mode === -4 ? "selected" : ""} value=-4>Touch</option>`;
+            }
             prev += `<option ${+availableGpio.pin === +gpio.pin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
         }
         return prev;
@@ -198,7 +201,7 @@ const saveGpioSetting = async (element) => {
         req.settings.frequency = document.getElementById(`setI2cFrequency-${gpioPin}`).value;
     } else if (+req.settings.mode === -3) {
         req.settings.resolution = document.getElementById(`setAdcResolution-${gpioPin}`).value;
-    } 
+    }
     req.settings.channel = document.getElementById(`setGpioChannel-${gpioPin}`).value;
     req.settings.save = document.getElementById(`setGpioSave-${gpioPin}`).checked;
     req.settings.invert = document.getElementById(`setGpioInvertState-${gpioPin}`).checked;

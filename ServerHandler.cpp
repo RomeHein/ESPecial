@@ -233,24 +233,19 @@ void ServerHandler::handleUpdateToVersion(AsyncWebServerRequest *request) {
 }
 
 void ServerHandler::handleImportBackup(AsyncWebServerRequest *request, JsonVariant &json) {
+    preference.clear();
     JsonObject doc = json.as<JsonObject>();
     JsonObject settings = doc["settings"].as<JsonObject>();
-    const char* apSsid = doc["apSsid"].as<char*>();
-    Serial.printf("Test %s\n",apSsid);
+    JsonObject automations = doc["automations"].as<JsonObject>();
+    JsonObject salves = doc["slaves"].as<JsonObject>();
+    JsonObject gpios = doc["gpios"].as<JsonObject>();
     request->send(200, "text/plain", "ok");
 }
 
 void ServerHandler::handleMqttEdit (AsyncWebServerRequest *request,JsonVariant &json) {
     JsonObject doc = json.as<JsonObject>();
-    const int active = doc["active"].as<int>();
-    const char* fn = doc["fn"].as<char*>();
-    const char* host = doc["host"].as<char*>();
-    const int port = doc["port"].as<int>();
-    const char* user = doc["user"].as<char*>();
-    const char* password = doc["password"].as<char*>();
-    const char* topic = doc["topic"].as<char*>();
-    if (fn && host && port && user && password && topic) {
-        preference.editMqtt(active,fn,host,port,user,password,topic);
+    if (doc) {
+        preference.editMqtt(doc);
         request->send(200, "text/plain", "ok");
         return;
     }
@@ -348,13 +343,16 @@ void ServerHandler::handleGpioRemove(AsyncWebServerRequest *request)
 }
 
 void ServerHandler::handleAvailableGpios(AsyncWebServerRequest *request) {
-    const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(3)+20);
+    const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(4)+20);
     StaticJsonDocument<capacity> doc;
     for (int i = 0; i<GPIO_PIN_COUNT; i++) {
         JsonObject object = doc.createNestedObject();
         object["pin"] = i;
         object["inputOnly"] = !GPIO_IS_VALID_OUTPUT_GPIO(i);
         object["adc"] = (i>=32); // Only GPIOs 32 to 39 are working correctly for adc mode when wifi is active.
+        if (i == 4 || i == 2 || i == 12 || i == 13 || i == 14 || i == 15 || i == 27 || i == 32 || i ==33) {
+            object["touch"] = true;
+        }
     }
     String output;
     serializeJson(doc, output);
@@ -378,14 +376,7 @@ void ServerHandler::handleGpioState(AsyncWebServerRequest *request)
         }
         GpioFlash& gpio = preference.gpios[pin];
         if (gpio.pin == pin) {
-            if (gpio.mode>0) {
-                state = digitalRead(pin);
-            } else if (gpio.mode == -1) {
-                state = ledcRead(gpio.channel);
-            } else if (gpio.mode == -3) {
-                analogReadResolution(gpio.resolution);
-                state = analogRead(pin);
-            }
+            state = preference.getGpioState(pin);
         }
         char json[50];
         snprintf(json, sizeof(json), "{\"pin\":%i,\"state\":%i}", pin, state);

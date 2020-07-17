@@ -3,6 +3,7 @@
 #ifndef PreferenceHandler_h
 #define PreferenceHandler_h
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 #define NO_GLOBAL_TWOWIRE
 #include <Wire.h>
@@ -73,7 +74,7 @@ typedef struct
 {
     uint8_t pin;
     char label[MAX_LABEL_TEXT_SIZE];
-    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C, -3 is analog read
+    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C, -3 is analog read, -4 is Touch read
     uint32_t frequency;
     uint8_t resolution;
     int8_t channel;
@@ -142,6 +143,7 @@ public:
     void begin();
     void clear();
     void save(char* preference);
+    int touchSensor(int pin);
     HealthCode health;
     // I2C
     I2cSlaveFlash i2cSlaves[MAX_I2C_SLAVES];
@@ -157,6 +159,7 @@ public:
     String addGpio(int pin, const char* label, int mode,int sclpin = PIN_NOT_ATTACHED, int frequency = 50, int resolution = 16, int channel = CHANNEL_NOT_ATTACHED, int save = 0, int invert = 0);
     String editGpio(int oldPin, int newPin,const char* newLabel, int newMode = 0,int newSclPin = PIN_NOT_ATTACHED, int newFrequency = 50, int newResolution = 16, int newChannel = CHANNEL_NOT_ATTACHED, int newSave = 0, int newInvert = 0);
     void setGpioState(int pin, int value = -1, bool persist = false);
+    int getGpioState(int pin);
     String getGpiosJson();
     // Automation
     AutomationFlash automations[MAX_AUTOMATIONS_NUMBER];
@@ -166,7 +169,7 @@ public:
     String editAutomation(AutomationFlash& automation, const char* newLabel,int newAutoRun,const int16_t newConditions[MAX_AUTOMATIONS_CONDITIONS_NUMBER][4],char newActions[MAX_AUTOMATION_ACTION_NUMBER][4][MAX_MESSAGE_TEXT_SIZE], int newLoopCount, int32_t newDebounceDelay);
     // Mqtt
     MqttFlash mqtt;
-    bool editMqtt(int newActive, const char* newFn, const char* newHost,int newPort, const char* newUser, const char* newPassword, const char* newTopic);
+    bool editMqtt(JsonObject &json);
     // Telegram
     TelegramFlash telegram;
     bool editTelegram(const char* token,const int* newUsers,int active);
