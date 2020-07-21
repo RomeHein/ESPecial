@@ -169,7 +169,7 @@ void  PreferenceHandler::initGpios()
                 ledcWrite(gpio.channel, gpio.state);
             } else if (gpio.mode == 2) {
                 // Default OUTPIN IO to low
-                digitalWrite(gpio.pin, gpio.save ? gpio.state || 0);
+                digitalWrite(gpio.pin, gpio.save ? gpio.state : 0);
             }
         } else {
             detach(gpio);
@@ -557,7 +557,13 @@ int PreferenceHandler::getGpioState(int pin) {
         analogReadResolution(gpio.resolution);
         return analogRead(gpio.pin);
     } else if (gpio.mode == -4) {
-        return touchRead(touchSensor(gpio.pin));
+        // Average the touch value
+        int touchValue = 0;
+        for(int i=0; i< 100; i++)
+        {
+            touchValue += touchRead(touchSensor(gpio.pin));
+        }
+        return touchValue/100;
     }
 }
 
