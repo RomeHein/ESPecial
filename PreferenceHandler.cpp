@@ -190,7 +190,7 @@ bool PreferenceHandler::attach(GpioFlash& gpio) {
             }
             int resolution = 16;
             if (gpio.resolution) {
-                frequency = gpio.resolution;
+                resolution = gpio.resolution;
             }
             #ifdef __debug
                 Serial.printf("Preferences: attaching pin %i to channel %i\n",gpio.pin, gpio.channel);
@@ -434,16 +434,7 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin
     gpios[pin] = newGpio;
     attach(newGpio);
     // If we don't save state, default state to 0
-    if (newGpio.mode > 0) {
-        newGpio.state = saveState ? digitalRead(pin) : 0;
-    } else if (newGpio.mode == -1) {
-        newGpio.state = ledcRead(newGpio.channel);
-    } else if (newGpio.mode == -3) {
-        analogReadResolution(newGpio.resolution);
-        newGpio.state = analogRead(newGpio.pin);
-    } else if (newGpio.mode == -4) {
-        newGpio.state = touchRead(touchSensor(pin));
-    }
+    newGpio.state = getGpioState(pin);
     save(PREFERENCES_GPIOS);
     return gpioToJson(newGpio);
 }
@@ -463,7 +454,7 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         hasChanged = true;
     }
     if (newChannel && gpio.channel != newChannel) {
-        // Only do the reattach process if we don't have at the same time a new SDA pin, in that case, wait the newPin condition to reattach
+        // Only do the reattach process if we haven't change the pin at the same time, in that case, wait the newPin condition to reattach
         if (gpio.mode==-1 && !newPin) detach(gpio);
         gpio.channel = newChannel;
         if (gpio.mode==-1 && !newPin) attach(gpio);
@@ -477,11 +468,15 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         hasChanged = true;
     }
     if (newResolution && gpio.resolution != newResolution) {
+        if (gpio.mode==-1 && !newPin) detach(gpio);
         gpio.resolution = newResolution;
+        if (gpio.mode==-1 && !newPin) attach(gpio);
         hasChanged = true;
     }
     if (newFrequency && gpio.frequency != newFrequency) {
+        if (gpio.mode==-1 && !newPin) detach(gpio);
         gpio.frequency = newFrequency;
+        if (gpio.mode==-1 && !newPin) attach(gpio);
         hasChanged = true;
     }
     if (newLabel && strcmp(gpio.label, newLabel) != 0) {
@@ -510,16 +505,7 @@ String PreferenceHandler::editGpio(int oldPin, int newPin,const char* newLabel, 
         save(PREFERENCES_GPIOS);
         GpioFlash& newGpio = newPin ? gpios[newPin] : gpio;
         // In case we don't want to save state, we still want to get the right value.
-        if (newGpio.mode>0) {
-            newGpio.state = digitalRead(newGpio.pin);
-        } else if (newGpio.mode == -1) {
-            newGpio.state = ledcRead(newGpio.channel);
-        } else if (newGpio.mode == -3) {
-            analogReadResolution(newGpio.resolution);
-            newGpio.state = analogRead(newGpio.pin);
-        } else if (newGpio.mode == -4) {
-            newGpio.state = touchRead(touchSensor(newGpio.pin));
-        }
+        newGpio.state = getGpioState(newGpio.pin);
     }
     return gpioToJson(newPin ? gpios[newPin] : gpio);
 }
