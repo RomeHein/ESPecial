@@ -63,16 +63,18 @@ String getFirmwareList() {
   #endif
   http.begin(client,firmwarelistPath.c_str());
   int httpResponseCode = http.GET();
+  String response = "";
   if (httpResponseCode>0) {
     #ifdef __debug
       Serial.println("[MAIN] firmware list retrieved");
     #endif
-    return http.getString();
+    response = http.getString();
   }
   else {
     Serial.printf("[MAIN] Could not get firmware list: %s\n", http.errorToString(httpResponseCode).c_str());
   }
   http.end();
+  return response;
 }
 
 // Utility to extract header value from headers
