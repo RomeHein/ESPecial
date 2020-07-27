@@ -1,7 +1,14 @@
 [{
-    "version": 0.5,
+    "version": 0.6,
     "build": 1,
     "current": true,
+    "partitionScheme":"min_spiffs",
+    "description": "Implement Touch control. Bug fixes.",
+    "compatibility": []
+},{
+    "version": 0.5,
+    "build": 1,
+    "current": false,
     "partitionScheme":"min_spiffs",
     "description": "Remove WifiManager. Add wifi settings directly in ESPecial. ESPecial is now available even in AP mode.",
     "compatibility": []
