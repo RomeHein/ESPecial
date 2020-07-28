@@ -38,7 +38,7 @@
 #define MAX_I2C_COMMAND_NUMBER 10 // Maximum number of alphanumeric commands per write session in I2C
 #define MAX_MESSAGE_TEXT_SIZE 100 // Usually used when we want to display a text message, or send a text to telegram for instance
 
-#define VARIATION_ALLOWED 0.03 // This define the purcentage of variation needed by an I/O reading before triggering an event in the main loop. This is used for TouchRead and analogRead.
+#define TOUCH_VARIATION_ALLOWED 2 // This define the variation needed by an I/O reading before triggering an event in the main loop. This is used for TouchRead.
 
 //------------------ ServerHandler
 #define idParamName "id"
