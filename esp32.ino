@@ -55,7 +55,7 @@ String getFirmwareList() {
   String response = "";
   if (httpResponseCode>0) {
     #ifdef __debug
-      Serial.println("[MAIN] firmware list retrieved");
+      Serial.println(F("[MAIN] firmware list retrieved"));
     #endif
     response = http.getString();
   }
@@ -89,7 +89,7 @@ void execOTA(const char* version) {
       return;
 
     case HTTP_UPDATE_NO_UPDATES:
-      Serial.println("[OTA] no updates");
+      Serial.println(F("[OTA] no updates"));
       if (serverhandler->events.count()>0) {
         serverhandler->events.send("No updates","firmwareUpdateError",millis());
       }
@@ -97,9 +97,9 @@ void execOTA(const char* version) {
 
     case HTTP_UPDATE_OK:
       #ifdef __debug
-        Serial.println("[OTA] SPIFFS updated");
+        Serial.println(F("[OTA] SPIFFS updated"));
       #endif
-      Serial.println("HTTP_UPDATE_OK");
+      Serial.println(F("HTTP_UPDATE_OK"));
       break;
   }
   #ifdef __debug
@@ -115,7 +115,7 @@ void execOTA(const char* version) {
       break;
 
     case HTTP_UPDATE_NO_UPDATES:
-      Serial.println("[OTA] no updates");
+      Serial.println(F("[OTA] no updates"));
       if (serverhandler->events.count()>0) {
         serverhandler->events.send("No updates","firmwareUpdateError",millis());
       }
@@ -123,7 +123,7 @@ void execOTA(const char* version) {
 
     case HTTP_UPDATE_OK:
       #ifdef __debug
-        Serial.println("[OTA] BIN updated");
+        Serial.println(F("[OTA] BIN updated"));
       #endif
       ESP.restart();
       break;
@@ -134,7 +134,7 @@ bool checkAgainstLocalHour(int time, int signType) {
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
     #ifdef __debug
-      Serial.println("[MAIN] Failed to obtain time");
+      Serial.println(F("[MAIN] Failed to obtain time"));
     #endif
     return false;
   }
@@ -158,7 +158,7 @@ bool checkAgainstLocalHour(int time, int signType) {
 bool checkAgainstLocalWeekDay(int weekday, int signType) {
   struct tm timeinfo;
   if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
+    Serial.println(F("Failed to obtain time"));
     return false;
   }
   if (signType == 1) {

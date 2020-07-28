@@ -546,7 +546,11 @@ int PreferenceHandler::getGpioState(int pin) {
         {
             touchValue += touchRead(touchSensor(gpio.pin));
         }
-        return touchValue/100;
+        // This avoid triggering action for small variations, which happen a lot.
+        if (touchValue/100 > gpio.state*(1+VARIATION_ALLOWED) || touchValue/100 < gpio.state*(1-VARIATION_ALLOWED)) {
+            return touchValue/100;
+        }
+        return gpio.state;
     }
 }
 
