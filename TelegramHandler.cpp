@@ -179,10 +179,10 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
 
 void TelegramHandler::queueMessage(const char* message) {
   if (isInit && preference.telegram.token && preference.telegram.active) {
-    #ifdef __debug  
-      Serial.printf("[TELEGRAM] queued message: %s\n",message);
-    #endif
     if (lastMessageQueuedPosition<MAX_QUEUED_MESSAGE_NUMBER) {
+      #ifdef __debug  
+        Serial.printf("[TELEGRAM] queued message: %s\n",message);
+      #endif
       strcpy(messagesQueue[lastMessageQueuedPosition],message);
       lastMessageQueuedPosition++;
     } else {
@@ -197,13 +197,13 @@ void TelegramHandler::sendQueuedMessages() {
   bool didSentMessage = false;
   for (int i=0; i<lastMessageQueuedPosition; i++) {
     // Send queued message to all registered users
-    for (int i=0; i< MAX_TELEGRAM_USERS_NUMBER; i++) {
+    for (int j=0; j< MAX_TELEGRAM_USERS_NUMBER; j++) {
       // Check if we have a chatId corresponding to a telegram user
-      if (preference.telegram.users[i] && preference.telegram.chatIds[i]) {
+      if (preference.telegram.users[j] && preference.telegram.chatIds[j]) {
         #ifdef __debug  
           Serial.printf("[TELEGRAM] sending message: %s\n", messagesQueue[i]);
         #endif
-        bot->sendMessage(String(preference.telegram.chatIds[i]), messagesQueue[i]);
+        bot->sendMessage(String(preference.telegram.chatIds[j]), messagesQueue[i]);
         didSentMessage = true;
       } 
     }
