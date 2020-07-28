@@ -5,10 +5,7 @@
 #include <Arduino.h>
 #include "PreferenceHandler.h"
 #include <WiFiClient.h>
-#include <PubSubClient.h>  
-
-#define RETRY_ATTEMPT 5
-#define TOPIC_MAX_SIZE 256
+#include <PubSubClient.h>
 
 typedef struct
 {

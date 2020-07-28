@@ -2,9 +2,6 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 
-//unmark following line to enable debug mode
-#define __debug
-
 Preferences preferences;
 
 void PreferenceHandler::begin()
@@ -83,7 +80,7 @@ void PreferenceHandler::clear() {
     preferences.end();
 }
 
-void PreferenceHandler::save(char* preference) {
+void PreferenceHandler::save(const char* preference) {
     preferences.begin(PREFERENCES_NAME, false);
     #ifdef __debug  
         Serial.printf("Preferences: saving in %s \n", preference);
@@ -121,7 +118,7 @@ int PreferenceHandler::touchSensor(int pin) {
 }
 
 // Returns the first empty slot of a given array
-int PreferenceHandler::firstEmptySlot(char* preference) {
+int PreferenceHandler::firstEmptySlot(const char* preference) {
     int i = 0;
     if (strcmp(preference,PREFERENCES_AUTOMATION) == 0) {
         while(i<MAX_AUTOMATIONS_NUMBER && automations[i].id) {
@@ -136,7 +133,7 @@ int PreferenceHandler::firstEmptySlot(char* preference) {
 }
 
 // Return the highest id of an array, + 1
-int PreferenceHandler::newId(char *preference) {
+int PreferenceHandler::newId(const char *preference) {
     int newId = 1;
     if (strcmp(preference,PREFERENCES_AUTOMATION) == 0) {
         for (AutomationFlash& automation: automations) {

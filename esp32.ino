@@ -6,17 +6,13 @@
 #include <HTTPUpdate.h>
 #include "time.h"
 
-#include "ServerHandler.h"
 #include "PreferenceHandler.h"
+#include "ServerHandler.h"
 #include "TelegramHandler.h"
 #include "MqttHandler.h"
 
-//unmark following line to enable debug mode
-#define __debug
-#define MAX_QUEUED_AUTOMATIONS 10
-
-ServerHandler *serverhandler;
 PreferenceHandler *preferencehandler;
+ServerHandler *serverhandler;
 TelegramHandler *telegramhandler;
 MqttHandler *mqtthandler;
 WiFiClientSecure client;
@@ -40,13 +36,6 @@ int debounceTimeDelay = 60000;
 int lastEvent = 0;
 int debounceEventDelay = 400;
 
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 3600;
-const int   daylightOffset_sec = 3600;
-
-// Repo info for updates
-const String repoPath = "https://raw.githubusercontent.com/RomeHein/ESPecial/master/versions/";
-
 String systemInfos() {
   String infos;
   infos = String("\nFree memory:") + ESP.getFreeHeap();
@@ -57,7 +46,7 @@ String systemInfos() {
 
 String getFirmwareList() {
   HTTPClient http;
-  const String firmwarelistPath = repoPath + "list.json";
+  const String firmwarelistPath = String(REPO_PATH) + "list.json";
   #ifdef __debug
     Serial.printf("[MAIN] Retrieving firmware list from %s\n",firmwarelistPath.c_str());
   #endif
@@ -85,8 +74,8 @@ String getHeaderValue(String header, String headerName) {
 void execOTA(const char* version) {
   const String bin = version+String("/espinstall.ino.bin");
   const String spiffs = version+String("/spiffs.bin");
-  const String binPath = repoPath+bin;
-  const String spiffsPath = repoPath+spiffs;
+  const String binPath = String(REPO_PATH)+bin;
+  const String spiffsPath = String(REPO_PATH)+spiffs;
   #ifdef __debug
     Serial.printf("[OTA] start SPIFFS download from: %s\n", spiffsPath.c_str());
   #endif
@@ -517,7 +506,7 @@ void setup(void)
       Serial.println(WiFi.localIP());
     #endif
     //init and get the time
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    configTime(gmtOffset_sec, daylightOffset_sec, NTP_SERVER);
     // Get local time
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo)){

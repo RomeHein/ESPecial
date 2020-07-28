@@ -1,8 +1,4 @@
 #include "MqttHandler.h"
-#include "PreferenceHandler.h"
-
-//unmark following line to enable debug mode
-#define __debug
 
 String getId() {
     uint64_t macAddress = ESP.getEfuseMac();

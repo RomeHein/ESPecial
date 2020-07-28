@@ -1,16 +1,8 @@
 #include "ServerHandler.h"
-#include "PreferenceHandler.h"
 #include <HTTPClient.h>
 #include <AsyncJson.h>
 #include <Update.h>
 #include <SPIFFS.h>
-
-//unmark following line to enable debug mode
-#define __debug
-
-const char *idParamName = "id";
-const char *pinParamName = "pin";
-const char *valueParamName = "value";
 
 void ServerHandler::begin()
 {
