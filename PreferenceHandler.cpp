@@ -536,6 +536,8 @@ int PreferenceHandler::getGpioState(int pin) {
         return digitalRead(gpio.pin);
     } else if (gpio.mode == -1) {
         return ledcRead(gpio.channel);
+    } else if (gpio.mode == -2) {
+        return 0;
     } else if (gpio.mode == -3) {
         analogReadResolution(gpio.resolution);
         return analogRead(gpio.pin);
