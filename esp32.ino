@@ -44,7 +44,7 @@ String systemInfos() {
   return infos;
 }
 
-String getFirmwareList() {
+void getFirmwareList() {
   HTTPClient http;
   const String firmwarelistPath = String(REPO_PATH) + "list.json";
   #ifdef __debug
@@ -52,18 +52,18 @@ String getFirmwareList() {
   #endif
   http.begin(client,firmwarelistPath.c_str());
   int httpResponseCode = http.GET();
-  String response = "";
   if (httpResponseCode>0) {
     #ifdef __debug
       Serial.println(F("[MAIN] firmware list retrieved"));
     #endif
-    response = http.getString();
+    if (serverhandler->events.count()>0) {
+      serverhandler->events.send(http.getString().c_str(),"firmwareList",millis());
+    }
   }
   else {
     Serial.printf("[MAIN] Could not get firmware list: %s\n", http.errorToString(httpResponseCode).c_str());
   }
   http.end();
-  return response;
 }
 
 // Utility to extract header value from headers
@@ -199,7 +199,7 @@ void readPins() {
     }
     if (gpioStateChanged) {
       runTriggeredEventAutomations(false);
-    }    
+    }
     lastDebouncedInputTime = millis();
   }
 }
@@ -369,17 +369,20 @@ void runAutomation(AutomationFlash& automation) {
             String value = String(automation.actions[i][1]);
             parseActionString(value);
             telegramhandler->queueMessage(value.c_str());
-          // Delay type action
+          // Print on serial
           } else if (type == 3) {
-            // TODO: find a better solution to handle delay
-            delay(atoi(automation.actions[i][1]));
-          // Http request
-          } else if (type == 4) {
             String value = String(automation.actions[i][1]);
             parseActionString(value);
             Serial.println(value.c_str());
-          // Http request
+          // Delay type action
+          } else if (type == 4) {
+            // TODO: find a better solution to handle delay
+            delay(atoi(automation.actions[i][1]));
+          // Micro Delay type action
           } else if (type == 5) {
+            delayMicroseconds(atoi(automation.actions[i][1]));
+          // Http request
+          } else if (type == 6) {
             HTTPClient http;
             http.begin(client, automation.actions[i][2]);
             int httpResponseCode;
@@ -404,7 +407,7 @@ void runAutomation(AutomationFlash& automation) {
             #endif
             http.end();
           // Nested automation
-          } else if (type == 6) {
+          } else if (type == 7) {
             int nestedAutomationId = atoi(automation.actions[i][1]);
             for (AutomationFlash& nAutomation: preferencehandler->automations) {
               if (nAutomation.id == nestedAutomationId) {
@@ -539,7 +542,7 @@ void loop(void) {
   // Reload firmware list
   if (serverhandler->shouldReloadFirmwareList && serverhandler->events.count()>0) {
     serverhandler->shouldReloadFirmwareList = false;
-    serverhandler->events.send(getFirmwareList().c_str(),"firmwareList",millis());
+    getFirmwareList();
   }
   // Check restart flag from server
   if (serverhandler->shouldRestart) {

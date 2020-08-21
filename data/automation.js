@@ -82,17 +82,18 @@ const addActionEditor = (action) => {
     rowElement.innerHTML = `<select onchange="updateActionType(this)" id="addTypeAction${actionNumber}" name="signAction">
                         <option value=1 ${selectedType === 1 ? "selected" : ""}>Set Gpio pin</option>
                         <option value=2 ${selectedType === 2 ? "selected" : ""}>Send telegram message</option>
-                        <option value=3 ${selectedType === 3 ? "selected" : ""}>Delay</option>
-                        <option value=4 ${selectedType === 4 ? "selected" : ""}>Serial print</option>
-                        <option value=5 ${selectedType === 5 ? "selected" : ""}>HTTP</option>
-                        <option value=6 ${selectedType === 6 ? "selected" : ""}>Automation</option>
+                        <option value=3 ${selectedType === 3 ? "selected" : ""}>Serial print</option>
+                        <option value=4 ${selectedType === 4 ? "selected" : ""}>Delay</option>
+                        <option value=5 ${selectedType === 5 ? "selected" : ""}>DelayMicro</option>
+                        <option value=6 ${selectedType === 6 ? "selected" : ""}>HTTP</option>
+                        <option value=7 ${selectedType === 7 ? "selected" : ""}>Automation</option>
                     </select>
-                    <select id="addHTTPMethod${actionNumber}" name="httpType" class="${selectedType === 5 ? "" : "hidden"}">
+                    <select id="addHTTPMethod${actionNumber}" name="httpType" class="${selectedType === 6 ? "" : "hidden"}">
                         <option value=1 ${selectedHttpMethod === 1 ? "selected" : ""}>GET</option>
                         <option value=2 ${selectedHttpMethod === 2 ? "selected" : ""}>POST</option>
                     </select>
-                    <input id="addHTTPAddress${actionNumber}" name="httpAddress" class="${selectedType === 5 ? "" : "hidden"}" placeholder="http://www.placeholder.com/" value="${selectedHttpAddress}">
-                    <input id="addHTTPBody${actionNumber}" name="httpBody" class="${selectedType === 5 ? "" : "hidden"}" placeholder="Body in json format" value="${selectedHttpContent}">
+                    <input id="addHTTPAddress${actionNumber}" name="httpAddress" class="${selectedType === 6 ? "" : "hidden"}" placeholder="http://www.placeholder.com/" value="${selectedHttpAddress}">
+                    <input id="addHTTPBody${actionNumber}" name="httpBody" class="${selectedType === 6 ? "" : "hidden"}" placeholder="Body in json format" value="${selectedHttpContent}">
                     <select id="addGpioAction${actionNumber}" name="gpioAction" class="${selectedType === 1 ? "" : "hidden"}">${gpioActionOptions}</select>
                     <select id="addSignAction${actionNumber}" name="signAction" class="${selectedType === 1 ? "" : "hidden"}">
                         <option value=1 ${selectedSign === 1 ? "selected" : ""}>=</option>
@@ -100,8 +101,8 @@ const addActionEditor = (action) => {
                         <option value=3 ${selectedSign === 3 ? "selected" : ""}>-=</option>
                         <option value=4 ${selectedSign === 4 ? "selected" : ""}>*=</option>
                     </select>
-                    <select id="addAutomation${actionNumber}" name="automation" class="${selectedType === 6 ? "" : "hidden"}">${automationOptions}</select>
-                    <input id="addValueAction${actionNumber}" name="valueAction" value="${selectedValue}" class="${selectedType === 5 || selectedType === 6 ? "hidden" : ""}" placeholder="value">
+                    <select id="addAutomation${actionNumber}" name="automation" class="${selectedType === 7 ? "" : "hidden"}">${automationOptions}</select>
+                    <input id="addValueAction${actionNumber}" name="valueAction" value="${selectedValue}" class="${selectedType === 6 || selectedType === 7 ? "hidden" : ""}" placeholder="value">
                     <a onclick="deleteRowEditor(this)" id="deleteAction${actionNumber}" class="btn delete">x</a>`;
     actionEditorElement.appendChild(rowElement);
     // Update actions left number
@@ -137,7 +138,7 @@ const createEditAutomationPanel = (automation) => {
             </div>
             <div class="row">
                 <label for="setAutomationLoopCount-${automation.id}">Repeat automation:</label>
-                <input id="setAutomationLoopCount-${automation.id}" type="number" name="loopCount" value="${automation.loopCount || ""}" placeholder="How many times the automation must be repeat">
+                <input id="setAutomationLoopCount-${automation.id}" type="number" name="loopCount" value="${automation.loopCount || 1}" placeholder="How many times the automation must be repeat">
             </div>
             <div class="column">
                 <div id="condition-editor" class="row">
@@ -163,7 +164,7 @@ const createEditAutomationPanel = (automation) => {
 };
 const updateAutomationTypes = (id) => {
     const selectType = document.getElementById(`setAutomationType-${id || "new"}`);
-    if (+selectType.value !== 3) {
+    if (+selectType.value !== 4 && +selectType.value !== 5) {
         document.getElementById(`setAutomationPinC-${id || "new"}`).parentElement.classList.add("hidden");
         document.getElementById(`setAutomationPinValueC-${id || "new"}`).parentElement.classList.add("hidden");
         document.getElementById(`setAutomationMessage-${id || "new"}`).parentElement.classList.remove("hidden");
@@ -183,12 +184,12 @@ const updateActionType = (element) => {
         document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
     }
-    if (value === 5 || value === 6) {
+    if (value === 6 || value === 7) {
         document.getElementById(`addValueAction-${rowNumber}`).classList.add("hidden");
     } else {
         document.getElementById(`addValueAction-${rowNumber}`).classList.remove("hidden");
     }
-    if (value === 5) {
+    if (value === 6) {
         document.getElementById(`addHTTPMethod-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addHTTPAddress-${rowNumber}`).classList.remove("hidden");
         document.getElementById(`addHTTPBody-${rowNumber}`).classList.remove("hidden");
@@ -197,7 +198,7 @@ const updateActionType = (element) => {
         document.getElementById(`addHTTPAddress-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addHTTPBody-${rowNumber}`).classList.add("hidden");
     }
-    if ( value === 6) {
+    if ( value === 7) {
         document.getElementById(`addAutomation-${rowNumber}`).classList.remove("hidden");
     } else {
         document.getElementById(`addAutomation-${rowNumber}`).classList.add("hidden");
@@ -256,12 +257,12 @@ const saveAutomationSetting = async (element) => {
     req.settings.actions = [...document.getElementById("action-editor-result").childNodes].map((rowElement) => {
         const id = +rowElement.id.split("-")[1];
         const type = document.getElementById(`addTypeAction-${id}`).value;
-        if (+type === 5) {
+        if (+type === 6) {
             return [type, document.getElementById(`addHTTPMethod-${id}`).value,
                 document.getElementById(`addHTTPAddress-${id}`).value,
                 document.getElementById(`addHTTPBody-${id}`).value
             ];
-        } else if (+type === 6) {
+        } else if (+type === 7) {
             return [type, document.getElementById(`addAutomation-${id}`).value, "", ""];
         } else {
             return [type, document.getElementById(`addValueAction-${id}`).value,

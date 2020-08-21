@@ -39,7 +39,7 @@
 #define MAX_MESSAGE_TEXT_SIZE 100 // Usually used when we want to display a text message, or send a text to telegram for instance
 
 #define TOUCH_VARIATION_ALLOWED 2 // This define the variation needed by an I/O reading before triggering an event in the main loop. This is used for TouchRead.
-
+#define TOUCH_NUMBER_SAMPLES 100 // Number of touchRead to get to avoid variations
 //------------------ ServerHandler
 #define idParamName "id"
 #define pinParamName "pin"

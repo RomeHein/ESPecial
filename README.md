@@ -15,7 +15,7 @@ https://youtu.be/_ucSs9OT7Eg
 
 
 ## Features:
-- [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C support), send telegram message, display messages on screen, send http request etc. No need to update the firmware, everything is dynamic.
+- [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C/touchControl support), send telegram message, send http requests etc. No need to update the firmware, everything is dynamic.
 
 - [x] REST API: Exposes gpio and automations logic. Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations. Scan I2C addresses, send I2C commands.
 
@@ -35,7 +35,7 @@ https://youtu.be/_ucSs9OT7Eg
 
 - [x] Mqtt client: publish/subscribe pin state, actions.
 
-- [x] Wifi manager: gives a way to easily set your esp32 to your network.
+- [x] Wifi: Setting up ESPecial to your local network is easy: at first ESPecial will set a WIFI network in AP mode allowing you to access all features and set your esp32 to your local.
 
 - [x] Easy installation via [ESPInstaller](https://github.com/RomeHein/ESPInstaller): No dependencies or extra tools to install.
 
