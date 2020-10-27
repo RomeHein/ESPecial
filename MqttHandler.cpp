@@ -17,10 +17,10 @@ void MqttHandler::begin()
         mqtt_client->setServer(preference.mqtt.host, preference.mqtt.port);
         mqtt_client->setCallback([this](char* topic, byte* payload, unsigned int length) { callback(topic, payload, length);});
 
-        snprintf(topic.config, TOPIC_MAX_SIZE, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.gpio, TOPIC_MAX_SIZE, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.automation, TOPIC_MAX_SIZE, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
-        snprintf(topic.debug, TOPIC_MAX_SIZE, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topics.config, TOPIC_MAX_SIZE, "%s/%s/config\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topics.gpio, TOPIC_MAX_SIZE, "%s/%s/gpio\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topics.automation, TOPIC_MAX_SIZE, "%s/%s/automation\0", preference.mqtt.topic, preference.mqtt.fn);
+        snprintf(topics.debug, TOPIC_MAX_SIZE, "%s/%s/debug\0", preference.mqtt.topic, preference.mqtt.fn);
         isInit = true;
     }
 }
@@ -79,18 +79,18 @@ void MqttHandler::connect() {
             return;
         }
         // We are connected
-        else if (topic.gpio) {
+        else if (topics.gpio) {
             #ifdef __debug  
                 Serial.println("[MQTT] server subscribed");
             #endif
-            char gpiosTopic[strnlen(topic.gpio,TOPIC_MAX_SIZE)+3];
-            sprintf(gpiosTopic, "%s/+\0",topic.gpio);
+            char gpiosTopic[strnlen(topics.gpio,TOPIC_MAX_SIZE)+3];
+            sprintf(gpiosTopic, "%s/+\0",topics.gpio);
             mqtt_client->subscribe(gpiosTopic);
-            char automationsTopic[strnlen(topic.automation,TOPIC_MAX_SIZE)+3];
-            sprintf(automationsTopic, "%s/+\0",topic.automation);
+            char automationsTopic[strnlen(topics.automation,TOPIC_MAX_SIZE)+3];
+            sprintf(automationsTopic, "%s/+\0",topics.automation);
             mqtt_client->subscribe(automationsTopic);
-            mqtt_client->subscribe(topic.config);
-            mqtt_client->subscribe(topic.debug);
+            mqtt_client->subscribe(topics.config);
+            mqtt_client->subscribe(topics.debug);
             publishConfig();
         }
     }
@@ -117,11 +117,11 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
     }
     message[length] = '\0';
     // Check if topic is contained in the topic payload
-    if (strstr(topic,this->topic.gpio)) {
+    if (strstr(topic,this->topics.gpio)) {
         // Logic to get what pin was published
-        int len = (strnlen(topic,TOPIC_MAX_SIZE) - strnlen(this->topic.gpio,TOPIC_MAX_SIZE))+1;
+        int len = (strnlen(topic,TOPIC_MAX_SIZE) - strnlen(this->topics.gpio,TOPIC_MAX_SIZE))+1;
         char pin_c[len];
-        strncpy(pin_c, topic + strnlen(this->topic.gpio,TOPIC_MAX_SIZE)+1, len-1);
+        strncpy(pin_c, topic + strnlen(this->topics.gpio,TOPIC_MAX_SIZE)+1, len-1);
         pin_c[len] = '\0';
         int pin = atoi(pin_c);
         int state = atoi(message);
@@ -136,10 +136,10 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
                 Serial.print("[MQTT] state unchanged. Message dissmissed\n");
             #endif
         }
-    } else if (strstr(topic,this->topic.automation)) {
-        int len = (strnlen(topic,TOPIC_MAX_SIZE) - strnlen(this->topic.automation,TOPIC_MAX_SIZE))+1;
+    } else if (strstr(topic,this->topics.automation)) {
+        int len = (strnlen(topic,TOPIC_MAX_SIZE) - strnlen(this->topics.automation,TOPIC_MAX_SIZE))+1;
         char id_c[len];
-        strncpy(id_c, topic + strnlen(this->topic.automation,TOPIC_MAX_SIZE)+1, len-1);
+        strncpy(id_c, topic + strnlen(this->topics.automation,TOPIC_MAX_SIZE)+1, len-1);
         id_c[len] = '\0';
         int id = atoi(id_c);
         int state = atoi(message);
@@ -160,8 +160,8 @@ void MqttHandler::callback(char* topic, byte* payload, unsigned int length) {
 
 void MqttHandler::publish(int pin){
     if (isInit && mqtt_client->state() == MQTT_CONNECTED) {
-        char pinTopic[strnlen(topic.gpio,TOPIC_MAX_SIZE)+3];
-        snprintf(pinTopic,strnlen(pinTopic,TOPIC_MAX_SIZE), "%s/%i\0",topic.gpio,pin);
+        char pinTopic[strnlen(topics.gpio,TOPIC_MAX_SIZE)+3];
+        snprintf(pinTopic,strnlen(pinTopic,TOPIC_MAX_SIZE), "%s/%i\0",topics.gpio,pin);
         char state[2];
         snprintf(state,sizeof(state), "%i\0",digitalRead(pin));
         #ifdef __debug  
@@ -171,7 +171,7 @@ void MqttHandler::publish(int pin){
             #ifdef __debug
                 Serial.println("[MQTT] failed to publish");
             #endif
-            mqtt_client->publish(topic.debug, (char*)(F("Failed to publish gpios list change")));
+            mqtt_client->publish(topics.debug, (char*)(F("Failed to publish gpios list change")));
         }
     }
 }
@@ -180,10 +180,10 @@ void MqttHandler::publishConfig(){
     #ifdef __debug  
         Serial.println("MQTT: publishing configuration");
     #endif
-    if (mqtt_client->publish_P(topic.config, preference.getGpiosJson().c_str(), false)) {
+    if (mqtt_client->publish_P(topics.config, preference.getGpiosJson().c_str(), false)) {
          #ifdef __debug  
             Serial.println("MQTT: failed to publish");
         #endif
-        mqtt_client->publish(topic.debug, (char*)(F("Failed to publish gpios list change")));
+        mqtt_client->publish(topics.debug, (char*)(F("Failed to publish gpios list change")));
     }
 }

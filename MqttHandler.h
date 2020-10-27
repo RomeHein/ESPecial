@@ -13,13 +13,13 @@ typedef struct
     char gpio[TOPIC_MAX_SIZE];
     char automation[TOPIC_MAX_SIZE];
     char config[TOPIC_MAX_SIZE];
- }  MqttTopic;
+ }  MqttTopics;
 
 class MqttHandler
 {
 private:  
     unsigned long lastSend = 0;
-    MqttTopic topic;
+    MqttTopics topics;
     PreferenceHandler &preference;
     WiFiClient &client;
     PubSubClient* mqtt_client;
