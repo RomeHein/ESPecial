@@ -117,6 +117,8 @@ private:
     TwoWire *i2cHandlers[GPIO_PIN_COUNT];
     bool attach(GpioFlash& gpio);
     bool detach(GpioFlash& gpio);
+    int touchTempValues[GPIO_PIN_COUNT] = {};
+    long lastTouchDebounceTimes[GPIO_PIN_COUNT] = {};
 public:
     void begin();
     void clear();

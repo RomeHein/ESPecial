@@ -238,7 +238,6 @@ bool PreferenceHandler::detach(GpioFlash& gpio) {
         delete i2cHandlers[gpio.pin];
         return true;
     }
-    
     return true;
 }
 
@@ -248,7 +247,6 @@ String PreferenceHandler::scan(GpioFlash& gpio){
         #ifdef __debug
             Serial.printf("Preferences: Scanning I2C Addresses on Channel %i",gpio.pin);
         #endif
-        
         byte error, address;
         for(address = 1; address < 127; address++ ) {
             i2cHandlers[gpio.pin]->beginTransmission(address);
@@ -542,15 +540,30 @@ int PreferenceHandler::getGpioState(int pin) {
         analogReadResolution(gpio.resolution);
         return analogRead(gpio.pin);
     } else if (gpio.mode == -4) {
-        // Average the touch value
-        int touchValue = 0;
-        for(int i=0; i< 100; i++)
-        {
-            touchValue += touchRead(touchSensor(gpio.pin));
-        }
-        // This avoid triggering action for small variations, which happen a lot.
-        if (touchValue/100 > (gpio.state+TOUCH_VARIATION_ALLOWED) || touchValue/100 < (gpio.state-TOUCH_VARIATION_ALLOWED)) {
-            return touchValue/100;
+        // Following code is made to avoid false positive. Which happens a lot when WIFI is on.
+        // See: https://github.com/espressif/esp-iot-solution/blob/master/documents/touch_pad_solution/touch_sensor_design_en.md#42-jitter-filter-solution
+        // The idea is to check if the touchRead value is still the same after a small amount of time which correspond to a touch. False positive are much shorter in time.
+        int newValue = touchRead(touchSensor(gpio.pin));
+        // check if the detected value is worth it (greater than TOUCH_VARIATION_ALLOWED)
+        if ((newValue > (gpio.state+TOUCH_VARIATION_ALLOWED) || newValue < (gpio.state-TOUCH_VARIATION_ALLOWED))) {
+            // check if a new detected value is still in TOUCH_TIME_INTERVAL
+            if (millis() < TOUCH_TIME_INTERVAL + lastTouchDebounceTimes[gpio.pin]) {
+                // if it's the case, check if that new value is near the previous value stored in touchTempValues
+                if (newValue < (touchTempValues[gpio.pin]+TOUCH_VARIATION_ALLOWED) && newValue > (touchTempValues[gpio.pin]-TOUCH_VARIATION_ALLOWED)) {
+                    // if it's the case, we can say that we detected a touch event, reset touchTempValues to default
+                    touchTempValues[gpio.pin] = 100;
+                    return newValue;
+                } else {
+                    // if not, store in touchTempValues the new detected value
+                    touchTempValues[gpio.pin] = newValue;
+                    return gpio.state;
+                }
+            } else {
+                // if not, reset touchTempValues to default value so that next time we have a false positive, it won't match touchTempValues
+                touchTempValues[gpio.pin] = 100;
+            }
+            // every time we have a new value greater than TOUCH_VARIATION_ALLOWED, start a new timer. If the variation is steady during TOUCH_TIME_INTERVAL, we can say we have a touch event... fiou
+            lastTouchDebounceTimes[gpio.pin] = millis();
         }
         return gpio.state;
     }

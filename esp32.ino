@@ -21,27 +21,20 @@ WiFiClient clientNotSecure;
 // Notify client esp has just restarted
 bool hasJustRestarted = true;
 
-long lastWifiConnectTime = 0;
-int timeoutWifiConnectDelay = 5000;
-
 // Debounce inputs delay
 long lastDebouncedInputTime = 0;
-int debounceInputDelay = 50;
 // Keep tracks of last time for each automation run 
 long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
 // To trigger event based on time, we check all automatisations everyminutes
 int lastCheckedTime = 0;
-int debounceTimeDelay = 60000;
+int debounceTimeDelay = DEBOUNCE_TIME_DELAY;
 // To trigget async events to the web interface. Avoid server spaming
 int lastEvent = 0;
-int debounceEventDelay = 400;
 
 String systemInfos() {
-  String infos;
-  infos = String("\nFree memory:") + ESP.getFreeHeap();
-  infos += "\nTelegram bot:" + preferencehandler->health.telegram;
-  infos += "\nMqtt server:" + preferencehandler->health.mqtt;
-  return infos;
+  char infos[256];
+  snprintf(infos,256,"\nFree memory: %i\nTelegram bot: %i\nMqtt server: %i",ESP.getFreeHeap(),preferencehandler->health.telegram,preferencehandler->health.mqtt);
+  return String(infos);
 }
 
 void getFirmwareList() {
@@ -173,25 +166,28 @@ bool checkAgainstLocalWeekDay(int weekday, int signType) {
 }
 
 void readPins() {
-  if (millis() > debounceInputDelay + lastDebouncedInputTime) {
+  if (millis() > DEBOUNCE_INPUT_DELAY + lastDebouncedInputTime) {
     bool gpioStateChanged = false;
     for (GpioFlash& gpio : preferencehandler->gpios) {
       if (gpio.pin) {
         int newState = preferencehandler->getGpioState(gpio.pin);
         if (gpio.state != newState) {
           #ifdef __debug
-            Serial.printf("Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
+            Serial.printf("[PIN] Gpio pin %i state changed. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
           #endif
           // Save to preferences if allowed
           preferencehandler->setGpioState(gpio.pin, newState, true);
           // Notifiy mqtt clients
           mqtthandler->publish(gpio.pin);
           // Notifiy web interface with format "pinNumber-state"
-          if (serverhandler->events.count()>0 && millis() > debounceEventDelay + lastEvent) {
+          if (serverhandler->events.count()>0 && millis() > DEBOUNCE_EVENT_DELAY + lastEvent) {
             char eventMessage[10];
             snprintf(eventMessage,10,"%d-%d",gpio.pin,newState);
             serverhandler->events.send(eventMessage,"pin",millis());
             lastEvent = millis();
+            #ifdef __debug
+            Serial.printf("[EVENT] Sent GPIO event for pin %i. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
+          #endif
           }
           gpioStateChanged = true;
         }
@@ -283,15 +279,14 @@ void runAutomation(AutomationFlash& automation) {
       // Condition base on pin value
       if (automation.conditions[i][0]>-1) {
         GpioFlash& gpio = preferencehandler->gpios[automation.conditions[i][0]];
-        int16_t value = preferencehandler->getGpioState(gpio.pin);
         if (automation.conditions[i][1] == 1) {
-          criteria = (value == automation.conditions[i][2]);
+          criteria = (gpio.state == automation.conditions[i][2]);
         } else if (automation.conditions[i][1] == 2) {
-          criteria = (value != automation.conditions[i][2]);
+          criteria = (gpio.state != automation.conditions[i][2]);
         } else if (automation.conditions[i][1] == 3) {
-          criteria = (value > automation.conditions[i][2]);
+          criteria = (gpio.state > automation.conditions[i][2]);
         } else if (automation.conditions[i][1] == 4) {
-          criteria = (value < automation.conditions[i][2]);
+          criteria = (gpio.state < automation.conditions[i][2]);
         }
       // Condition base on hour
       } else if (automation.conditions[i][0]==-1) {
@@ -377,7 +372,7 @@ void runAutomation(AutomationFlash& automation) {
           // Delay type action
           } else if (type == 4) {
             // TODO: find a better solution to handle delay
-            delay(atoi(automation.actions[i][1]));
+            vTaskDelay(atoi(automation.actions[i][1]));
           // Micro Delay type action
           } else if (type == 5) {
             delayMicroseconds(atoi(automation.actions[i][1]));
@@ -455,13 +450,9 @@ void addPinValueToActionString(String& toParse, int fromIndex) {
         foundIndex = i+4;
       }
       if (pinNumber != -1) {
-        int state;
         GpioFlash& gpio = preferencehandler->gpios[pinNumber];
-        if (gpio.pin == pinNumber) {
-            state = preferencehandler->getGpioState(pinNumber);
-        }
         String subStringToReplace = String("${") + pinNumber + '}';
-        toParse.replace(subStringToReplace, String(state));
+        toParse.replace(subStringToReplace, String(gpio.state));
       }
     }
   }
@@ -583,7 +574,7 @@ void loop(void) {
       if (count == 200) {
         Serial.println(F("[MAIN_LOOP] Failed to reconnect, restarting now."));
         ESP.restart();
-      } 
+      }
     }
   }
 }
@@ -600,7 +591,7 @@ void automation_loop(void *pvParameters) {
       // Run only time scheduled automations
       #ifdef __debug
         Serial.println(F("[AUTO_LOOP] Checking time scheduled automations"));
-        Serial.println(systemInfos().c_str());
+        Serial.println(systemInfos());
       #endif
       runTriggeredEventAutomations(true);
       lastCheckedTime = millis();

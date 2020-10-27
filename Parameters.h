@@ -3,9 +3,15 @@
 #ifndef Parameters_h
 #define Parameters_h
 
-//#define __debug
+#define __debug
 #define FIRMWARE_VERSION 0.6
 
+// Debounce Times
+#define DEBOUNCE_INPUT_DELAY 20 //
+#define DEBOUNCE_TIME_DELAY 60000 //
+#define DEBOUNCE_EVENT_DELAY 400 //
+#define TIMEOUT_WIFI_CONNECTION 5000
+#define TOUCH_TIME_INTERVAL 80 // 
 //------------------ Main.ino
 #define MAX_QUEUED_AUTOMATIONS 10
 // Repo info for updates
@@ -38,8 +44,7 @@
 #define MAX_I2C_COMMAND_NUMBER 10 // Maximum number of alphanumeric commands per write session in I2C
 #define MAX_MESSAGE_TEXT_SIZE 100 // Usually used when we want to display a text message, or send a text to telegram for instance
 
-#define TOUCH_VARIATION_ALLOWED 2 // This define the variation needed by an I/O reading before triggering an event in the main loop. This is used for TouchRead.
-#define TOUCH_NUMBER_SAMPLES 100 // Number of touchRead to get to avoid variations
+#define TOUCH_VARIATION_ALLOWED 3 // This define the variation needed by an I/O reading before triggering an event in the main loop. This is used for TouchRead.
 //------------------ ServerHandler
 #define idParamName "id"
 #define pinParamName "pin"
