@@ -335,11 +335,10 @@ void ServerHandler::handleGpioRemove(AsyncWebServerRequest *request)
 }
 
 void ServerHandler::handleAvailableGpios(AsyncWebServerRequest *request) {
-    const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(4)+20);
+    const size_t capacity = JSON_ARRAY_SIZE(1) + GPIO_PIN_COUNT*(JSON_OBJECT_SIZE(3)+20);
     StaticJsonDocument<capacity> doc;
     for (int i = 0; i<GPIO_PIN_COUNT; i++) {
         JsonObject object = doc.createNestedObject();
-        object["pin"] = i;
         object["inputOnly"] = !GPIO_IS_VALID_OUTPUT_GPIO(i);
         object["adc"] = (i>=32); // Only GPIOs 32 to 39 are working correctly for adc mode when wifi is active.
         if (i == 4 || i == 2 || i == 12 || i == 13 || i == 14 || i == 15 || i == 27 || i == 32 || i ==33) {

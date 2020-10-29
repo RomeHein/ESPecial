@@ -11,38 +11,36 @@ const openGpioSetting = (element) => {
         document.getElementById(`setGpioInvertState-${gpio.pin}`).checked = gpio.invert;
     }
 };
-const createModeOptions = (gpio) => {
-    let modeOptions = `<option ${+gpio.mode === 1 ? "selected" : ""} value=1>INPUT</option><option ${+gpio.mode === 4 ? "selected" : ""} value=4>PULLUP</option><option ${+gpio.mode === 5 ? "selected" : ""} value=5>INPUT PULLUP</option><option ${+gpio.mode === 8 ? "selected" : ""} value=8>PULLDOWN</option><option ${+gpio.mode === 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>`;
-    let pinOptions = availableGpios.reduce((prev, availableGpio) => {
-        if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.pin) || +availableGpio.pin === +gpio.pin) {
-            // Complete the mode select input while we are here, avoiding another complex loop later on.
-            if (+availableGpio.pin === +gpio.pin && !availableGpio.inputOnly) {
-                modeOptions += `<option ${+gpio.mode === 2 ? "selected" : ""} value=2>OUTPUT (digital)</option>`;
-                modeOptions += `<option ${+gpio.mode === -1 ? "selected" : ""} value=-1>PWM (ledc)</option>`;
-                modeOptions += `<option ${+gpio.mode === -2 ? "selected" : ""} value=-2>I2C</option>`;
-            }
-            if (+availableGpio.pin === +gpio.pin && availableGpio.adc) {
-                modeOptions += `<option ${+gpio.mode === -3 ? "selected" : ""} value=-3>ADC (analog read)</option>`;
-            }
-            if (+availableGpio.pin === +gpio.pin && availableGpio.touch) {
-                modeOptions += `<option ${+gpio.mode === -4 ? "selected" : ""} value=-4>Touch</option>`;
-            }
-            prev += `<option ${+availableGpio.pin === +gpio.pin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
+
+const createPinOptions = (mode) => {
+    const usedGpiosPin = gpios.reduce((prev, gpio) => {
+        prev[gpio.pin] = 1;
+        return prev;
+    }, {})
+    const pinOptions = availableGpios.reduce((prev, availableGpio, availableGpioPin) => {
+        if (!usedGpiosPin[availableGpioPin] && 
+        (((+mode === 2 || +mode === -1 || +mode === -2) && !availableGpio.inputOnly) 
+        || (+mode === -3 && availableGpio.adc) 
+        || (+mode === -4 && availableGpio.touch) 
+        || +mode === 1 || +mode === 4 || +mode === 5 || +mode === 8 || +mode === 9)) {
+            prev += `<option value=${availableGpioPin}>${availableGpioPin}</option>`;
         }
         return prev;
-    }, []);
-    return {modeOptions, pinOptions};
+    },``)
+    return {usedGpiosPin, pinOptions};
 };
+
 const createEditGpioPanel = (gpio) => {
     if (!gpio) {
         gpio = {
             pin: "new"
         };
     }
-    const {modeOptions, pinOptions}  = createModeOptions(gpio);
-    const sclPinOptions = availableGpios.reduce((prev, availableGpio) => {
-        if ((!gpios.find((_gpio) => +_gpio.pin === +availableGpio.pin) && +availableGpio.pin !== +gpio.sclpin) || +availableGpio.pin === +gpio.sclpin) {
-            prev += `<option ${+availableGpio.pin === +gpio.sclpin ? "selected" : ""} value=${availableGpio.pin}>${availableGpio.pin}</option>`;
+    const {usedGpiosPin, pinOptions} = createPinOptions(gpio.mode || 1);
+    
+    const sclPinOptions = availableGpios.reduce((prev,_, availableGpioPin) => {
+        if ((!usedGpiosPin[availableGpioPin] && +availableGpioPin !== +gpio.sclpin) || +availableGpioPin === +gpio.sclpin) {
+            prev += `<option ${+availableGpioPin === +gpio.sclpin ? "selected" : ""} value=${availableGpioPin}>${availableGpioPin}</option>`;
         }
         return prev;
     }, []);
@@ -55,16 +53,27 @@ const createEditGpioPanel = (gpio) => {
     child.classList.add("set");
     child.innerHTML = `<div class="set-inputs">
             <div class="row">
-                <label for="setGpioPin-${gpio.pin}">Pin:</label>
-                <select id="setGpioPin-${gpio.pin}" name="pin" onchange="updateModeOptions('${gpio.pin}')">${pinOptions}</select>
-            </div>
-            <div class="row">
                 <label for="setGpioLabel-${gpio.pin}">Label:</label>
                 <input id="setGpioLabel-${gpio.pin}" type="text" name="label" value="${gpio.label || ""}" placeholder="Controller's title">
             </div>
             <div class="row">
                 <label for="setGpioMode-${gpio.pin}">I/O mode:</label>
-                <select onchange="updateGpioOptions(this)" id="setGpioMode-${gpio.pin}" name="mode">${modeOptions}</select>
+                <select onchange="updateGpioOptions(this)" id="setGpioMode-${gpio.pin}" name="mode">
+                    <option ${+gpio.mode === 1 ? "selected" : ""} value=1>INPUT</option>
+                    <option ${+gpio.mode === 4 ? "selected" : ""} value=4>PULLUP</option>
+                    <option ${+gpio.mode === 5 ? "selected" : ""} value=5>INPUT PULLUP</option>
+                    <option ${+gpio.mode === 8 ? "selected" : ""} value=8>PULLDOWN</option>
+                    <option ${+gpio.mode === 9 ? "selected" : ""} value=9>INPUT PULLDOWN</option>
+                    <option ${+gpio.mode === 2 ? "selected" : ""} value=2>OUTPUT (digital)</option>
+                    <option ${+gpio.mode === -1 ? "selected" : ""} value=-1>PWM (ledc)</option>
+                    <option ${+gpio.mode === -2 ? "selected" : ""} value=-2>I2C</option>
+                    <option ${+gpio.mode === -3 ? "selected" : ""} value=-3>ADC (analog read)</option>
+                    <option ${+gpio.mode === -4 ? "selected" : ""} value=-4>Touch</option>
+                </select>
+            </div>
+            <div class="row">
+                <label for="setGpioPin-${gpio.pin}">Pin:</label>
+                <select id="setGpioPin-${gpio.pin}" name="pin">${pinOptions}</select>
             </div>
             <div id="led-options" class="${+gpio.mode !== -1 ? "hidden" : ""}">
                 <div class="row">
@@ -116,18 +125,10 @@ const createEditGpioPanel = (gpio) => {
     return child;
 };
 
-// Change the input of available mode for a given pin
-const updateModeOptions = (pin) => {
-    const selectPin = document.getElementById(`setGpioPin-${pin || "new"}`);
-    const selectMode = document.getElementById(`setGpioMode-${pin || "new"}`);
-    let gpio = JSON.parse(JSON.stringify(gpios.find((gpio) => +gpio.pin === +pin) || {}));
-    gpio.pin = selectPin.value;
-    selectMode.innerHTML = createModeOptions(gpio).modeOptions;
-};
-
 const updateGpioOptions = (element) => {
     const pin = +element.id.split("-")[1] || "new";
     const option = +document.getElementById(`setGpioMode-${pin}`).value;
+    const selectedMode = document.getElementById(`setGpioMode-${pin || "new"}`).value;
     // Led mode
     if (option === -1) {
         document.getElementById("setGpioSaveRow").classList.remove("hidden");
@@ -157,8 +158,10 @@ const updateGpioOptions = (element) => {
         document.getElementById("setGpioInvertStateRow").classList.remove("hidden");
         document.getElementById("led-options").classList.add("hidden");
         document.getElementById("i2c-options").classList.add("hidden");
-
+        document.getElementById("adc-options").classList.add("hidden");
     }
+    // Update available pin for selected mode
+    document.getElementById(`setGpioPin-${pin}`).innerHTML = createPinOptions(selectedMode || 1).pinOptions;
 };
 const switchGpioState = async (element) => {
     try {

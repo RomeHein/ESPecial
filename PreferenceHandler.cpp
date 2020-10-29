@@ -542,6 +542,7 @@ int PreferenceHandler::getGpioState(int pin) {
     } else if (gpio.mode == -4) {
         // Following code is made to avoid false positive. Which happens a lot when WIFI is on.
         // See: https://github.com/espressif/esp-iot-solution/blob/master/documents/touch_pad_solution/touch_sensor_design_en.md#42-jitter-filter-solution
+        // and: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/touch_pad.html#touch-detection
         // The idea is to check if the touchRead value is still the same after a small amount of time which correspond to a touch. False positive are much shorter in time.
         int newValue = touchRead(touchSensor(gpio.pin));
         // check if the detected value is worth it (greater than TOUCH_VARIATION_ALLOWED)
