@@ -1,4 +1,11 @@
 [{
+    "version": 0.7,
+    "build": 1,
+    "current": true,
+    "partitionScheme":"min_spiffs",
+    "description": "Fix touch control. Small changes in UI",
+    "compatibility": [0.6]
+},{
     "version": 0.6,
     "build": 1,
     "current": true,
