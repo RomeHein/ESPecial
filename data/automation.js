@@ -1,4 +1,4 @@
-/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner, createGpioControlRow, createI2cSlaveControlRow, createAutomationRow*/
+/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner, createGpioControlRow, createI2cSlaveControlRow, createAutomationRow, fetchAutomations*/
 const deleteRowEditor = (element) => {
     const isCondition = element.id.split("-")[0] === "deleteCondition";
     const rowNumber = +element.id.split("-")[1] || 0;
@@ -30,7 +30,7 @@ const addConditionEditor = (condition) => {
 
     let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`;
     gpioConditionOptions += gpios.reduce((acc, gpio) => {
-        if (gpio.mode = -100) {
+        if (gpio.mode !== -100) {
             return acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`;
         }
         return acc;

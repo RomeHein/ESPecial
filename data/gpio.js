@@ -16,7 +16,7 @@ const createPinOptions = (gpio) => {
     const usedGpiosPin = gpios.reduce((prev, _gpio) => {
         prev[_gpio.pin] = 1;
         return prev;
-    }, {})
+    }, {});
     const mode = gpio.mode || 1;
     const pinOptions = availableGpios.reduce((prev, availableGpio, availableGpioPin) => {
         if ((!usedGpiosPin[availableGpioPin] || availableGpioPin === +gpio.pin) && 
@@ -27,7 +27,7 @@ const createPinOptions = (gpio) => {
             prev += `<option value=${availableGpioPin} ${+gpio.pin === availableGpioPin ? "selected" : ""}>${availableGpioPin}</option>`;
         }
         return prev;
-    },``)
+    },``);
     return {usedGpiosPin, pinOptions};
 };
 
