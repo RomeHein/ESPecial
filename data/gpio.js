@@ -12,18 +12,19 @@ const openGpioSetting = (element) => {
     }
 };
 
-const createPinOptions = (mode) => {
-    const usedGpiosPin = gpios.reduce((prev, gpio) => {
-        prev[gpio.pin] = 1;
+const createPinOptions = (gpio) => {
+    const usedGpiosPin = gpios.reduce((prev, _gpio) => {
+        prev[_gpio.pin] = 1;
         return prev;
     }, {})
+    const mode = gpio.mode || 1;
     const pinOptions = availableGpios.reduce((prev, availableGpio, availableGpioPin) => {
-        if (!usedGpiosPin[availableGpioPin] && 
+        if ((!usedGpiosPin[availableGpioPin] || availableGpioPin === +gpio.pin) && 
         (((+mode === 2 || +mode === -1 || +mode === -2) && !availableGpio.inputOnly) 
         || (+mode === -3 && availableGpio.adc) 
         || (+mode === -4 && availableGpio.touch) 
         || +mode === 1 || +mode === 4 || +mode === 5 || +mode === 8 || +mode === 9)) {
-            prev += `<option value=${availableGpioPin}>${availableGpioPin}</option>`;
+            prev += `<option value=${availableGpioPin} ${+gpio.pin === availableGpioPin ? "selected" : ""}>${availableGpioPin}</option>`;
         }
         return prev;
     },``)
@@ -36,7 +37,7 @@ const createEditGpioPanel = (gpio) => {
             pin: "new"
         };
     }
-    const {usedGpiosPin, pinOptions} = createPinOptions(gpio.mode || 1);
+    const {usedGpiosPin, pinOptions} = createPinOptions(gpio);
     
     const sclPinOptions = availableGpios.reduce((prev,_, availableGpioPin) => {
         if ((!usedGpiosPin[availableGpioPin] && +availableGpioPin !== +gpio.sclpin) || +availableGpioPin === +gpio.sclpin) {
@@ -109,12 +110,18 @@ const createEditGpioPanel = (gpio) => {
                 </div>
             </div>
             <div class="row ${gpio.mode < 0 ? "hidden" : ""}" id="setGpioInvertStateRow">
-                <label for="setGpioInvertState-${gpio.pin}">Invert state:</label>
-                <input type="checkbox" name="invert" id="setGpioInvertState-${gpio.pin}" value="${gpio.invert}">
+                <div class="switch">
+                    <label for="setGpioInvertState-${gpio.pin}">Invert state:</label>
+                    <input id="setGpioInvertState-${gpio.pin}" type="checkbox" class="switch-input" value="${gpio.invert}">
+                    <label class="slider" for="setGpioInvertState-${gpio.pin}"></label>
+                </div>
             </div>
             <div class="row ${+gpio.mode !== -1 && +gpio.mode !== 2 ? "hidden" : ""}" id="setGpioSaveRow">
-                <label for="setGpioSave-${gpio.pin}">Save state:</label>
-                <input type="checkbox" name="save" id="setGpioSave-${gpio.pin}" value="${gpio.save}">
+                <div class="switch">
+                    <label for="setGpioSave-${gpio.pin}">Save state:</label>
+                    <input id="setGpioSave-${gpio.pin}" type="checkbox" class="switch-input" value="${gpio.save}">
+                    <label class="slider" for="setGpioSave-${gpio.pin}"></label>
+                </div>
             </div>
         </div>
         <div class="set-buttons">
@@ -161,7 +168,7 @@ const updateGpioOptions = (element) => {
         document.getElementById("adc-options").classList.add("hidden");
     }
     // Update available pin for selected mode
-    document.getElementById(`setGpioPin-${pin}`).innerHTML = createPinOptions(selectedMode || 1).pinOptions;
+    document.getElementById(`setGpioPin-${pin}`).innerHTML = createPinOptions({mode: selectedMode}).pinOptions;
 };
 const switchGpioState = async (element) => {
     try {
@@ -289,8 +296,11 @@ const openI2cSlaveSettings = (element) => {
                 <input id="setI2cSlaveOctet-${id}" type="number" name="octet" value="${octetToRequest}" placeholder="Slave's command">
             </div>
             <div class="row ${octetToRequest ? "hidden" : ""}">
-                <label for="setI2cSlaveSave-${id}">Save:</label>
-                <input id="setI2cSlaveSave-${id}" type="checkbox" name="save" value="${save}">
+                <div class="switch">
+                    <label for="setI2cSlaveSave-${id}">Save:</label>
+                    <input id="setI2cSlaveSave-${id}" type="checkbox" class="switch-input" value="${save}">
+                    <label class="slider" for="setI2cSlaveSave-${id}"></label>
+                </div>
             </div>
         </div>
         <div class="btn-container">

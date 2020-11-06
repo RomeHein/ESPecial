@@ -1,6 +1,7 @@
 #include "PreferenceHandler.h"
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include "esp_camera.h"
 
 Preferences preferences;
 
@@ -66,9 +67,20 @@ void PreferenceHandler::begin()
             strcpy(wifi.dns,"especial");
         }
     }
+
+    // Init camera preferences
+    {
+        size_t schLen = preferences.getBytes(PREFERENCES_CAMERA, NULL, NULL);
+        char buffer[schLen];
+        preferences.getBytes(PREFERENCES_CAMERA, buffer, schLen);
+        memcpy(&camera, buffer, schLen);
+    }
     preferences.end();
 
     initGpios();
+    if (camera.model != 0) {
+        initCamera(camera.model);
+    }
 }
 
 void PreferenceHandler::clear() {
@@ -100,6 +112,8 @@ void PreferenceHandler::save(const char* preference) {
         preferences.putBytes(PREFERENCES_TELEGRAM, &telegram, sizeof(telegram));
     }else if (strcmp(preference, PREFERENCES_WIFI) == 0) {
         preferences.putBytes(PREFERENCES_WIFI, &wifi, sizeof(wifi));
+    }else if (strcmp(preference, PREFERENCES_CAMERA) == 0) {
+        preferences.putBytes(PREFERENCES_CAMERA, &camera, sizeof(camera));
     }
     preferences.end();
 }
@@ -156,7 +170,7 @@ int PreferenceHandler::newId(const char *preference) {
 void  PreferenceHandler::initGpios() 
 {
     for (GpioFlash& gpio : gpios) {
-        if (gpio.pin) {
+        if (gpio.pin && gpio.mode != -100) {
             #ifdef __debug
                 Serial.printf("Preferences: init pin %i on mode %i\n", gpio.pin, gpio.mode);
             #endif
@@ -426,6 +440,7 @@ String PreferenceHandler::addGpio(int pin,const char* label, int mode,int sclpin
     newGpio.resolution = resolution;
     newGpio.save = saveState;
     newGpio.invert = invertState;
+    // Add to list of used gpios
     gpios[pin] = newGpio;
     attach(newGpio);
     // If we don't save state, default state to 0
@@ -702,6 +717,7 @@ bool PreferenceHandler:: editWifi(const char* dns, const char* apSsid, const cha
     }
     return hasChanged;
 }
+
 // Automation
 
 void PreferenceHandler::setAutomationsFromJson(const char* json) {
@@ -847,4 +863,245 @@ String PreferenceHandler::editAutomation(AutomationFlash& automation, const char
         save(PREFERENCES_AUTOMATION);
     }
     return automationToJson(automation);
+}
+
+// Camera
+
+void PreferenceHandler::createCamera(const int model) {
+
+    // Create new GpioFlash that will avoid double use of a camera used pin.
+    for (int i=0; i<16; i++) {
+        GpioFlash newGpio = {};
+        newGpio.pin = cameraPinsConfig[model-1][i];
+        strcpy(newGpio.label, "Camera pin");
+        newGpio.mode = -100;
+        gpios[newGpio.pin] = newGpio;
+    }
+    save(PREFERENCES_GPIOS);
+    camera.model = model;
+    saveCameraSettings();
+}
+
+void PreferenceHandler::removeCamera() {
+
+    // Remove blocked GpioFlash
+    for (int i=0; i<16; i++) {
+        const int pinToRemove = cameraPinsConfig[camera.model-1][i];
+        gpios[pinToRemove] = {};
+    }
+    save(PREFERENCES_GPIOS);
+    esp_camera_deinit();
+    camera.model = 0;
+    save(PREFERENCES_CAMERA);
+}
+
+bool PreferenceHandler::initCamera(const int model) {
+    camera_config_t config;
+    config.ledc_channel = LEDC_CHANNEL_0;
+    config.ledc_timer = LEDC_TIMER_0;
+    config.pin_d0 = cameraPinsConfig[model-1][0];
+    config.pin_d1 = cameraPinsConfig[model-1][1];
+    config.pin_d2 = cameraPinsConfig[model-1][2];
+    config.pin_d3 = cameraPinsConfig[model-1][3];
+    config.pin_d4 = cameraPinsConfig[model-1][4];
+    config.pin_d5 = cameraPinsConfig[model-1][5];
+    config.pin_d6 = cameraPinsConfig[model-1][6];
+    config.pin_d7 = cameraPinsConfig[model-1][7];
+    config.pin_xclk = cameraPinsConfig[model-1][8];
+    config.pin_pclk = cameraPinsConfig[model-1][9];
+    config.pin_vsync = cameraPinsConfig[model-1][10];
+    config.pin_href = cameraPinsConfig[model-1][11];
+    config.pin_sscb_sda = cameraPinsConfig[model-1][12];
+    config.pin_sscb_scl = cameraPinsConfig[model-1][13];
+    config.pin_pwdn = cameraPinsConfig[model-1][14];
+    config.pin_reset = cameraPinsConfig[model-1][15];
+    config.xclk_freq_hz = 20000000;
+    config.pixel_format = PIXFORMAT_JPEG;
+    //init with high specs to pre-allocate larger buffers
+    if(psramFound()){
+        config.frame_size = FRAMESIZE_UXGA;
+        config.jpeg_quality = 10;
+        config.fb_count = 2;
+    } else {
+        config.frame_size = FRAMESIZE_SVGA;
+        config.jpeg_quality = 12;
+        config.fb_count = 1;
+    }
+
+    // camera init
+    esp_err_t err = esp_camera_init(&config);
+    if (err != ESP_OK) {
+        #ifdef __debug
+            Serial.printf("[CAMERA] init failed with error 0x%x", err);
+        #endif
+        return false;
+    }
+
+    sensor_t * s = esp_camera_sensor_get();
+    if (camera.model != 0) {
+        s->set_framesize(s, (framesize_t)camera.framsize);
+        s->set_quality(s, camera.quality);
+        s->set_contrast(s, camera.contrast);
+        s->set_brightness(s, camera.brightness);
+        s->set_saturation(s, camera.saturation);
+        s->set_sharpness(s, camera.sharpness);
+        s->set_gainceiling(s, (gainceiling_t)camera.gainceiling);
+        s->set_colorbar(s, camera.colorbar);
+        s->set_whitebal(s, camera.awb);
+        s->set_gain_ctrl(s, camera.agc);
+        s->set_exposure_ctrl(s, camera.aec);
+        s->set_hmirror(s, camera.hmirror);
+        s->set_vflip(s, camera.vflip);
+        s->set_awb_gain(s, camera.awbGain);
+        s->set_agc_gain(s, camera.agcGain);
+        s->set_aec_value(s, camera.aecValue);
+        s->set_aec2(s, camera.aec2);
+        s->set_denoise(s, camera.denoise);
+        s->set_dcw(s, camera.dcw);
+        s->set_bpc(s, camera.bpc);
+        s->set_wpc(s, camera.wpc);
+        s->set_raw_gma(s, camera.rawGma);
+        s->set_lenc(s, camera.lenc);
+        s->set_special_effect(s, camera.specialEffect);
+        s->set_wb_mode(s, camera.wbMode);
+        s->set_ae_level(s, camera.aeLevel);
+    } else {
+        //initial sensors are flipped vertically and colors are a bit saturated
+        if (s->id.PID == OV3660_PID) {
+            s->set_vflip(s, 1);//flip it back
+            s->set_brightness(s, 1);//up the blightness just a bit
+            s->set_saturation(s, -2);//lower the saturation
+        }
+        //drop down frame size for higher initial frame rate
+        s->set_framesize(s, FRAMESIZE_QVGA);
+        if (model == 4) {
+            s->set_vflip(s, 1);
+            s->set_hmirror(s, 1);
+        }
+    }
+    return true;
+}
+
+String PreferenceHandler::getCameraJson() {
+    sensor_t * s = esp_camera_sensor_get();
+    String output;
+    if(s == NULL){
+        StaticJsonDocument<3> doc;
+        doc["model"] = camera.model;
+        doc["faceRecognitionEnable"] = camera.faceRecognitionEnable;
+        doc["isEnrolling"] = camera.isEnrolling;
+        serializeJson(doc, output);
+    } else {
+        StaticJsonDocument<CAMERA_JSON_CAPACITY> doc;
+        doc["model"] = camera.model;
+        doc["faceRecognitionEnable"] = camera.faceRecognitionEnable;
+        doc["isEnrolling"] = camera.isEnrolling;
+        doc["framsize"] = s->status.framesize;
+        doc["quality"] = s->status.quality;
+        doc["brightness"] = s->status.brightness;
+        doc["contrast"] = s->status.contrast;
+        doc["saturation"] = s->status.saturation;
+        doc["sharpness"] = s->status.sharpness;
+        doc["specialEffect"] = s->status.special_effect;
+        doc["wbMode"] = s->status.wb_mode;
+        doc["awb"] = s->status.awb;
+        doc["awbGain"] = s->status.awb_gain;
+        doc["aec"] = s->status.aec;
+        doc["aec2"] = s->status.aec2;
+        doc["denoise"] = s->status.denoise;
+        doc["aeLevel"] = s->status.ae_level;
+        doc["aecValue"] = s->status.aec_value;
+        doc["agc"] = s->status.agc;
+        doc["agcGain"] = s->status.agc_gain;
+        doc["gainceiling"] = s->status.gainceiling;
+        doc["bpc"] = s->status.bpc;
+        doc["wpc"] = s->status.wpc;
+        doc["rawGma"] = s->status.raw_gma;
+        doc["lenc"] = s->status.lenc;
+        doc["hmirror"] = s->status.hmirror;
+        doc["vflip"] = s->status.vflip;
+        doc["dcw"] = s->status.dcw;
+        doc["colorbar"] = s->status.colorbar;
+        serializeJson(doc, output);
+    }
+    return output;
+}
+
+bool PreferenceHandler::setCameraVar(const char* variable, int val) {
+    sensor_t * s = esp_camera_sensor_get();
+    if(s == NULL){
+        return false;
+    }
+    int res = 0;
+    if(!strcmp(variable, "framesize")) res = s->set_framesize(s, (framesize_t)val);
+    else if(!strcmp(variable, "quality")) res = s->set_quality(s, val);
+    else if(!strcmp(variable, "contrast")) res = s->set_contrast(s, val);
+    else if(!strcmp(variable, "brightness")) res = s->set_brightness(s, val);
+    else if(!strcmp(variable, "saturation")) res = s->set_saturation(s, val);
+    else if(!strcmp(variable, "sharpness")) res = s->set_sharpness(s, val);
+    else if(!strcmp(variable, "gainceiling")) res = s->set_gainceiling(s, (gainceiling_t)val);
+    else if(!strcmp(variable, "colorbar")) res = s->set_colorbar(s, val);
+    else if(!strcmp(variable, "awb")) res = s->set_whitebal(s, val);
+    else if(!strcmp(variable, "agc")) res = s->set_gain_ctrl(s, val);
+    else if(!strcmp(variable, "aec")) res = s->set_exposure_ctrl(s, val);
+    else if(!strcmp(variable, "hmirror")) res = s->set_hmirror(s, val);
+    else if(!strcmp(variable, "vflip")) res = s->set_vflip(s, val);
+    else if(!strcmp(variable, "awb_gain")) res = s->set_awb_gain(s, val);
+    else if(!strcmp(variable, "agc_gain")) res = s->set_agc_gain(s, val);
+    else if(!strcmp(variable, "aec_value")) res = s->set_aec_value(s, val);
+    else if(!strcmp(variable, "aec2")) res = s->set_aec2(s, val);
+    else if(!strcmp(variable, "denoise")) res = s->set_denoise(s, val);
+    else if(!strcmp(variable, "dcw")) res = s->set_dcw(s, val);
+    else if(!strcmp(variable, "bpc")) res = s->set_bpc(s, val);
+    else if(!strcmp(variable, "wpc")) res = s->set_wpc(s, val);
+    else if(!strcmp(variable, "raw_gma")) res = s->set_raw_gma(s, val);
+    else if(!strcmp(variable, "lenc")) res = s->set_lenc(s, val);
+    else if(!strcmp(variable, "special_effect")) res = s->set_special_effect(s, val);
+    else if(!strcmp(variable, "wb_mode")) res = s->set_wb_mode(s, val);
+    else if(!strcmp(variable, "ae_level")) res = s->set_ae_level(s, val);
+
+    else {
+        #ifdef __debug
+            log_e("unknown setting %s", var.c_str());
+        #endif
+        return false;
+    }
+
+    #ifdef __debug
+        log_d("Got setting %s with value %d. Res: %d", var.c_str(), val, res);
+    #endif
+    return true;
+}
+
+void PreferenceHandler::saveCameraSettings() {
+    sensor_t * s = esp_camera_sensor_get();
+    if(s != NULL){
+        camera.framsize = s->status.framesize;
+        camera.quality = s->status.quality;
+        camera.brightness = s->status.brightness;
+        camera.contrast = s->status.contrast;
+        camera.saturation = s->status.saturation;
+        camera.sharpness = s->status.sharpness;
+        camera.specialEffect = s->status.special_effect;
+        camera.wbMode = s->status.wb_mode;
+        camera.awb = s->status.awb;
+        camera.awbGain = s->status.awb_gain;
+        camera.aec = s->status.aec;
+        camera.aec2 = s->status.aec2;
+        camera.denoise = s->status.denoise;
+        camera.aeLevel = s->status.ae_level;
+        camera.aecValue = s->status.aec_value;
+        camera.agc = s->status.agc;
+        camera.agcGain = s->status.agc_gain;
+        camera.gainceiling = s->status.gainceiling;
+        camera.bpc = s->status.bpc;
+        camera.wpc = s->status.wpc;
+        camera.rawGma = s->status.raw_gma;
+        camera.lenc = s->status.lenc;
+        camera.hmirror = s->status.hmirror;
+        camera.vflip = s->status.vflip;
+        camera.dcw = s->status.dcw;
+        camera.colorbar = s->status.colorbar;
+        save(PREFERENCES_CAMERA);
+    }
 }

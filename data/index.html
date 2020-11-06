@@ -36,6 +36,26 @@
         </div>
         <div id='automations' class='column'></div>
     </div>
+    <div class="container" id="camera-container">
+        <div id='camera-header-bar' class="header-container">
+            <h2>Camera</h2>
+            <a id='add-camera' onclick='addCamera()' class='btn edit'>+</a>
+        </div>
+        <div id='camera' class='column hidden'>
+            <div class="set-inputs">
+                <div class="row">
+                    <div class="switch">
+                        <label for="stream-enable">Enable stream:</label>
+                        <input id="stream-enable" type="checkbox" class="switch-input" onclick="switchStream(this)">
+                        <label class="slider" for="stream-enable"></label>
+                    </div>
+                </div>
+                <div class="row">
+                    <img id="stream" src="" class="hidden"></img>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="container hidden" id="setting-container">
         <div class='column'>
             <div id='update' class='setting-container'>
@@ -61,32 +81,36 @@
             </div>
             <div id="wifi" class="setting-container">
                 <p>WIFI</p>
+                <div class="info">When station mode is disabled or when network connection failed, the esp32 will automatically trigger the access point (AP) mode.</div>
                 <form onsubmit='submitWifi(event)' id='wifi-ap-form'>
                     <label for='wifi-dns'>DNS name:</label>
                     <input type='text' name='dns' id='wifi-dns' value="especial">
-                    <label for='wifi-sta-enable'>Enable Station (STA) mode:</label>
-                    <div class="checkbox-container">
-                        <input type='checkbox' name='enable' id='wifi-sta-enable'>
-                    </div>
-                    <label for='wifi-sta-ssid'>STA SSID:</label>
-                    <input type='text' name='ssid' id='wifi-sta-ssid'>
-                    <label for='wifi-sta-psw'>STA Password</label>
-                    <input type='text' name='pws' id='wifi-sta-psw'>
-                    <div class="info">When station mode is disabled or when network connection failed, the esp32 will automatically trigger the access point (AP) mode.</div>
                     <label for='wifi-ap-ssid'>AP SSID:</label>
                     <input type='text' name='ssid' id='wifi-ap-ssid'>
                     <label for='wifi-ap-psw'>AP Password</label>
                     <input type='text' name='pws' id='wifi-ap-psw'>
+                    <div class="switch">
+                        <label for='wifi-sta-enable'>Enable Station (STA) mode:</label>
+                        <input id="wifi-sta-enable" type="checkbox" class="switch-input" onclick="switchSta(this)">
+                        <label class="slider" for="wifi-sta-enable"></label>
+                    </div>
+                    <div id="sta-settings">
+                        <label for='wifi-sta-ssid'>STA SSID:</label>
+                        <input type='text' name='ssid' id='wifi-sta-ssid'>
+                        <label for='wifi-sta-psw'>STA Password</label>
+                        <input type='text' name='pws' id='wifi-sta-psw'>
+                    </div>
                     <input id='submit-wifi' type='submit'class='btn save' value='Save'>
                 </form>
             </div>
             <div id='mqtt' class='setting-container'>
                 <p>MQTT</p>
+                <div class="switch">
+                    <label for='mqtt-active'>Enable:</label>
+                    <input id="mqtt-active" type="checkbox" class="switch-input" onclick="switchMqtt(this)">
+                    <label class="slider" for="mqtt-active"></label>
+                </div>
                 <form onsubmit='submitMqtt(event)' id='mqtt-form'>
-                    <label for='mqtt-active'>Active:</label>
-                    <div class="checkbox-container">
-                        <input type='checkbox' name='active' id='mqtt-active'>
-                    </div>
                     <label for='mqtt-fn'>Friendly name:</label>
                     <input type='text' name='fn' id='mqtt-fn'>
                     <label for='mqtt-host'>Host:</label>
@@ -108,11 +132,12 @@
             </div>
             <div id='telegram' class='setting-container'>
                 <p>Telegram</p>
-                <form onsubmit='submitTelegram(event)' id='telegram-form'>
-                    <label for='telegram-active'>Active:</label>
-                    <div class="checkbox-container">
-                        <input type='checkbox' name='active' id='telegram-active'>
-                    </div>
+                <div class="switch">
+                    <label for='telegram-active'>Enable:</label>
+                    <input id="telegram-active" type="checkbox" class="switch-input" onclick="switchTelegram(this)">
+                    <label class="slider" for="telegram-active"></label>
+                </div>
+                <form onsubmit='submitTelegram(event)' id='telegram-form'>                    
                     <label for='telegram-token'>Token:</label>
                     <input type='text' name='token' id='telegram-token'>
                     <label for='telegram-users'>Authorised users: (empty if public)</label>
@@ -120,7 +145,7 @@
                     <input id='submit-telegram-pref' type='submit'class='btn save' value='Save'>
                 </form>
             </div>
-            <div id='telegram' class='setting-container'>
+            <div id='backup' class='setting-container'>
                 <p>Backup</p>
                 <div class="info">Download a json file containing all your current settings. Make sure to use this functionnality before any firmware update.</div>
                 <a id='backup-settings' onclick='backupSettings()' class='btn save'>Backup settings</a>
@@ -148,6 +173,7 @@
 <script type="text/javascript">
     var settings = {};
     var health = {};
+    var camera = {};
     var gpios = [];
     var slaves = [];
     var availableGpios = [];
@@ -246,7 +272,7 @@
     const restart = async () => {
         try {
             const blocker = document.getElementById("blocker");
-            const res = await fetch(window.location.href + "restart");
+            await fetch(window.location.href + "restart");
             blocker.classList.add("hidden");
         } catch (err) {
             blocker.classList.add("hidden");
@@ -370,16 +396,40 @@
             await displayNotification(err, "error");
         }
     };
+    const fetchCamera = async () => {
+        try {
+            const res = await fetch(window.location.href + "camera/status");
+            const c = await res.json();
+            if (c) {
+                camera = c;
+            }
+        } catch (err) {
+            await displayNotification(err, "error");
+        }
+    }
     // Events
     window.onload = async () => {
-        fetchSettings();
+        fetchSettings().then(() => {
+            // Hide settings if not activated
+            if (!settings.mqtt.active) {
+                document.getElementById("mqtt-form").classList.add("hidden");
+            }
+            if (!settings.telegram.active) {
+                document.getElementById("telegram-form").classList.add("hidden");
+            }
+            if (!settings.wifi.staEnable) {
+                document.getElementById("sta-settings").classList.add("hidden");
+            }
+        })
         fetchAvailableGpios();
         fetchServicesHealth();
         reloadFirmwareVersionsList();
-        await Promise.all([fetchGpios(), fetchAutomations(), fetchI2cSlaves()]);
+        await Promise.all([fetchGpios(), fetchAutomations(), fetchI2cSlaves(),fetchCamera()]);
         const containerG = document.getElementById("gpios");
         gpios.forEach((gpio) => {
-            containerG.appendChild(createGpioControlRow(gpio));
+            if (gpio.mode !== -100) {
+                containerG.appendChild(createGpioControlRow(gpio));
+            }
         });
         const containerA = document.getElementById("automations");
         automations.forEach((automation) => {
@@ -391,6 +441,11 @@
                 gpioRow.appendChild(createI2cSlaveControlRow(slave));
             }
         });
+        if (camera.model) {
+            document.getElementById("add-camera").classList.add("hidden")
+            document.getElementById("camera").classList.remove("hidden");
+        }
+
         document.getElementById("page-loader").remove();
     };
     if (!!window.EventSource) {
@@ -455,7 +510,8 @@
         }, false);
     }
 </script>
-<script type="text/javascript" src="automation.js"></script>
 <script type="text/javascript" src="gpio.js"></script>
+<script type="text/javascript" src="automation.js"></script>
+<script type="text/javascript" src="camera.js"></script>
 <script type="text/javascript" src="settings.js"></script>
 </html>

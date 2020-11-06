@@ -45,6 +45,14 @@ private:
     void handleAutomationRemove(AsyncWebServerRequest *request);
     void handleAutomationNew(AsyncWebServerRequest *request,JsonVariant &json);
     
+    void handleCameraInit(AsyncWebServerRequest *request);
+    void sendBMP(AsyncWebServerRequest *request);
+    void sendJpg(AsyncWebServerRequest *request);
+    void streamJpg(AsyncWebServerRequest *request);
+    void getCameraStatus(AsyncWebServerRequest *request);
+    void setCameraVar(AsyncWebServerRequest *request);
+    void saveCameraVar(AsyncWebServerRequest *request);
+    
 public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     AsyncWebServer server = {80};

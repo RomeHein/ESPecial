@@ -28,6 +28,7 @@
 #define PREFERENCES_MQTT "mqtt"
 #define PREFERENCES_TELEGRAM "telegram"
 #define PREFERENCES_WIFI "wifi"
+#define PREFERENCES_CAMERA "camera"
 
 #define CHANNEL_NOT_ATTACHED -1
 #define PIN_NOT_ATTACHED -1
@@ -49,6 +50,7 @@
 #define idParamName "id"
 #define pinParamName "pin"
 #define valueParamName "value"
+#define modelParamName "model"
 
 //------------------ MQTT Parameters
 #define RETRY_ATTEMPT 5

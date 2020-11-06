@@ -29,7 +29,12 @@ const addConditionEditor = (condition) => {
     }
 
     let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`;
-    gpioConditionOptions += gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, "");
+    gpioConditionOptions += gpios.reduce((acc, gpio) => {
+        if (gpio.mode != -100) {
+            return acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`;
+        }
+        return acc;
+    }, "");
 
     const conditionEditorElement = document.getElementById("condition-editor-result");
     const conditionNumber = "-" + conditionEditorElement.childElementCount;
@@ -129,8 +134,11 @@ const createEditAutomationPanel = (automation) => {
                 <input id="setAutomationLabel-${automation.id}" type="text" name="label" value="${automation.label || ""}" placeholder="Describe your automation">
             </div>
             <div class="row">
-                <label for="setAutomationAutoRun-${automation.id}">Event triggered:</label>
-                <input type="checkbox" name="autorun" id="setAutomationAutoRun-${automation.id}" value="${automation.autoRun}">
+                <div class="switch">
+                    <label for="setAutomationAutoRun-${automation.id}">Event triggered:</label>
+                    <input id="setAutomationAutoRun-${automation.id}" type="checkbox" class="switch-input" value="${automation.autoRun}">
+                    <label class="slider" for="setAutomationAutoRun-${automation.id}"></label>
+                </div>
             </div>
             <div class="row">
                 <label for="setAutomationDebounceDelay-${automation.id}">Debounce delay (ms):</label>

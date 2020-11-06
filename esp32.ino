@@ -169,7 +169,7 @@ void readPins() {
   if (millis() > DEBOUNCE_INPUT_DELAY + lastDebouncedInputTime) {
     bool gpioStateChanged = false;
     for (GpioFlash& gpio : preferencehandler->gpios) {
-      if (gpio.pin) {
+      if (gpio.pin && gpio.mode != -100) {
         int newState = preferencehandler->getGpioState(gpio.pin);
         if (gpio.state != newState) {
           #ifdef __debug

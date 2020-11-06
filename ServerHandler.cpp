@@ -3,6 +3,7 @@
 #include <AsyncJson.h>
 #include <Update.h>
 #include <SPIFFS.h>
+#include "AsyncResponses.h"
 
 void ServerHandler::begin()
 {
@@ -21,6 +22,9 @@ void ServerHandler::begin()
     });
     server.on("/gpio.js", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/gpio.js", "text/js");
+    });
+    server.on("/camera.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(SPIFFS, "/camera.js", "text/js");
     });
     server.on("/automation.js", HTTP_GET, [](AsyncWebServerRequest *request){
         request->send(SPIFFS, "/automation.js", "text/js");
@@ -96,6 +100,13 @@ void ServerHandler::begin()
     editAutomationHandler->setMethod(HTTP_PUT);
     server.addHandler(addAutomationHandler);
     server.addHandler(editAutomationHandler);
+
+    // Camera endpoints
+    // server.on("/camera",HTTP_GET, [this](AsyncWebServerRequest *request) { setCameraVar(request); });
+    server.on("/camera/init",HTTP_GET, [this](AsyncWebServerRequest *request) { handleCameraInit(request); });
+    server.on("/camera/status",HTTP_GET, [this](AsyncWebServerRequest *request) { getCameraStatus(request); });
+    server.on("/camera/save",HTTP_GET, [this](AsyncWebServerRequest *request) { saveCameraVar(request); });
+    server.on("/camera/stream",HTTP_GET, [this](AsyncWebServerRequest *request) { streamJpg(request); });
 
     // TODO: implement rewrite function to get back to restful api
     // server.addRewrite(new OneParamRewrite("/gpio/{pin}/value/{value}", "/gpio/value/set?p={pin}"));
@@ -555,4 +566,128 @@ void ServerHandler::handleAutomationRemove(AsyncWebServerRequest *request)
         }
     }
     request->send(404, "text/plain", "Not found");
+}
+
+void ServerHandler::handleCameraInit(AsyncWebServerRequest *request) 
+{
+    if (request->hasParam(modelParamName)) {
+        const int model = request->getParam(modelParamName)->value().toInt();
+        bool initialised = preference.initCamera(model);
+        if (initialised){
+            preference.createCamera(model);
+            request->send(200, "text/json", preference.getGpiosJson());
+            return;
+        }
+    }
+    request->send(404, "text/plain", "Not found");
+}
+
+
+void ServerHandler::sendBMP(AsyncWebServerRequest *request){
+    camera_fb_t * fb = esp_camera_fb_get();
+    if (fb == NULL) {
+        log_e("Camera frame failed");
+        request->send(501);
+        return;
+    }
+
+    uint8_t * buf = NULL;
+    size_t buf_len = 0;
+    unsigned long st = millis();
+    bool converted = frame2bmp(fb, &buf, &buf_len);
+    log_i("BMP: %lums, %uB", millis() - st, buf_len);
+    esp_camera_fb_return(fb);
+    if(!converted){
+        request->send(501);
+        return;
+    }
+
+    AsyncBufferResponse * response = new AsyncBufferResponse(buf, buf_len, BMP_CONTENT_TYPE);
+    if (response == NULL) {
+        log_e("Response alloc failed");
+        request->send(501);
+        return;
+    }
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(response);
+}
+
+void ServerHandler::sendJpg(AsyncWebServerRequest *request){
+    camera_fb_t * fb = esp_camera_fb_get();
+    if (fb == NULL) {
+        log_e("Camera frame failed");
+        request->send(501);
+        return;
+    }
+
+    if(fb->format == PIXFORMAT_JPEG){
+        AsyncFrameResponse * response = new AsyncFrameResponse(fb, JPG_CONTENT_TYPE);
+        if (response == NULL) {
+            log_e("Response alloc failed");
+            request->send(501);
+            return;
+        }
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        request->send(response);
+        return;
+    }
+
+    size_t jpg_buf_len = 0;
+    uint8_t * jpg_buf = NULL;
+    unsigned long st = millis();
+    bool jpeg_converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
+    esp_camera_fb_return(fb);
+    if(!jpeg_converted){
+        log_e("JPEG compression failed: %lu", millis());
+        request->send(501);
+        return;
+    }
+    log_i("JPEG: %lums, %uB", millis() - st, jpg_buf_len);
+
+    AsyncBufferResponse * response = new AsyncBufferResponse(jpg_buf, jpg_buf_len, JPG_CONTENT_TYPE);
+    if (response == NULL) {
+        log_e("Response alloc failed");
+        request->send(501);
+        return;
+    }
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(response);
+}
+
+
+void ServerHandler::streamJpg(AsyncWebServerRequest *request){
+    AsyncJpegStreamResponse *response = new AsyncJpegStreamResponse();
+    if(!response){
+        request->send(501);
+        return;
+    }
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(response);
+}
+
+void ServerHandler::getCameraStatus(AsyncWebServerRequest *request){
+    request->send(200, "text/json",preference.getCameraJson());
+}
+
+void ServerHandler::setCameraVar(AsyncWebServerRequest *request){
+    if(!request->hasArg("var") || !request->hasArg("val")){
+        request->send(404);
+        return;
+    }
+    String var = request->arg("var");
+    const char * variable = var.c_str();
+    int val = atoi(request->arg("val").c_str());
+
+    if (preference.setCameraVar(variable,val)) {
+        AsyncWebServerResponse * response = request->beginResponse(200);
+        response->addHeader("Access-Control-Allow-Origin", "*");
+        request->send(response);
+    } else {
+        request->send(404);
+    }
+}
+
+void ServerHandler::saveCameraVar(AsyncWebServerRequest *request){
+    preference.saveCameraSettings();
+    request->send(200);
 }

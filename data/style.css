@@ -46,13 +46,19 @@ form {
   border-bottom: 1px solid lightgray;
 }
 
+#sta-settings {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
 .setting-container form {
   flex-wrap: wrap;
   justify-content: flex-end;
   padding: 10px;
 }
 
-.setting-container label {
+form>label, #sta-settings>label {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -61,7 +67,7 @@ form {
   text-align: left;
 }
 
-.setting-container input[type='text'], input[type='checkbox'] {
+input[type='text'] {
   width: 65%;
   margin: 5px 0 5px;
   height: 30px;
@@ -129,7 +135,7 @@ label.file-upload-label {
   flex-direction: column;
 }
 
-.set>.set-inputs input {
+.set>.set-inputs>.row>input {
   width: 50%;
   height: 30px;
   border: none;
@@ -229,12 +235,65 @@ select {
   width: auto;
 }
 
+.switch {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  line-height: 22px;
+  font-size: 16px;
+  height: 22px;
+  width: 100%;
+}
+.switch-input {
+  outline: 0;
+  opacity: 0;
+  width: 0;
+  height: 0
+}
+
+.slider {
+  width: 50px;
+  height: 22px;
+  border-radius: 22px;
+  cursor: pointer;
+  background-color: grey
+}
+.slider,.slider:before {
+  display: inline-block;
+  transition: .4s
+}
+.slider:before {
+  position: relative;
+  content: "";
+  border-radius: 50%;
+  height: 16px;
+  width: 16px;
+  left: -13px;
+  top: 3px;
+  background-color: #fff
+}
+input:checked+.slider {
+  background-color: yellowgreen
+}
+input:checked+.slider:before {
+  -webkit-transform: translateX(26px);
+  transform: translateX(26px)
+}
+
 .info {
   border-radius: 5px;
   background-color: whitesmoke;
   text-align: initial;
   font-size: small;
   padding: 10px;
+}
+
+#stream {
+  margin-bottom: 10px;
+  margin-top: 10px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 #wifi .info {

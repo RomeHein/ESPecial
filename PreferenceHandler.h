@@ -10,6 +10,7 @@
 #include <Wire.h>
 
 #define GPIO_JSON_CAPACITY JSON_OBJECT_SIZE(9) + 100 + MAX_LABEL_TEXT_SIZE*2
+#define CAMERA_JSON_CAPACITY JSON_OBJECT_SIZE(29) + 100
 #define GPIOS_JSON_CAPACITY JSON_ARRAY_SIZE(GPIO_PIN_COUNT) + GPIO_PIN_COUNT*(GPIO_JSON_CAPACITY)
 #define I2CSLAVE_JSON_CAPACITY JSON_OBJECT_SIZE(8) + 100 + (MAX_LABEL_TEXT_SIZE + MAX_MESSAGE_TEXT_SIZE)*2
 #define I2CSLAVES_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_I2C_SLAVES) + MAX_I2C_SLAVES*(I2CSLAVE_JSON_CAPACITY)
@@ -52,7 +53,7 @@ typedef struct
 {
     uint8_t pin;
     char label[MAX_LABEL_TEXT_SIZE];
-    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C, -3 is analog read, -4 is Touch read
+    int8_t mode; // 1 is INPUT, 2 is OUTPUT, 5 is INPUT_PULLUP, -1 is LEDCONTROL, -2 is I2C, -3 is analog read, -4 is Touch read,-100 is blocked (not available in the list of pins)
     uint32_t frequency;
     uint8_t resolution;
     int8_t channel;
@@ -95,13 +96,46 @@ typedef struct
 
 typedef struct
 {
-    char apSsid[33]; //ssid can be up to 32chars, => plus null term
+    char apSsid[33]; //ssid can be up to 32chars plus null term
     char apPsw[200];
     int8_t staEnable;
     char staSsid[33];
     char staPsw[200];
     char dns[200];
 }  WifiFlash;
+
+typedef struct 
+{
+    int8_t model; //1 : WROVER KIT, 2: ESP EYE, 3: M5STACK PSRAM, 4: M5STACK WIDE, 5: AI THINKER
+    bool faceRecognitionEnable = false;
+    bool isEnrolling = false;
+    uint8_t framsize;
+    uint8_t quality;
+    char brightness;
+    char contrast;
+    char saturation;
+    char sharpness;
+    uint8_t specialEffect;
+    uint8_t wbMode;
+    uint8_t awb; // whitebal
+    uint8_t awbGain; // 
+    uint8_t aec; // exposure control
+    uint8_t aec2;
+    uint8_t denoise;
+    char aeLevel;
+    uint8_t aecValue;
+    uint8_t agc; // gain control
+    uint8_t agcGain;
+    uint8_t gainceiling;
+    uint8_t bpc;
+    uint8_t wpc;
+    uint8_t rawGma;
+    uint8_t lenc;
+    uint8_t hmirror;
+    uint8_t vflip;
+    uint8_t dcw;
+    uint8_t colorbar;
+} CameraFlash;
 
  
 class PreferenceHandler
@@ -119,6 +153,13 @@ private:
     bool detach(GpioFlash& gpio);
     int touchTempValues[GPIO_PIN_COUNT] = {};
     long lastTouchDebounceTimes[GPIO_PIN_COUNT] = {};
+    uint8_t cameraPinsConfig[5][16] = {
+        {4,5,18,19,36,39,34,35,21,22,25,23,26,27,-1,-1}, // CAMERA_MODEL_WROVER_KIT 
+        {34,13,14,35,39,38,37,36,4,25,5,27,18,23,-1,-1}, // CAMERA_MODEL_ESP_EYE
+        {32,35,34,5,39,18,36,19,27,21,22,26,25,23,-1,15}, // CAMERA_MODEL_M5STACK_PSRAM
+        {32,35,34,5,39,18,36,19,27,21,25,26,22,23,-1,15}, // CAMERA_MODEL_M5STACK_WIDE
+        {5,18,19,21,36,39,34,35,0,22,25,23,26,27,32,-1} // CAMERA_MODEL_AI_THINKER
+    };
 public:
     void begin();
     void clear();
@@ -156,5 +197,13 @@ public:
     // Wifi
     WifiFlash wifi;
     bool editWifi(const char* dns, const char* apSsid, const char* apPsw, int staEnable,const char* staSsid, const char* staPsw);
+    // Camera
+    CameraFlash camera;
+    void createCamera(const int model);
+    void removeCamera();
+    bool initCamera(const int model);
+    String getCameraJson();
+    void saveCameraSettings();
+    bool setCameraVar(const char* var, int value);
 };
 #endif

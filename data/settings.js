@@ -5,11 +5,13 @@ const switchPage = () => {
         document.getElementById("go-to-settings-button").classList.add("hidden");
         document.getElementById("gpio-container").classList.add("hidden");
         document.getElementById("automation-container").classList.add("hidden");
+        document.getElementById("camera-container").classList.add("hidden");
         document.getElementById("home-button").classList.remove("hidden");
         document.getElementById("setting-container").classList.remove("hidden");
     } else {
         document.getElementById("go-to-settings-button").classList.remove("hidden");
         document.getElementById("gpio-container").classList.remove("hidden");
+        document.getElementById("camera-container").classList.remove("hidden");
         document.getElementById("automation-container").classList.remove("hidden");
         document.getElementById("home-button").classList.add("hidden");
         document.getElementById("setting-container").classList.add("hidden");
@@ -21,7 +23,7 @@ const fillUpdateInput = (element) => {
     document.getElementById("firmware-file-label").innerHTML = fileName[fileName.length - 1];
     document.getElementById("submit-update-file").classList.remove("disable");
 };
-const selectFirmwareVersion = (element) => {
+const selectFirmwareVersion = () => {
     const versiontSelector = document.getElementById("select-firmware-version");
     if (versiontSelector.value) {
         document.getElementById("submit-update-file").classList.remove("disable");
@@ -64,6 +66,14 @@ const submitUpdate = async () => {
 
 };
 // MQTT
+const switchMqtt = (input) => {
+    const mqttForm = document.getElementById("mqtt-form");
+    if (input.checked) {
+        mqttForm.classList.remove("hidden");
+    } else {
+        mqttForm.classList.add("hidden");
+    }
+}
 const mqttConnect = async () => {
     const loader = document.getElementById("mqtt-retry-loader");
     const retryButton = document.getElementById("mqtt-retry");
@@ -109,6 +119,14 @@ const submitMqtt = async (e) => {
     }
 };
 // Telegram
+const switchTelegram = (input) => {
+    const telegramForm = document.getElementById("telegram-form");
+    if (input.checked) {
+        telegramForm.classList.remove("hidden");
+    } else {
+        telegramForm.classList.add("hidden");
+    }
+}
 const submitTelegram = async (e) => {
     e.preventDefault();
     const active = +document.getElementById("telegram-active").checked;
@@ -125,6 +143,14 @@ const submitTelegram = async (e) => {
     }
 };
 // WIFI
+const switchSta = (input) => {
+    const staSettings = document.getElementById("sta-settings");
+    if (input.checked) {
+        staSettings.classList.remove("hidden");
+    } else {
+        staSettings.classList.add("hidden");
+    }
+}
 const submitWifi= async (e) => {
     e.preventDefault();
     const dns = document.getElementById("wifi-dns").value;
