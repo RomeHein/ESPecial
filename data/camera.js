@@ -1,13 +1,4 @@
 /*global settings, camera, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner*/
-const addCamera = () => {
-    closeAnySettings();
-    const topBar = document.getElementById("camera-header-bar");
-    if (!topBar.classList.value.includes("open")) {
-        topBar.appendChild(createEditCameraPanel());
-        topBar.classList.add("open");
-    }
-};
-
 const createEditCameraPanel = () => {
     let child = document.createElement("div");
     child.classList.add("set");
@@ -58,5 +49,24 @@ const switchStream = (input) => {
     } else {
         // window.stop();
         streamView.classList.add("hidden");
+    }
+};
+
+const switchFr = (input) => {
+    const facerecognitionView = document.getElementById("face-recognition");
+    if (input.checked) {
+        facerecognitionView.classList.remove("hidden");
+    } else {
+        // window.stop();
+        facerecognitionView.classList.add("hidden");
+    }
+};
+
+const addCamera = () => {
+    closeAnySettings();
+    const topBar = document.getElementById("camera-header-bar");
+    if (!topBar.classList.value.includes("open")) {
+        topBar.appendChild(createEditCameraPanel());
+        topBar.classList.add("open");
     }
 };

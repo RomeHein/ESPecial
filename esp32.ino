@@ -363,8 +363,8 @@ void runAutomation(AutomationFlash& automation) {
           } else if (type == 2) {
             String value = String(automation.actions[i][1]);
             parseActionString(value);
-            telegramhandler->queueMessage(value.c_str());
-          // Print on serial
+            telegramhandler->queueMessage(value.c_str(), automation.actions[i][2]);
+          // Send telegram picture action
           } else if (type == 3) {
             String value = String(automation.actions[i][1]);
             parseActionString(value);
@@ -569,7 +569,7 @@ void loop(void) {
       delay(500);
       ++count;
       #ifdef __debug
-        Serial.printf("[MAIN_LOOP] Wifi deconnected: attempt %i\n", count);
+        Serial.printf("[MAIN_LOOP] Wifi deconnected: attempt %i/200\n", count);
       #endif
       if (count == 200) {
         Serial.println(F("[MAIN_LOOP] Failed to reconnect, restarting now."));

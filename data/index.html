@@ -53,6 +53,16 @@
                 <div class="row">
                     <img id="stream" src="" class="hidden"></img>
                 </div>
+                <div class="row">
+                    <div class="switch">
+                        <label for="fr-enable">Enable face recognition:</label>
+                        <input id="fr-enable" type="checkbox" class="switch-input" onclick="switchFr(this)">
+                        <label class="slider" for="fr-enable"></label>
+                    </div>
+                </div>
+                <div id="face-recognition" class="row">
+                    
+                </div>
             </div>
         </div>
     </div>
@@ -110,7 +120,7 @@
                     <input id="mqtt-active" type="checkbox" class="switch-input" onclick="switchMqtt(this)">
                     <label class="slider" for="mqtt-active"></label>
                 </div>
-                <form onsubmit='submitMqtt(event)' id='mqtt-form'>
+                <div id='mqtt-settings'>
                     <label for='mqtt-fn'>Friendly name:</label>
                     <input type='text' name='fn' id='mqtt-fn'>
                     <label for='mqtt-host'>Host:</label>
@@ -127,8 +137,10 @@
                         <span>Retry</span>
                         <div class="lds-ring hidden" id='mqtt-retry-loader'><div></div><div></div><div></div><div></div></div>
                     </a>
-                    <input id='submit-mqtt-pref' type='submit'class='btn save' value='Save'>
-                </form>
+                </div>
+                <div class="set-buttons">
+                    <a onclick="saveMqttSettings(this)" id="submit-mqtt-pref" class="btn save">save</a>
+                </div>
             </div>
             <div id='telegram' class='setting-container'>
                 <p>Telegram</p>
@@ -137,13 +149,15 @@
                     <input id="telegram-active" type="checkbox" class="switch-input" onclick="switchTelegram(this)">
                     <label class="slider" for="telegram-active"></label>
                 </div>
-                <form onsubmit='submitTelegram(event)' id='telegram-form'>                    
+                <div id='telegram-settings'>                    
                     <label for='telegram-token'>Token:</label>
                     <input type='text' name='token' id='telegram-token'>
                     <label for='telegram-users'>Authorised users: (empty if public)</label>
                     <input type='text' name='users' id='telegram-users' placeholder="telegram user ids, separeted by a comma.">
-                    <input id='submit-telegram-pref' type='submit'class='btn save' value='Save'>
-                </form>
+                </div>
+                <div class="set-buttons">
+                    <a onclick="saveTelegramSettings(this)" id="submit-telegram-pref" class="btn save">save</a>
+                </div>
             </div>
             <div id='backup' class='setting-container'>
                 <p>Backup</p>
@@ -412,10 +426,10 @@
         fetchSettings().then(() => {
             // Hide settings if not activated
             if (!settings.mqtt.active) {
-                document.getElementById("mqtt-form").classList.add("hidden");
+                document.getElementById("mqtt-settings").classList.add("hidden");
             }
             if (!settings.telegram.active) {
-                document.getElementById("telegram-form").classList.add("hidden");
+                document.getElementById("telegram-settings").classList.add("hidden");
             }
             if (!settings.wifi.staEnable) {
                 document.getElementById("sta-settings").classList.add("hidden");

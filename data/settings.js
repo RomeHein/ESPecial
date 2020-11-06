@@ -67,7 +67,7 @@ const submitUpdate = async () => {
 };
 // MQTT
 const switchMqtt = (input) => {
-    const mqttForm = document.getElementById("mqtt-form");
+    const mqttForm = document.getElementById("mqtt-settings");
     if (input.checked) {
         mqttForm.classList.remove("hidden");
     } else {
@@ -101,7 +101,7 @@ const mqttConnect = async () => {
     retryText.classList.remove("hidden");
 };
 
-const submitMqtt = async (e) => {
+const saveMqttSettings = async (e) => {
     e.preventDefault();
     const active = document.getElementById("mqtt-active").checked;
     const fn = document.getElementById("mqtt-fn").value;
@@ -121,15 +121,14 @@ const submitMqtt = async (e) => {
 };
 // Telegram
 const switchTelegram = (input) => {
-    const telegramForm = document.getElementById("telegram-form");
+    const telegramForm = document.getElementById("telegram-settings");
     if (input.checked) {
         telegramForm.classList.remove("hidden");
     } else {
         telegramForm.classList.add("hidden");
     }
 }
-const submitTelegram = async (e) => {
-    e.preventDefault();
+const saveTelegramSettings = async () => {
     const active = +document.getElementById("telegram-active").checked;
     const token = document.getElementById("telegram-token").value;
     const users = document.getElementById("telegram-users").value.split(",").map((id) => +id);

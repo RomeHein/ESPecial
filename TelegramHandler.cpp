@@ -1,11 +1,15 @@
 #include "TelegramHandler.h"
 #include <ArduinoJson.h>
-
-//unmark following line to enable debug mode
-#define __debug
+#include "esp_camera.h"
 
 int Bot_mtbs = 1000; //mean time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
+
+camera_fb_t *fb = NULL;
+bool isMoreDataAvailable();
+byte *getNextBuffer();
+int getNextBufferLen();
+bool dataAvailable = false;
 
 void TelegramHandler::begin() {
     if (!isInit && preference.telegram.active && preference.telegram.token) {
@@ -177,13 +181,16 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
   }
 }
 
-void TelegramHandler::queueMessage(const char* message) {
+void TelegramHandler::queueMessage(const char* message, bool withPicture) {
   if (isInit && preference.telegram.token && preference.telegram.active) {
     if (lastMessageQueuedPosition<MAX_QUEUED_MESSAGE_NUMBER) {
       #ifdef __debug  
         Serial.printf("[TELEGRAM] queued message: %s\n",message);
       #endif
-      strcpy(messagesQueue[lastMessageQueuedPosition],message);
+      TelegramMessageQueue newMessage;
+      strcpy(newMessage.text,message);
+      newMessage.sendWithPicture = withPicture;
+      messagesQueue[lastMessageQueuedPosition] = newMessage;
       lastMessageQueuedPosition++;
     } else {
       #ifdef __debug  
@@ -201,9 +208,14 @@ void TelegramHandler::sendQueuedMessages() {
       // Check if we have a chatId corresponding to a telegram user
       if (preference.telegram.users[j] && preference.telegram.chatIds[j]) {
         #ifdef __debug  
-          Serial.printf("[TELEGRAM] sending message: %s\n", messagesQueue[i]);
+          Serial.printf("[TELEGRAM] sending message: %s\n", messagesQueue[i].text);
         #endif
-        bot->sendMessage(String(preference.telegram.chatIds[j]), messagesQueue[i]);
+        if (strcmp(messagesQueue[i].text, "") > 0) {
+          bot->sendMessage(String(preference.telegram.chatIds[j]), messagesQueue[i].text);
+        }
+        if (messagesQueue[i].sendWithPicture) {
+          sendPictureFromCameraToChat(preference.telegram.chatIds[j]);
+        }
         didSentMessage = true;
       } 
     }
@@ -219,5 +231,50 @@ void TelegramHandler::sendQueuedMessages() {
     memset(messagesQueue, 0, sizeof(messagesQueue));
     lastMessageQueuedPosition = 0; 
   }
+}
+
+void TelegramHandler::sendPictureFromCameraToChat(int chat_id) {
+  // Take Picture with Camera
+  fb = esp_camera_fb_get();
+  if (!fb)
+  {
+    Serial.println("Camera capture failed");
+    return;
+  }
+  dataAvailable = true;
+  Serial.println("Sending");
+  bot->sendPhotoByBinary(String(chat_id), "image/jpeg", fb->len,
+                        isMoreDataAvailable, nullptr,
+                        getNextBuffer, getNextBufferLen);
+
+  #ifdef __debug  
+    Serial.printf("[TELEGRAM] sending picture from camera\n");
+  #endif
+  esp_camera_fb_return(fb);
+}
+
+bool isMoreDataAvailable()
+{
+  if (dataAvailable) {
+    dataAvailable = false;
+    return true;
+  }
+  return false;
+}
+
+byte *getNextBuffer()
+{
+  if (fb) {
+    return fb->buf;
+  }
+  return nullptr;
+}
+
+int getNextBufferLen()
+{
+  if (fb) {
+    return fb->len;
+  }
+  return 0;
 }
 

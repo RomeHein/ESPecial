@@ -62,12 +62,13 @@ const addConditionEditor = (condition) => {
 };
 const addActionEditor = (action) => {
     let selectedType = 1;
-    let selectedValue = 0;
-    let selectedPin = 0;
+    let selectedValue;
+    let selectedPin;
     let selectedSign = 1;
     let selectedHttpMethod = 1;
-    let selectedHttpAddress = "";
-    let selectedHttpContent = "";
+    let selectedHttpAddress;
+    let selectedHttpContent;
+    let sendTelegramMessageWithPicture = 0;
     if (action) {
         selectedType = +action[0];
         selectedValue = action[1];
@@ -76,8 +77,14 @@ const addActionEditor = (action) => {
         selectedHttpMethod = action[1];
         selectedHttpAddress = action[2];
         selectedHttpContent = action[3];
+        sendTelegramMessageWithPicture = +action[2];
     }
-    let gpioActionOptions = gpios.reduce((acc, gpio) => acc + `<option value=${gpio.pin} ${selectedPin === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`, "");
+    let gpioActionOptions = gpios.reduce((acc, gpio) => {
+        if (gpio.mode !== -100) {
+            return acc + `<option value=${gpio.pin} ${selectedPin === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`
+        }
+        return acc;
+    }, "");
     let automationOptions = automations.reduce((acc, automation) => acc + `<option value=${automation.id} ${+selectedValue === +automation.id ? "selected" : ""}>${automation.label}</option>`, "");
     const actionEditorElement = document.getElementById("action-editor-result");
     const actionNumber = "-" + actionEditorElement.childElementCount;
@@ -97,8 +104,8 @@ const addActionEditor = (action) => {
                         <option value=1 ${selectedHttpMethod === 1 ? "selected" : ""}>GET</option>
                         <option value=2 ${selectedHttpMethod === 2 ? "selected" : ""}>POST</option>
                     </select>
-                    <input id="addHTTPAddress${actionNumber}" name="httpAddress" class="${selectedType === 6 ? "" : "hidden"}" placeholder="http://www.placeholder.com/" value="${selectedHttpAddress}">
-                    <input id="addHTTPBody${actionNumber}" name="httpBody" class="${selectedType === 6 ? "" : "hidden"}" placeholder="Body in json format" value="${selectedHttpContent}">
+                    <input id="addHTTPAddress${actionNumber}" type="text" name="httpAddress" class="${selectedType === 6 ? "" : "hidden"}" placeholder="http://www.placeholder.com/" value="${selectedHttpAddress}">
+                    <input id="addHTTPBody${actionNumber}" type="text" name="httpBody" class="${selectedType === 6 ? "" : "hidden"}" placeholder="Body in json format" value="${selectedHttpContent}">
                     <select id="addGpioAction${actionNumber}" name="gpioAction" class="${selectedType === 1 ? "" : "hidden"}">${gpioActionOptions}</select>
                     <select id="addSignAction${actionNumber}" name="signAction" class="${selectedType === 1 ? "" : "hidden"}">
                         <option value=1 ${selectedSign === 1 ? "selected" : ""}>=</option>
@@ -107,7 +114,12 @@ const addActionEditor = (action) => {
                         <option value=4 ${selectedSign === 4 ? "selected" : ""}>*=</option>
                     </select>
                     <select id="addAutomation${actionNumber}" name="automation" class="${selectedType === 7 ? "" : "hidden"}">${automationOptions}</select>
-                    <input id="addValueAction${actionNumber}" name="valueAction" value="${selectedValue}" class="${selectedType === 6 || selectedType === 7 ? "hidden" : ""}" placeholder="value">
+                    <input id="addValueAction${actionNumber}" type="text" name="valueAction" value="${selectedValue}" class="${selectedType === 6 || selectedType === 7 ? "hidden" : ""}" placeholder="${selectedType === 1 ? "value" : "text"}">
+                    <div id="addPictureToTelegramAction${actionNumber}-container" class="switch ${selectedType !== 2 || !camera.model ? "hidden" : ""}">
+                        <label for="addPictureToTelegramAction${actionNumber}">Send picture:</label>
+                        <input id="addPictureToTelegramAction${actionNumber}" type="checkbox" class="switch-input" value="${sendTelegramMessageWithPicture}">
+                        <label class="slider" for="addPictureToTelegramAction${actionNumber}"></label>
+                    </div>
                     <a onclick="deleteRowEditor(this)" id="deleteAction${actionNumber}" class="btn delete">x</a>`;
     actionEditorElement.appendChild(rowElement);
     // Update actions left number
@@ -192,6 +204,11 @@ const updateActionType = (element) => {
         document.getElementById(`addGpioAction-${rowNumber}`).classList.add("hidden");
         document.getElementById(`addSignAction-${rowNumber}`).classList.add("hidden");
     }
+    if (value === 2 && camera.model) {
+        document.getElementById(`addPictureToTelegramAction-${rowNumber}-container`).classList.remove("hidden");
+    } else {
+        document.getElementById(`addPictureToTelegramAction-${rowNumber}-container`).classList.add("hidden");
+    }
     if (value === 6 || value === 7) {
         document.getElementById(`addValueAction-${rowNumber}`).classList.add("hidden");
     } else {
@@ -235,10 +252,11 @@ const openAutomationSetting = (element) => {
             }
         })
         // Fill actions
-        automation.actions.forEach((action) => {
+        automation.actions.forEach((action,index) => {
             // Check if the action contains a valid type
             if (action[0]) {
                 addActionEditor(action);
+                document.getElementById(`addPictureToTelegramAction-${index}`).checked = action[2];
             }
         })
         row.classList.add("open");
@@ -272,6 +290,8 @@ const saveAutomationSetting = async (element) => {
             ];
         } else if (+type === 7) {
             return [type, document.getElementById(`addAutomation-${id}`).value, "", ""];
+        } else if (+type === 2 && camera.model) {
+            return [type, document.getElementById(`addValueAction-${id}`).value, `${+document.getElementById(`addPictureToTelegramAction-${id}`).checked}`, ""];
         } else {
             return [type, document.getElementById(`addValueAction-${id}`).value,
                 document.getElementById(`addGpioAction-${id}`).value,

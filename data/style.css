@@ -52,13 +52,14 @@ form {
   flex-wrap: wrap;
 }
 
-.setting-container form {
+.setting-container form, #mqtt-settings, #telegram-settings {
+  display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   padding: 10px;
 }
 
-form>label, #sta-settings>label {
+form>label, #sta-settings>label, #mqtt-settings>label,#telegram-settings>label  {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -162,7 +163,7 @@ select {
   background-color: white;
 }
 
-.set>.set-buttons {
+.set>.set-buttons, .setting-container .set-buttons {
   display: flex;
   flex-direction: row;
   justify-content: flex-end;

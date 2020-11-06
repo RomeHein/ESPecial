@@ -46,8 +46,6 @@ private:
     void handleAutomationNew(AsyncWebServerRequest *request,JsonVariant &json);
     
     void handleCameraInit(AsyncWebServerRequest *request);
-    void sendBMP(AsyncWebServerRequest *request);
-    void sendJpg(AsyncWebServerRequest *request);
     void streamJpg(AsyncWebServerRequest *request);
     void getCameraStatus(AsyncWebServerRequest *request);
     void setCameraVar(AsyncWebServerRequest *request);
