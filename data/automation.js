@@ -30,7 +30,7 @@ const addConditionEditor = (condition) => {
 
     let gpioConditionOptions = `<option value=-2 ${selectedGpio === -2 ? "selected" : ""}>Weekday</option><option value=-1 ${selectedGpio === -1 ? "selected" : ""}>Time</option>`;
     gpioConditionOptions += gpios.reduce((acc, gpio) => {
-        if (gpio.mode != -100) {
+        if (gpio.mode = -100) {
             return acc + `<option value=${gpio.pin} ${selectedGpio === +gpio.pin ? "selected" : ""}>${gpio.label}</option>`;
         }
         return acc;

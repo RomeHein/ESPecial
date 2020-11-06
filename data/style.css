@@ -249,7 +249,7 @@ select {
   outline: 0;
   opacity: 0;
   width: 0;
-  height: 0
+  height: 0;
 }
 
 .slider {
@@ -257,13 +257,15 @@ select {
   height: 22px;
   border-radius: 22px;
   cursor: pointer;
-  background-color: grey
+  background-color: grey;
 }
-.slider,.slider:before {
+
+.slider,.slider::before {
   display: inline-block;
-  transition: .4s
+  transition: 0.4s;
 }
-.slider:before {
+
+.slider::before {
   position: relative;
   content: "";
   border-radius: 50%;
@@ -271,14 +273,16 @@ select {
   width: 16px;
   left: -13px;
   top: 3px;
-  background-color: #fff
+  background-color: #fff;
 }
+
 input:checked+.slider {
   background-color: yellowgreen
 }
+
 input:checked+.slider:before {
   -webkit-transform: translateX(26px);
-  transform: translateX(26px)
+  transform: translateX(26px);
 }
 
 .info {
@@ -413,21 +417,6 @@ input:checked+.slider:before {
   height: 20px;
 }
 
-#mqtt-retry-loader {
-  height: 100%;
-  width: 100%;
-}
-
-#mqtt-retry-loader div {
-  border-width: 2px;
-}
-
-.spinner {
-  height: 30px;
-  border-radius: 5px;
-  background-color: lightgray;
-}
-
 .lds-ring {
   width: 50px;
   height: 50px;
@@ -467,6 +456,21 @@ input:checked+.slider:before {
   100% {
     transform: rotate(360deg);
   }
+}
+
+#mqtt-retry-loader {
+  height: 100%;
+  width: 100%;
+}
+
+#mqtt-retry-loader div {
+  border-width: 2px;
+}
+
+.spinner {
+  height: 30px;
+  border-radius: 5px;
+  background-color: lightgray;
 }
 
 @media only screen and (max-width: 600px) {

@@ -1,4 +1,4 @@
-/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner, createGpioControlRow, createI2cSlaveControlRow, createAutomationRow*/
+/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, blocker, restart, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner, createGpioControlRow, createI2cSlaveControlRow, createAutomationRow, fetchServicesHealth*/
 const switchPage = () => {
     isSettingsMenuActivated = !isSettingsMenuActivated;
     if (isSettingsMenuActivated) {
@@ -73,7 +73,8 @@ const switchMqtt = (input) => {
     } else {
         mqttForm.classList.add("hidden");
     }
-}
+};
+
 const mqttConnect = async () => {
     const loader = document.getElementById("mqtt-retry-loader");
     const retryButton = document.getElementById("mqtt-retry");
@@ -178,7 +179,7 @@ const submitWifi= async (e) => {
 };
 const resetSettings = async () => {
     try {
-        await fetch(window.location.href + `settings/reset`);
+        await fetch(window.location.href + "settings/reset");
         await restart();
     } catch (err) {
         await displayNotification(err, "error");
@@ -187,7 +188,7 @@ const resetSettings = async () => {
 const backupSettings = async () => {
     let backup = { gpios, automations, slaves, settings};
     var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
-    var dlAnchorElem = document.getElementById('downloadAnchorElem');
+    var dlAnchorElem = document.getElementById("downloadAnchorElem");
     dlAnchorElem.setAttribute("href",dataStr);
     dlAnchorElem.setAttribute("download", "backup.json");
     dlAnchorElem.click();

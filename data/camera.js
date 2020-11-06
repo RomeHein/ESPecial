@@ -1,4 +1,4 @@
-/*global settings, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner*/
+/*global settings, camera, health, gpios, slaves, availableGpios, automations, versionsList, isSettingsMenuActivated, delay, request, displayNotification, closeAnySettings, createSpinner*/
 const addCamera = () => {
     closeAnySettings();
     const topBar = document.getElementById("camera-header-bar");
@@ -28,10 +28,10 @@ const createEditCameraPanel = () => {
             <a onclick="initCamera(this)" id="initCamera" class="btn save">Init camera</a>
         </div>`;
     return child;
-}
+};
 
 const initCamera = async () => {
-    const model = document.getElementById(`setCameraModel`).value;
+    const model = document.getElementById("setCameraModel").value;
     try {
         if (!model) {
             throw new Error("Parameters missing, please fill all the inputs");
@@ -48,7 +48,7 @@ const initCamera = async () => {
     } catch (err) {
         await displayNotification(err, "error");
     }
-}
+};
 
 const switchStream = (input) => {
     const streamView = document.getElementById("stream");
@@ -59,4 +59,4 @@ const switchStream = (input) => {
         // window.stop();
         streamView.classList.add("hidden");
     }
-}
+};
