@@ -238,8 +238,8 @@
         let child = document.createElement("div");
         const digitalState = (gpio.state && !gpio.invert) || (!gpio.state && gpio.invert);
         let additionnalButton = `<a onclick="switchGpioState(this)" id="stateGpio-${gpio.pin}" class="btn ${digitalState ? "on" : "off"} ${+gpio.mode !== 2 ? "input-mode" : ""}">${digitalState ? "on" : "off"}</a>`;
-        if (+gpio.mode === -1) {
-            // For PWM
+        if (+gpio.mode === -1 || +gpio.mode === -5) {
+            // For PWM or DAC
             additionnalButton = `<input type="number" onchange="switchGpioState(this)" id="stateGpio-${gpio.pin}" value="${gpio.state}">`;
         } else if (+gpio.mode === -2) {
             // For I2C mode

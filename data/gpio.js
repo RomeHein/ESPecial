@@ -23,6 +23,7 @@ const createPinOptions = (gpio) => {
         (((+mode === 2 || +mode === -1 || +mode === -2) && !availableGpio.inputOnly) 
         || (+mode === -3 && availableGpio.adc) 
         || (+mode === -4 && availableGpio.touch) 
+        || (+mode === -5 && availableGpio.dac) 
         || +mode === 1 || +mode === 4 || +mode === 5 || +mode === 8 || +mode === 9)) {
             prev += `<option value=${availableGpioPin} ${+gpio.pin === availableGpioPin ? "selected" : ""}>${availableGpioPin}</option>`;
         }
@@ -70,6 +71,7 @@ const createEditGpioPanel = (gpio) => {
                     <option ${+gpio.mode === -2 ? "selected" : ""} value=-2>I2C</option>
                     <option ${+gpio.mode === -3 ? "selected" : ""} value=-3>ADC (analog read)</option>
                     <option ${+gpio.mode === -4 ? "selected" : ""} value=-4>Touch</option>
+                    <option ${+gpio.mode === -5 ? "selected" : ""} value=-5>DAC</option>
                 </select>
             </div>
             <div class="row">
@@ -116,7 +118,7 @@ const createEditGpioPanel = (gpio) => {
                     <label class="slider" for="setGpioInvertState-${gpio.pin}"></label>
                 </div>
             </div>
-            <div class="row ${+gpio.mode !== -1 && +gpio.mode !== 2 ? "hidden" : ""}" id="setGpioSaveRow">
+            <div class="row ${+gpio.mode !== -1 && +gpio.mode !== 2 && +gpio.mode !== -5 ? "hidden" : ""}" id="setGpioSaveRow">
                 <div class="switch">
                     <label for="setGpioSave-${gpio.pin}">Save state:</label>
                     <input id="setGpioSave-${gpio.pin}" type="checkbox" class="switch-input" value="${gpio.save}">
@@ -143,19 +145,27 @@ const updateGpioOptions = (element) => {
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
         document.getElementById("i2c-options").classList.add("hidden");
         document.getElementById("adc-options").classList.add("hidden");
-        // I2C mode
+    // I2C mode
     } else if (option === -2) {
         document.getElementById("setGpioSaveRow").classList.add("hidden");
         document.getElementById("led-options").classList.add("hidden");
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
         document.getElementById("i2c-options").classList.remove("hidden");
         document.getElementById("adc-options").classList.add("hidden");
+    // ADC mode
     }  else if (option === -3) {
         document.getElementById("setGpioSaveRow").classList.add("hidden");
         document.getElementById("led-options").classList.add("hidden");
         document.getElementById("setGpioInvertStateRow").classList.add("hidden");
         document.getElementById("i2c-options").classList.add("hidden");
         document.getElementById("adc-options").classList.remove("hidden");
+    // DAC mode
+    }  else if (option === -5) {
+        document.getElementById("setGpioSaveRow").classList.remove("hidden");
+        document.getElementById("led-options").classList.add("hidden");
+        document.getElementById("setGpioInvertStateRow").classList.add("hidden");
+        document.getElementById("i2c-options").classList.add("hidden");
+        document.getElementById("adc-options").classList.add("hidden");
     } else {
         if (option === 2) {
             document.getElementById("setGpioSaveRow").classList.remove("hidden");
@@ -180,7 +190,8 @@ const switchGpioState = async (element) => {
             element.classList.remove(isOn ? "on" : "off");
             element.classList.add(isOn ? "off" : "on");
             element.innerText = (isOn ? "off" : "on");
-        } else if (gpio.mode === -1) {
+        // if PWM of DAC, send value directly
+        } else if (gpio.mode === -1 || gpio.mode === -5) {
             await fetch(`${window.location.href}gpio/value?pin=${gpio.pin}&value=${element.value}`);
         }
     } catch (err) {

@@ -352,6 +352,7 @@ void ServerHandler::handleAvailableGpios(AsyncWebServerRequest *request) {
         JsonObject object = doc.createNestedObject();
         object["inputOnly"] = !GPIO_IS_VALID_OUTPUT_GPIO(i);
         object["adc"] = (i>=32); // Only GPIOs 32 to 39 are working correctly for adc mode when wifi is active.
+        object["dac"] = (i==26 || i==25);
         if (i == 4 || i == 2 || i == 12 || i == 13 || i == 14 || i == 15 || i == 27 || i == 32 || i ==33) {
             object["touch"] = true;
         }

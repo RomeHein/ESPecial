@@ -175,9 +175,12 @@ void  PreferenceHandler::initGpios()
                 Serial.printf("Preferences: init pin %i on mode %i\n", gpio.pin, gpio.mode);
             #endif
             attach(gpio);
-            // Only write saved state if we have analog mode
+            // Only write saved state if we have analog mode ...
             if (gpio.mode == -1) {
                 ledcWrite(gpio.channel, gpio.state);
+            // ... or DAC mode
+            } else if (gpio.mode == -1) {
+                dacWrite(gpio.pin, gpio.state);
             } else if (gpio.mode == 2) {
                 // Default OUTPIN IO to low
                 digitalWrite(gpio.pin, gpio.save ? gpio.state : 0);
@@ -223,8 +226,9 @@ bool PreferenceHandler::attach(GpioFlash& gpio) {
         return true;
     } else if (gpio.mode == -3) {
         adcAttachPin(gpio.pin);
+    } else if (gpio.mode == -5) {
+        dacWrite(gpio.pin,0);
     }
-    
     return false;
 }
 
@@ -530,6 +534,8 @@ void PreferenceHandler::setGpioState(int pin, int value, bool persist) {
             digitalWrite(pin, newValue);
         } else if (gpio.mode==-1 && gpio.channel!=CHANNEL_NOT_ATTACHED) {
             ledcWrite(gpio.channel, newValue);
+        } else if (gpio.mode==-5) {
+            dacWrite(gpio.pin, newValue);
         }
         // Persist state in flash only if we have digital input in output or analog mode
         if (persist) {
@@ -581,8 +587,8 @@ int PreferenceHandler::getGpioState(int pin) {
             // every time we have a new value greater than TOUCH_VARIATION_ALLOWED, start a new timer. If the variation is steady during TOUCH_TIME_INTERVAL, we can say we have a touch event... fiou
             lastTouchDebounceTimes[gpio.pin] = millis();
         }
-        return gpio.state;
     }
+    return gpio.state;
 }
 
 String PreferenceHandler::gpioToJson(GpioFlash& gpio) {
