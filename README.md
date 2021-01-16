@@ -15,7 +15,9 @@ https://youtu.be/_ucSs9OT7Eg
 
 
 ## Features:
-- [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C/touchControl support), send telegram message, send http requests etc. No need to update the firmware, everything is dynamic.
+- [x] Automation: program actions that can be triggered via many different channels (api, mqtt, telegram bot or simply by pins events), without having to code. Control pins value (digital/ledControl/analog/I2C/touchControl support/ADC/DAC), send telegram message, send http requests etc. No need to update the firmware, everything is dynamic.
+
+- [x] ESP-CAM support: stream video directly in the interface. Program an automation to send picture via telegram.
 
 - [x] REST API: Exposes gpio and automations logic. Set pin digital/analog value, mode (input/output), frequence, resolution, if you want to store its state in flash. Trigger automations. Scan I2C addresses, send I2C commands.
 
@@ -134,7 +136,7 @@ For now, you have two types of conditions:
 Now we can set our first action. Simply click the add button in the action editor section.
 You can choose between three types of actions:
 - Set gpio value/pulse
-- Send telegram message
+- Send telegram message (and image if you have an ESP-CAM board)
 - Send http/https request.
 - Automation: run another automation you have already set. This means you can nest an infinite number of automations! Each automation will check its conditions before running.
 - Delay: note that this delay is an actual 'delay' function. Meaning that you'll block the process. Yes, automations run sequencially. The process maintains an automation queue where the oldest automation queued is played first. So don't go crazy on that `delay` option (meaning this should not be used as a timer 😉).
@@ -187,6 +189,13 @@ When you first start the conversation with your bot, telegram will only display 
 It's important to note that if you leave the authorised user list empty, your bot will answer to anyone. So be secure, and add at least one user id 😉
 
 Now you're be able to control all pins in output mode by sending a `/out` or the automations you have set with `/auto`. The bot will answer a list of buttons corresponding to the list you've set on the web interface of the ESP32, sweet!
+
+### ESP-CAM (work in progress)
+
+If you have an ESP-CAM board, ESPecial can handle the stream video directly in the web interface. You can also send images among text to telegram via an automation.
+When accessing the interface for the first time, simply click the add button in the the camera section. Select your model, and you should be good to go.
+
+note: At the moment the stream functionnality does not work as explected and will crash avery 20 sec or so of use. 
 
 ### Siri integration (iOS)
 
