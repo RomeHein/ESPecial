@@ -89,12 +89,13 @@ We now need to upload webserver files to the SPIFF partition, simply follow [thi
 ## Usage
 
 ### Wifi connection
-You should first connect your esp32 to your local network. This is easily done thanks to the WifiManager library. Simply power on your device, and connect to the access point (AP) provided. Its name should be the one you provided in the variable called `APName` at the begining of the main.ino file, you can of course change it. 
-Once connected to the AP, a configuration window should appears. From here you can connect to your local network (the one provided by your rooter, internet box etc).
+You should first connect your esp32 to your local network. Simply power on your device, and connect to the access point (AP) call ESP32 with the password `p@ssword2000` on your computer wifi setup.
+Once connected, you can access the esp32 web interface in your favorite browser by entering the address `http://especial.local`.
+All esp32 features can be access in AP mode (except for the Telegram part of course). But it's better if you connect your esp32 to your local network.
+Go in the setting page of ESPecial web page, and switch on the Station Mode (STA) in the wifi section. Here simply set your wifi network SSID and password. You can also rename the DNS name of the esp32.
 
 ### Web interface
-You can now find the IP in the serial log of the esp32. Simply enter the address on your favorite browser and enter.
-You are now on the page directly served by your ESP32! The interface is responsive and should be usable on your smartphone.
+The interface is responsive and should be usable on your smartphone.
 It should look like this:
 <p align="center">
     <img src="images/initial-home-page.png" width="400">
@@ -104,7 +105,7 @@ You now need to add your first pin handler. This is done by simply clicking on t
     <img src="images/add-gpio-panel.png" width="400">
 </p>
 Choose the pin you want to control/listen from the list. This list will only display available pins, so you won't have doublons 👌.
-You can switch from INPUT modes, to OUTPUT, LedControl, Analog and I2C. Depending on which mode you choose, parameters may appears. Like frequencies, resolutions, address etc. 
+You can switch from INPUT modes, to OUTPUT, LedControl, Analog, I2C, ADC and DAC. Depending on which mode you choose, parameters may appears. Like frequencies, resolutions, address etc. 
 When selecting the I2C mode, you be able to scan and detect any slave device.
 The 'save state' checkbox will allow you to save a state in the flash memory of the controller, allowing you to get back your state even after a reboot. This is available for digital output and LedControl mode.
 Once you are done with the settings, press 'save' to add the new GPIO.
