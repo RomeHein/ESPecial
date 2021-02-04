@@ -1,21 +1,12 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <WiFiClient.h>
-#include <WiFiClientSecure.h>
 #include "time.h"
 #include "PreferenceHandler.h"
-#include "ServerHandler.h"
-#include "TelegramHandler.h"
-#include "MqttHandler.h"
 #include "TaskManager.h"
 
 TaskManager *taskManager;
 PreferenceHandler *preferencehandler;
-ServerHandler *serverhandler;
-TelegramHandler *telegramhandler;
-MqttHandler *mqtthandler;
-WiFiClientSecure client;
-WiFiClient clientNotSecure;
+
 
 // Notify client esp has just restarted
 bool hasJustRestarted = true;
@@ -194,15 +185,6 @@ void h4setup() {
       Serial.printf("[SETUP] Web interface available on: %s or ",preferencehandler->wifi.dns);
     #endif
   }
-
-  // Set all handlers.
-  serverhandler = new ServerHandler(*preferencehandler);
-  serverhandler->begin();
-  telegramhandler = new TelegramHandler(*preferencehandler, client);
-  mqtthandler = new MqttHandler(*preferencehandler, clientNotSecure);
-  
-  // Set input reading on a different thread
-  xTaskCreatePinnedToCore(automation_loop, "automation", 12288, NULL, 0, NULL, 0);
 }
 
 void loopOld(void) {

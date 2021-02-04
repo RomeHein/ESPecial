@@ -44,7 +44,13 @@ void ServerHandler::begin()
     server.on("/firmware/list",HTTP_GET, [this](AsyncWebServerRequest *request) { handleFirmwareList(request); });
     server.on("/update/version", HTTP_GET, [this](AsyncWebServerRequest *request) { handleUpdateToVersion(request); });
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        shouldRestart = !Update.hasError();
+        bool shouldrestart = !Update.hasError();
+        if (shouldrestart) {
+            Task newTask = {};
+            newTask.id = 4;
+            strcpy(newTask.label, "restart");
+            taskCallback(task);
+        }
         AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldRestart?"OK":"FAIL");
         response->addHeader("Connection", "close");
         request->send(response);
@@ -155,7 +161,10 @@ void ServerHandler::handleSystemHealth(AsyncWebServerRequest *request)
 
 void ServerHandler::handleRestart(AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "OK");
-    shouldRestart = true;
+    Task newTask = {};
+    newTask.id = 4;
+    strcpy(newTask.label, "restart");
+    taskCallback(task);
 }
 
 // Settings
@@ -477,13 +486,7 @@ void ServerHandler::getAutomations(AsyncWebServerRequest *request)
 void ServerHandler::handleRunAutomation(AsyncWebServerRequest *request) {
     if (request->hasParam(idParamName)) {
         const int id = request->getParam(idParamName)->value().toInt();
-        // queue automation id, to be picked up by esp32.ino script
-        for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
-            if (automationsQueued[i] == 0) {
-                automationsQueued[i] = id;
-                break;
-            }
-        }
+        autoCallback(id);
         request->send(200, "text/plain", "Done");
     }
     request->send(404, "text/plain", "Not found");

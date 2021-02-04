@@ -3,8 +3,27 @@
 #include <HTTPUpdate.h>
 
 void TaskManager::begin() {
+    // Set all handlers.
+    serverhandler = new ServerHandler(*preference, TaskManager::executeTask);
+    serverhandler->begin();
+    telegramhandler = new TelegramHandler(*preference, client, TaskManager::executeTask);
+    mqtthandler = new MqttHandler(*preference, clientNotSecure, TaskManager::executeTask);
+
     h4.every(20,[](){ readPins(); })
     h4.queueFunction([](){ getFirmwareList()});
+    h4.every(20,[](){ telegramhandler.handle(); })
+    h4.every(30,[](){ mqtthandler.handle(); })
+}
+
+void TaskManager::executeTask(Task& task) {
+    h4.queueFunction([](){
+        if (task.id == 1) {
+            runAutomation(task.value)});
+        } else if (task.id == 2) {
+            // Do not persist gpio state here, we want the main loop event (readPins function) to catch the change and trigger its own logic
+            preference.setGpioState(task.pin, task.value);
+        }
+    }
 }
 
 void TaskManager::getFirmwareList() {
@@ -20,7 +39,9 @@ void TaskManager::getFirmwareList() {
       Serial.println(F("[MAIN] firmware list retrieved"));
     #endif
     if (serverhandler->events.count()>0) {
-      serverhandler->events.send(http.getString().c_str(),"firmwareList",millis());
+        h4.queueFunction([](){ 
+            serverhandler->events.send(http.getString().c_str(),"firmwareList",millis());
+        });
     }
   }
   else {
@@ -29,7 +50,7 @@ void TaskManager::getFirmwareList() {
   http.end();
 }
 
-void readPins() {
+void TaskManager::readPins() {
     bool gpioStateChanged = false;
     for (GpioFlash& gpio : preference->gpios) {
       if (gpio.pin && gpio.mode != -100) {
@@ -41,17 +62,18 @@ void readPins() {
           // Save to preferences if allowed
           preference->setGpioState(gpio.pin, newState, true);
           // Notifiy mqtt clients
-          mqtthandler->publish(gpio.pin);
+          h4.queueFunction([](){ 
+            mqtthandler->publish(gpio.pin);
+          })
           // Notifiy web interface with format "pinNumber-state"
-          if (serverhandler->events.count()>0 && millis() > DEBOUNCE_EVENT_DELAY + lastEvent) {
+          h4.queueFunction([](){ 
             char eventMessage[10];
             snprintf(eventMessage,10,"%d-%d",gpio.pin,newState);
             serverhandler->events.send(eventMessage,"pin",millis());
-            lastEvent = millis();
             #ifdef __debug
-            Serial.printf("[EVENT] Sent GPIO event for pin %i. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
-          #endif
-          }
+                Serial.printf("[EVENT] Sent GPIO event for pin %i. Old: %i, new: %i\n",gpio.pin, gpio.state, newState);
+            #endif
+          });
           gpioStateChanged = true;
         }
       }
@@ -85,35 +107,8 @@ void runTriggeredEventAutomations(bool onlyTimeConditionned) {
   }
 }
 
-void pickUpQueuedAutomations() {
-  for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
-    if (telegramhandler->automationsQueued[i] == 0) break;
-    #ifdef __debug
-      Serial.printf("Telegram automation id queued detected: %i\n",telegramhandler->automationsQueued[i]);
-    #endif
-    runAutomation(telegramhandler->automationsQueued[i]);
-  }
-  for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
-    if (serverhandler->automationsQueued[i] == 0) break;
-    #ifdef __debug
-      Serial.printf("Server automation id queued detected: %i\n",serverhandler->automationsQueued[i]);
-    #endif
-    runAutomation(serverhandler->automationsQueued[i]);
-  }
-  for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
-    if (mqtthandler->automationsQueued[i] == 0) break;
-    #ifdef __debug
-      Serial.printf("Mqtt automation id queued detected: %i\n",mqtthandler->automationsQueued[i]);
-    #endif
-    runAutomation(mqtthandler->automationsQueued[i]);
-  }
-  // Reset queues once automations executed
-  memset(telegramhandler->automationsQueued, 0, sizeof(telegramhandler->automationsQueued));
-  memset(serverhandler->automationsQueued, 0, sizeof(serverhandler->automationsQueued));
-  memset(mqtthandler->automationsQueued, 0, sizeof(mqtthandler->automationsQueued));
-}
 
-void runAutomation(int id) {
+void TaskManager::runAutomation(int id) {
   int i = 0;
   for (AutomationFlash& automation: preference->automations) {
     i++;
@@ -224,7 +219,9 @@ void runAutomation(AutomationFlash& automation) {
           } else if (type == 2) {
             String value = String(automation.actions[i][1]);
             parseActionString(value);
-            telegramhandler->queueMessage(value.c_str(), automation.actions[i][2]);
+            h4.queueFunction([](){ 
+                telegramhandler->sendMessage(value.c_str(), automation.actions[i][2]);
+            });
           // Send telegram picture action
           } else if (type == 3) {
             String value = String(automation.actions[i][1]);

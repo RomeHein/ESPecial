@@ -6,10 +6,12 @@
 #include <ArduinoJson.h>
 #include "ESPAsyncWebServer.h"
 #include "PreferenceHandler.h"
+#include "TaskManager.h"
 
 class ServerHandler {
 private:
     PreferenceHandler &preference;
+    AutomationCallback &autoCallback;
     void handleClearSettings(AsyncWebServerRequest *request);
     void handleFirmwareList(AsyncWebServerRequest *request);
     void handleSystemHealth(AsyncWebServerRequest *request);
@@ -55,7 +57,6 @@ public:
     ServerHandler(PreferenceHandler& preference) : preference(preference) {};
     AsyncWebServer server = {80};
     AsyncEventSource events = {"/events"};
-    int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     bool shouldRestart = false; // Set this flag in the callbacks to restart ESP in the main loop
     bool shouldReloadFirmwareList = false;
     char shouldOTAFirmwareVersion[10] = "";

@@ -2,9 +2,6 @@
 #include <ArduinoJson.h>
 #include "esp_camera.h"
 
-int Bot_mtbs = 1000; //mean time between scan messages
-long Bot_lasttime;   //last time messages' scan has been done
-
 camera_fb_t *fb = NULL;
 bool isMoreDataAvailable();
 byte *getNextBuffer();
@@ -23,7 +20,7 @@ void TelegramHandler::begin() {
 void TelegramHandler::handle()
 {
     begin();
-    if (isInit && preference.telegram.token && preference.telegram.active && millis() > Bot_lasttime + Bot_mtbs)  {
+    if (isInit && preference.telegram.token && preference.telegram.active)  {
       preference.health.telegram = 1;
       int numNewMessages = bot->getUpdates(bot->last_message_received + 1);
       while(numNewMessages) {
@@ -35,7 +32,6 @@ void TelegramHandler::handle()
       }
       // Empty messages queued
       sendQueuedMessages();
-      Bot_lasttime = millis();
     } else if (!isInit || ! preference.telegram.token || !preference.telegram.active) {
       preference.health.telegram = 0;
     }
@@ -131,20 +127,22 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
       #ifdef __debug  
         Serial.printf("[TELEGRAM] command: %c, id: %i\n",cmd[0], id);
       #endif
+      Task newTask = {};
       // 'g' is a command for gpios
       if (cmd[0] == 'g') {
-        // We set the persist flag to false, to allow the mainloop to pick up new changes and react accordingly
+        newTask.id = 2;
+        strcpy(newTask.label, "set");
+        newTask.pin = id;
+        newTask.value = -1;
         preference.setGpioState(id, -1);
         bot->sendMessageWithInlineKeyboard(bot->messages[i].chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios(), bot->messages[i].message_id);
       // 'a' is a command for automations
-      } else {
-        // queue automation id, to be picked up by esp32.ino script
-        for (int i=0; i<MAX_AUTOMATIONS_NUMBER; i++) {
-          if (automationsQueued[i] == 0) {
-            automationsQueued[i] = id;
-            break;
-          }
-        }
+      } else if (cmd[0] == 'a') {
+        newTask.id = 1;
+        newTask.value = id;
+      }
+      if (newTask.id) {
+        taskCallback(newTask);
       }
     } else {
       String chat_id = String(bot->messages[i].chat_id);
@@ -181,55 +179,28 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
   }
 }
 
-void TelegramHandler::queueMessage(const char* message, bool withPicture) {
-  if (isInit && preference.telegram.token && preference.telegram.active) {
-    if (lastMessageQueuedPosition<MAX_QUEUED_MESSAGE_NUMBER) {
-      #ifdef __debug  
-        Serial.printf("[TELEGRAM] queued message: %s\n",message);
-      #endif
-      TelegramMessageQueue newMessage;
-      strcpy(newMessage.text,message);
-      newMessage.sendWithPicture = withPicture;
-      messagesQueue[lastMessageQueuedPosition] = newMessage;
-      lastMessageQueuedPosition++;
-    } else {
-      #ifdef __debug  
-        Serial.printf("[TELEGRAM] reach message queued maximum: %i\n",MAX_QUEUED_MESSAGE_NUMBER);
-      #endif
-    }
-  }
-}
-
-void TelegramHandler::sendQueuedMessages() {
+void TelegramHandler::sendMessage(const char* message, bool withPicture) {
   bool didSentMessage = false;
-  for (int i=0; i<lastMessageQueuedPosition; i++) {
-    // Send queued message to all registered users
+  // Send message to all registered users
     for (int j=0; j< MAX_TELEGRAM_USERS_NUMBER; j++) {
       // Check if we have a chatId corresponding to a telegram user
       if (preference.telegram.users[j] && preference.telegram.chatIds[j]) {
         #ifdef __debug  
-          Serial.printf("[TELEGRAM] sending message: %s\n", messagesQueue[i].text);
+          Serial.printf("[TELEGRAM] sending message: %s\n", message);
         #endif
-        if (strcmp(messagesQueue[i].text, "") > 0) {
-          bot->sendMessage(String(preference.telegram.chatIds[j]), messagesQueue[i].text);
+        if (strcmp(message, "") > 0) {
+          bot->sendMessage(String(preference.telegram.chatIds[j]), message);
         }
-        if (messagesQueue[i].sendWithPicture) {
+        if (withPicture) {
           sendPictureFromCameraToChat(preference.telegram.chatIds[j]);
         }
         didSentMessage = true;
       } 
     }
-  }
-  if (!didSentMessage && lastMessageQueuedPosition != 0) {
+    if (!didSentMessage) {
     #ifdef __debug  
       Serial.println("[TELEGRAM] could not send messages: %s\nReason: no chatids defined, send a message first to the bot before using it.");
     #endif
-  }
-  // Empty queue
-  if (didSentMessage) {
-    Serial.print("[TELEGRAM] empty queued messages\n");
-    memset(messagesQueue, 0, sizeof(messagesQueue));
-    lastMessageQueuedPosition = 0; 
   }
 }
 
