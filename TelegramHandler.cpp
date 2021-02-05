@@ -30,8 +30,6 @@ void TelegramHandler::handle()
         handleNewMessages(numNewMessages);
         numNewMessages = bot->getUpdates(bot->last_message_received + 1);
       }
-      // Empty messages queued
-      sendQueuedMessages();
     } else if (!isInit || ! preference.telegram.token || !preference.telegram.active) {
       preference.health.telegram = 0;
     }
@@ -130,18 +128,18 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
       Task newTask = {};
       // 'g' is a command for gpios
       if (cmd[0] == 'g') {
-        newTask.id = 2;
+        newTask.type = 2;
         strcpy(newTask.label, "set");
         newTask.pin = id;
         newTask.value = -1;
-        preference.setGpioState(id, -1);
         bot->sendMessageWithInlineKeyboard(bot->messages[i].chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios(), bot->messages[i].message_id);
       // 'a' is a command for automations
       } else if (cmd[0] == 'a') {
-        newTask.id = 1;
+        newTask.type = 1;
         newTask.value = id;
       }
-      if (newTask.id) {
+      // Trigger task manager logic
+      if (newTask.type) {
         taskCallback(newTask);
       }
     } else {

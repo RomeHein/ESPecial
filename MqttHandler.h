@@ -30,7 +30,7 @@ private:
     void callback(char* topic, byte* payload, unsigned int length);
 public:
     ~MqttHandler() { delete mqtt_client; };
-    MqttHandler(PreferenceHandler& preference, WiFiClient &client, TaskCallback& taskCallback) : preference(preference), client(client), taskCallback(taskCallback) {};
+    MqttHandler(PreferenceHandler& preference, WiFiClient &client, TaskCallback taskCallback) : preference(preference), client(client), taskCallback(taskCallback) {};
     int automationsQueued[MAX_AUTOMATIONS_NUMBER] = {};
     void begin();
     void handle();

@@ -6,12 +6,11 @@
 #include <ArduinoJson.h>
 #include "ESPAsyncWebServer.h"
 #include "PreferenceHandler.h"
-#include "TaskManager.h"
 
 class ServerHandler {
 private:
     PreferenceHandler &preference;
-    AutomationCallback &autoCallback;
+    TaskCallback &taskCallback;
     void handleClearSettings(AsyncWebServerRequest *request);
     void handleFirmwareList(AsyncWebServerRequest *request);
     void handleSystemHealth(AsyncWebServerRequest *request);
@@ -54,10 +53,9 @@ private:
     void saveCameraVar(AsyncWebServerRequest *request);
     
 public:
-    ServerHandler(PreferenceHandler& preference) : preference(preference) {};
+    ServerHandler(PreferenceHandler& preference, TaskCallback taskCallback) : preference(preference), taskCallback(taskCallback) {};
     AsyncWebServer server = {80};
     AsyncEventSource events = {"/events"};
-    bool shouldRestart = false; // Set this flag in the callbacks to restart ESP in the main loop
     bool shouldReloadFirmwareList = false;
     char shouldOTAFirmwareVersion[10] = "";
     void begin();

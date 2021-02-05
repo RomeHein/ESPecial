@@ -8,8 +8,10 @@
 
 // Debounce Times
 #define DEBOUNCE_INPUT_DELAY 20 //
-#define DEBOUNCE_TIME_DELAY 60000 //
+#define DEBOUNCE_TIME_DELAY 1000 //
 #define DEBOUNCE_EVENT_DELAY 400 //
+#define DEBOUNCE_MQTT_DELAY 30
+#define DEBOUNCE_TELEGRAM_DELAY 20
 #define TIMEOUT_WIFI_CONNECTION 5000
 #define TOUCH_TIME_INTERVAL 80 // 
 //------------------ Main.ino

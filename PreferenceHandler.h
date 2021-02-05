@@ -17,6 +17,17 @@
 #define AUTOMATION_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_CONDITIONS_NUMBER+MAX_AUTOMATION_ACTION_NUMBER)+ MAX_AUTOMATIONS_CONDITIONS_NUMBER*JSON_ARRAY_SIZE(4) + MAX_AUTOMATION_ACTION_NUMBER*JSON_ARRAY_SIZE(3) + MAX_AUTOMATION_ACTION_NUMBER*300 + JSON_OBJECT_SIZE(8) + 150
 #define AUTOMATIONS_JSON_CAPACITY JSON_ARRAY_SIZE(MAX_AUTOMATIONS_NUMBER) + MAX_AUTOMATIONS_NUMBER*(AUTOMATION_JSON_CAPACITY)
 
+typedef struct
+{
+    uint8_t type; // 1: automation, 2: gpio, 3: OTA, 4: ESP (sleep, restart)
+    char label[50]; // what the task does. often used in if/else statement to determine what to do
+    char version[10]; // used for OTA firmware version
+    uint8_t pin; // used for type 2
+    int16_t value; // depending on the type, can contain the id of the automation/gpio
+ }  Task;
+
+ using TaskCallback = void(*)(Task&);
+
 // 0 for inactive, 1 for all good, -1 for error
 typedef struct
 {

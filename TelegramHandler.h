@@ -5,7 +5,6 @@
 #include <Arduino.h>
 #include <UniversalTelegramBot.h>
 #include "PreferenceHandler.h"
-#include "TaskManager.h"
 #include <WiFiClientSecure.h>
 
 class TelegramHandler
@@ -23,7 +22,7 @@ private:
     String generateInlineKeyboardsForAutomations();
     void sendPictureFromCameraToChat(int chat_id);
 public:
-    TelegramHandler(PreferenceHandler& preference, WiFiClientSecure &client, AutomationCallback &callback) : preference(preference), client(client) {};
+    TelegramHandler(PreferenceHandler& preference, WiFiClientSecure &client, TaskCallback taskCallback) : preference(preference), client(client), taskCallback(taskCallback)  {};
     void handle();
     void begin();
     void sendMessage(const char* message, bool withPicture);

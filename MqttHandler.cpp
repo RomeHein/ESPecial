@@ -38,7 +38,6 @@ void MqttHandler::handle()
         //MQTT connected send status
         else {
             if (millis() > lastSend) {
-                //hpStatusChanged(hp.getStatus());
                 lastSend = millis();
             }
             mqtt_client->loop();

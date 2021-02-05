@@ -44,12 +44,12 @@ void ServerHandler::begin()
     server.on("/firmware/list",HTTP_GET, [this](AsyncWebServerRequest *request) { handleFirmwareList(request); });
     server.on("/update/version", HTTP_GET, [this](AsyncWebServerRequest *request) { handleUpdateToVersion(request); });
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        bool shouldrestart = !Update.hasError();
-        if (shouldrestart) {
+        bool shouldRestart = !Update.hasError();
+        if (shouldRestart) {
             Task newTask = {};
-            newTask.id = 4;
+            newTask.type = 4;
             strcpy(newTask.label, "restart");
-            taskCallback(task);
+            taskCallback(newTask);
         }
         AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldRestart?"OK":"FAIL");
         response->addHeader("Connection", "close");
@@ -141,7 +141,10 @@ void ServerHandler::handleClearSettings(AsyncWebServerRequest *request)
 // Once the list is retrieved, we'll send an event to the client with the list inside
 void ServerHandler::handleFirmwareList(AsyncWebServerRequest *request)
 {
-    shouldReloadFirmwareList = true;
+    Task newTask = {};
+    newTask.type = 3;
+    strcpy(newTask.label, "reloadlist");
+    taskCallback(newTask);
     request->send(200, "text/plain", "Waiting for result");
     return;
 }
@@ -162,9 +165,9 @@ void ServerHandler::handleSystemHealth(AsyncWebServerRequest *request)
 void ServerHandler::handleRestart(AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "OK");
     Task newTask = {};
-    newTask.id = 4;
+    newTask.type = 4;
     strcpy(newTask.label, "restart");
-    taskCallback(task);
+    taskCallback(newTask);
 }
 
 // Settings
@@ -239,7 +242,11 @@ void ServerHandler::handleUpdate(AsyncWebServerRequest *request, const String& f
 
 void ServerHandler::handleUpdateToVersion(AsyncWebServerRequest *request) {
     if (request->hasParam("v")) {
-        strcpy(shouldOTAFirmwareVersion,request->getParam("v")->value().c_str());
+        Task newTask = {};
+        newTask.type = 3;
+        strcpy(newTask.label, "update");
+        strcpy(newTask.version,request->getParam("v")->value().c_str());
+        taskCallback(newTask);
     }
     request->send(200, "text/plain", "Downloading");
 }
@@ -485,8 +492,12 @@ void ServerHandler::getAutomations(AsyncWebServerRequest *request)
 
 void ServerHandler::handleRunAutomation(AsyncWebServerRequest *request) {
     if (request->hasParam(idParamName)) {
-        const int id = request->getParam(idParamName)->value().toInt();
-        autoCallback(id);
+        Task newTask = {};
+        newTask.type = 1;
+        newTask.value = request->getParam(idParamName)->value().toInt();
+        strcpy(newTask.label, "restart");
+        Serial.println("task created");
+        taskCallback(newTask);
         request->send(200, "text/plain", "Done");
     }
     request->send(404, "text/plain", "Not found");
