@@ -496,7 +496,7 @@ void ServerHandler::handleRunAutomation(AsyncWebServerRequest *request) {
         newTask.type = 1;
         newTask.value = request->getParam(idParamName)->value().toInt();
         strcpy(newTask.label, "restart");
-        Serial.println("task created");
+        Serial.println("task created\n");
         taskCallback(newTask);
         request->send(200, "text/plain", "Done");
     }

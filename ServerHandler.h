@@ -10,7 +10,7 @@
 class ServerHandler {
 private:
     PreferenceHandler &preference;
-    TaskCallback &taskCallback;
+    TaskCallback taskCallback;
     void handleClearSettings(AsyncWebServerRequest *request);
     void handleFirmwareList(AsyncWebServerRequest *request);
     void handleSystemHealth(AsyncWebServerRequest *request);

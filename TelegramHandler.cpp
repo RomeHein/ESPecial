@@ -132,14 +132,12 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
         strcpy(newTask.label, "set");
         newTask.pin = id;
         newTask.value = -1;
+        taskCallback(newTask);
         bot->sendMessageWithInlineKeyboard(bot->messages[i].chat_id, "Gpios available in output mode", "", generateInlineKeyboardsForGpios(), bot->messages[i].message_id);
       // 'a' is a command for automations
       } else if (cmd[0] == 'a') {
         newTask.type = 1;
         newTask.value = id;
-      }
-      // Trigger task manager logic
-      if (newTask.type) {
         taskCallback(newTask);
       }
     } else {

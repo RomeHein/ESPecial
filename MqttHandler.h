@@ -22,7 +22,7 @@ private:
     MqttTopics topics;
     PreferenceHandler &preference;
     WiFiClient &client;
-    TaskCallback &taskCallback;
+    TaskCallback taskCallback;
     PubSubClient* mqtt_client;
     bool isInit = false;
     void handleNewMessages(int numNewMessages);

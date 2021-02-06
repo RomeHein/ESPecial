@@ -19,7 +19,6 @@ ServerHandler *serverhandler;
 TelegramHandler *telegramhandler;
 MqttHandler *mqtthandler;
 H4 h4(115200);
-HTTPClient http;
 
 // Keep tracks of last time for each automation run 
 long lastDebounceTimes[MAX_AUTOMATIONS_NUMBER] = {};
@@ -45,7 +44,6 @@ void h4setup() {
           Serial.println(systemInfos());
       #endif
   });
-  h4.queueFunction([](){ getFirmwareList();});
 
   if (preferencehandler->wifi.staEnable && preferencehandler->wifi.staSsid) {
     #ifdef __debug
@@ -125,9 +123,9 @@ void onReboot(){
 }
 
 void executeTask(Task& task) {
-  Serial.println("jumped to task handler");
+  Serial.printf("jumped to task handler type: %i\n",task.type);
   h4.queueFunction([task](){
-      Serial.println("Executing task");
+      Serial.println("Executing task\n");
       if (task.type == 1) {
           runAutomation(task.value);
       } else if (task.type == 2) {
@@ -148,6 +146,7 @@ void executeTask(Task& task) {
 }
 
 void getFirmwareList() {
+  HTTPClient http;
   const String firmwarelistPath = String(REPO_PATH) + "list.json";
   #ifdef __debug
     Serial.printf("[MAIN] Retrieving firmware list from %s\n",firmwarelistPath.c_str());
@@ -159,7 +158,7 @@ void getFirmwareList() {
       Serial.println(F("[MAIN] firmware list retrieved"));
     #endif
     if (serverhandler->events.count()>0) {
-        h4.queueFunction([](){ 
+        h4.queueFunction([&http](){ 
             serverhandler->events.send(http.getString().c_str(),"firmwareList",millis());
         });
     }
@@ -458,30 +457,31 @@ void runAutomation(AutomationFlash& automation) {
 }
 
 void sendRequest(int type, char* host, char* content) {
-    http.begin(client, host);
-    int httpResponseCode;
-    // get type
-    if (type == 1) {
-        httpResponseCode = http.GET();
-    // post type
-    } else if (type == 2) {
-        http.addHeader("Content-Type", "application/json");
-        String value = String(content);
-        parseActionString(value);
-        httpResponseCode = http.POST(value);
-    }
-    #ifdef __debug
-    if (httpResponseCode>0) {
-        Serial.print("[ACTION HTTP] HTTP Response code: ");
-        Serial.println(httpResponseCode);
-        String payload = http.getString();
-        Serial.println(payload);
-    }
-    else {
-        Serial.printf("[ACTION HTTP] GET failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
-    }
-    #endif
-    http.end();
+  HTTPClient http;
+  http.begin(client, host);
+  int httpResponseCode;
+  // get type
+  if (type == 1) {
+      httpResponseCode = http.GET();
+  // post type
+  } else if (type == 2) {
+      http.addHeader("Content-Type", "application/json");
+      String value = String(content);
+      parseActionString(value);
+      httpResponseCode = http.POST(value);
+  }
+  #ifdef __debug
+  if (httpResponseCode>0) {
+      Serial.print("[ACTION HTTP] HTTP Response code: ");
+      Serial.println(httpResponseCode);
+      String payload = http.getString();
+      Serial.println(payload);
+  }
+  else {
+      Serial.printf("[ACTION HTTP] GET failed, error: %s\n", http.errorToString(httpResponseCode).c_str());
+  }
+  #endif
+  http.end();
 }
 
 // Iterate through a string to find special command like `${pinNumber}` or `${info}` and replace them with the appropriate value

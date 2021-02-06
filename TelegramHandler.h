@@ -14,7 +14,7 @@ private:
     UniversalTelegramBot* bot;
     PreferenceHandler &preference;
     WiFiClientSecure &client;
-    TaskCallback &taskCallback;
+    TaskCallback taskCallback;
     void handleNewMessages(int numNewMessages);
     String generateButtonFormat(GpioFlash& gpio);
     String generateButtonFormat(AutomationFlash& a);
