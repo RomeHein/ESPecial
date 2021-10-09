@@ -1,14 +1,21 @@
 [{
-    "version": 0.7,
+    "version": 0.8,
     "build": 1,
     "current": true,
+    "partitionScheme":"min_spiffs",
+    "description": "Fix Telegram not working. Added possibility to send picture from ESP-cam!",
+    "compatibility": [0.7,0.6]
+},{
+    "version": 0.7,
+    "build": 1,
+    "current": false,
     "partitionScheme":"min_spiffs",
     "description": "Fix touch control. Small changes in UI",
     "compatibility": [0.6]
 },{
     "version": 0.6,
     "build": 1,
-    "current": true,
+    "current": false,
     "partitionScheme":"min_spiffs",
     "description": "Implement Touch control. Bug fixes.",
     "compatibility": []
