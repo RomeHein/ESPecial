@@ -4,7 +4,7 @@
 #define Parameters_h
 
 #define __debug
-#define FIRMWARE_VERSION 0.7
+#define FIRMWARE_VERSION 0.8
 
 // Debounce Times
 #define DEBOUNCE_INPUT_DELAY 20 //

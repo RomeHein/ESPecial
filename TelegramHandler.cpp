@@ -16,7 +16,6 @@ void TelegramHandler::begin() {
       #ifdef __debug  
         Serial.println("[TELEGRAM] init");
       #endif
-      client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
       bot = new UniversalTelegramBot(preference.telegram.token, client);
       isInit = true;
     }
