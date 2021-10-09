@@ -2,7 +2,7 @@
 #include <ArduinoJson.h>
 #include "esp_camera.h"
 
-int Bot_mtbs = 1000; //mean time between scan messages
+int Bot_mtbs = 1000; //min time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
 
 camera_fb_t *fb = NULL;
@@ -16,6 +16,7 @@ void TelegramHandler::begin() {
       #ifdef __debug  
         Serial.println("[TELEGRAM] init");
       #endif
+      client.setCACert(TELEGRAM_CERTIFICATE_ROOT);
       bot = new UniversalTelegramBot(preference.telegram.token, client);
       isInit = true;
     }
@@ -158,7 +159,11 @@ void TelegramHandler::handleNewMessages(int numNewMessages) {
         bot->sendMessageWithInlineKeyboard(chat_id, "Gpios available in input mode", "", generateInlineKeyboardsForGpios(true));
       } else if (authorised && text == "/auto") {
         bot->sendMessageWithInlineKeyboard(chat_id, "Automations list", "", generateInlineKeyboardsForAutomations());
-      }else if (text == "/start") {
+      } else if (authorised) {
+        char unknown[512];
+        snprintf(unknown,512,"Hmm, I don't know that command.Here is a list of things I can react to:\n\n/out : returns an inline keyboard to control gpios set in output mode\n/in : returns gpios' state in input mode\n/analog : returns gpios' attached to channels (in analogue mode)\n/auto : returns an inline keyboard to trigger automations\n");
+        bot->sendMessage(chat_id, unknown, "Markdown");
+      } else if (text == "/start") {
         char welcome[512];
         snprintf(welcome,512,"Welcome to your ESP32 telegram bot, %s.\nHere you'll be able to control your ESP32.\nFirst, add your telegram id to the authorised list (in settings panel) to restrict your bot access:\n %s.\n\n/out : returns an inline keyboard to control gpios set in output mode\n/in : returns gpios' state in input mode\n/analog : returns gpios' attached to channels (in analogue mode)\n/auto : returns an inline keyboard to trigger automations\n",from_name,bot->messages[i].from_id);
         bot->sendMessage(chat_id, welcome, "Markdown");

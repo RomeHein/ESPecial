@@ -78,7 +78,7 @@ First copy this repo to your local directory. Use the `download as zip` or `git 
 Then 5 dependencies need to be added to your Arduino libraries (when you download these dependencies, make sure to remove the '-master' part of the folder name):
 - ArduinoJSON v6 (install via library manager) Handle json in a very effective way.
 - PubSubClient: (install via library manager)  MQTT handling. It's a very robust pubsub client, perfect for iot projects.
-- ⚠️ UniversalTelegramBot: Make sure to take [this repo](https://github.com/RomeHein/Universal-Arduino-Telegram-Bot). This is a fork from the main repo. I've made a pull request but it's not yet accepted. So you'll need that fork to make this program works correctly.
+- UniversalTelegramBot: Last version to be tested is 1.3. So if you encounter issues, make sure to have that one installed in your library. You can find the zip file [here](https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/releases) on the official repo.
 - ESPAsyncWebServer
 - AsyncTCP
 
